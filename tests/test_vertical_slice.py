@@ -30,6 +30,20 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert gzip.decompress(b64decode(encoded.strip())).startswith(b"order_id,country")
 
 
+def test_compiles_query_graph_and_components() -> None:
+    _, spec, _ = compile_report(EXAMPLE)
+
+    assert spec["queries"]["filtered_orders"]["kind"] == "view"
+    assert spec["queries"]["revenue_by_country"]["depends_on"] == {
+        "sources": ["orders"],
+        "params": ["country", "date_range"],
+        "queries": ["filtered_orders"],
+    }
+    chart = next(item for item in spec["components"] if item["type"] == "BarChart")
+    assert chart["query"] == "revenue_by_country"
+    assert chart["props"]["x"] == "country"
+
+
 def test_content_identity_excludes_build_time() -> None:
     first, _, _ = compile_report(
         EXAMPLE, built_at=datetime(2026, 7, 1, 10, tzinfo=timezone.utc)
@@ -120,4 +134,105 @@ data:
     )
 
     with pytest.raises(ReportValidationError, match="configured freshness columns not found"):
+        compile_report(report)
+
+
+def test_unknown_sql_relation_is_error(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+```sql name=summary kind=query
+select * from missing
+```
+<Table query="summary" />
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="unknown relations: missing"):
+        compile_report(report)
+
+
+def test_undeclared_template_parameter_is_error(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("country,value\nDE,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+```sql name=summary kind=query
+select * from events where {{ in_filter("country", country) }}
+```
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="undeclared parameter 'country'"):
+        compile_report(report)
+
+
+def test_component_cannot_reference_view(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+```sql name=filtered kind=view
+select * from events
+```
+<Table query="filtered" />
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="must reference a query, not view"):
+        compile_report(report)
+
+
+def test_parameter_options_column_must_exist(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+params:
+  country:
+    type: multiselect
+    options:
+      source: events
+      column: country
+---
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="missing column events.country"):
         compile_report(report)

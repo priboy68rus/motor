@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from motor.data_sources import compile_source
+from motor.errors import ReportValidationError
 from motor.html import render_report_html
 from motor.manifest import build_manifest
 from motor.models import BuildResult, CheckResult, CompiledSource
@@ -47,6 +48,18 @@ def compile_report(
         compiled_sources.append(compiled)
         checks.extend(source_checks)
 
+    source_columns = {
+        source.passport.name: set(source.passport.column_names) for source in compiled_sources
+    }
+    for name, param in parsed.config.params.items():
+        if param.options is None:
+            continue
+        if param.options.column not in source_columns[param.options.source]:
+            raise ReportValidationError(
+                f"parameter {name!r} options reference missing column "
+                f"{param.options.source}.{param.options.column}"
+            )
+
     report_spec = {
         "report": {
             "title": parsed.config.title,
@@ -58,7 +71,18 @@ def compile_report(
             name: config.model_dump(mode="json", exclude_none=True)
             for name, config in parsed.config.data.items()
         },
-        "params": parsed.config.params,
+        "params": {
+            name: config.model_dump(mode="json", exclude_none=True)
+            for name, config in parsed.config.params.items()
+        },
+        "queries": {
+            name: query.model_dump(mode="json", exclude={"name"})
+            for name, query in parsed.queries.items()
+        },
+        "components": [
+            component.model_dump(mode="json", exclude_none=True)
+            for component in parsed.components
+        ],
         "body": parsed.body,
     }
     manifest = build_manifest(
