@@ -23,7 +23,8 @@ from motor.models import (
 _SQL_OPEN = re.compile(r"^```sql(?:\s+(.*?))?\s*$")
 _TEMPLATE = re.compile(r"{{\s*(.*?)\s*}}")
 _HELPER = re.compile(
-    r"(?P<helper>in_filter|between_filter)\(\s*(['\"])(?P<column>.+?)\2\s*,\s*"
+    r"(?P<helper>in_filter|between_filter)\(\s*(['\"])"
+    r"(?P<column>[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\2\s*,\s*"
     r"(?P<param>[A-Za-z_]\w*)\s*\)"
 )
 _RELATION = re.compile(r"\b(?:from|join)\s+\"?([A-Za-z_]\w*)\"?", re.IGNORECASE)
@@ -34,15 +35,18 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
     "Filters": ({"params"}, {"params"}),
     "DataStatus": (set(), set()),
     "VersionBadge": (set(), set()),
-    "BigValue": ({"query", "value"}, {"query", "value", "title", "format"}),
+    "BigValue": (
+        {"query", "value"},
+        {"query", "value", "title", "format", "currency"},
+    ),
     "Table": ({"query"}, {"query", "title", "columns"}),
     "LineChart": (
         {"query", "x", "y"},
-        {"query", "x", "y", "title", "format", "group", "color", "stack"},
+        {"query", "x", "y", "title", "format", "currency", "group", "color", "stack"},
     ),
     "BarChart": (
         {"query", "x", "y"},
-        {"query", "x", "y", "title", "format", "group", "color", "stack"},
+        {"query", "x", "y", "title", "format", "currency", "group", "color", "stack"},
     ),
 }
 

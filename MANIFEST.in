@@ -1,0 +1,2 @@
+recursive-include runtime *
+prune runtime/node_modules

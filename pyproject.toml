@@ -29,7 +29,7 @@ motor = "motor.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-motor = ["templates/*.j2"]
+motor = ["templates/*.j2", "static/*"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

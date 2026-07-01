@@ -9,10 +9,20 @@ import pytest
 
 from motor.compiler import build_report, compile_report
 from motor.errors import ReportValidationError
+from motor.html import _script_text
 from motor.inspect import inspect_artifact
 
 
 EXAMPLE = Path(__file__).parents[1] / "examples" / "revenue" / "report.md"
+
+
+def test_script_escaping_preserves_javascript_regexes() -> None:
+    source = r"const closeTag = /<\//g;</script>"
+
+    escaped = _script_text(source)
+
+    assert r"/<\//g" in escaped
+    assert "</script" not in escaped.lower()
 
 
 def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
@@ -26,6 +36,10 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert manifest["report"]["title"] == "Revenue Overview"
     assert manifest["sources"][0]["rows"] == 3
     assert 'data-encoding="base64+gzip+csv"' in html
+    assert 'id="motor-duckdb-wasm"' in html
+    assert 'id="motor-duckdb-worker"' in html
+    assert "Starting query engine" in html
+    assert "<script src=" not in html
     encoded = html.split('data-encoding="base64+gzip+csv">', 1)[1].split("</script>", 1)[0]
     assert gzip.decompress(b64decode(encoded.strip())).startswith(b"order_id,country")
 
@@ -42,6 +56,14 @@ def test_compiles_query_graph_and_components() -> None:
     chart = next(item for item in spec["components"] if item["type"] == "BarChart")
     assert chart["query"] == "revenue_by_country"
     assert chart["props"]["x"] == "country"
+    assert {item["type"] for item in spec["components"]} >= {
+        "DataStatus",
+        "VersionBadge",
+        "BigValue",
+        "Table",
+        "LineChart",
+        "BarChart",
+    }
 
 
 def test_content_identity_excludes_build_time() -> None:
