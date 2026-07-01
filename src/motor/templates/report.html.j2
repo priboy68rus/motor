@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ manifest.report.title }}</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, system-ui, sans-serif; color: #172033; background: #f6f7f9; }
+    body { margin: 0; }
+    main { max-width: 960px; margin: 0 auto; padding: 48px 24px; }
+    h1 { font-size: 2rem; margin: 0 0 24px; }
+    .status { background: white; border: 1px solid #dce1e8; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px #1720330a; }
+    .status-line { font-weight: 650; margin-bottom: 16px; }
+    .warning { color: #8a5700; }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 0; }
+    dt { color: #667085; }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    h2 { font-size: 1rem; margin: 24px 0 8px; }
+    ul { margin: 0; padding-left: 20px; }
+    code { font-family: ui-monospace, monospace; font-size: .9em; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{{ manifest.report.title }}</h1>
+    <section class="status" aria-label="Report data status">
+      <div class="status-line{% if manifest.checks.status == 'warning' %} warning{% endif %}">
+        {% if manifest.checks.status == "warning" %}⚠ Checks completed with warnings{% else %}✓ Checks passed{% endif %}
+      </div>
+      <dl>
+        <dt>Data through</dt><dd>{{ manifest.freshness.data_through or "Not configured" }}</dd>
+        <dt>Data processed</dt><dd>{{ manifest.freshness.processed_at or "Not configured" }}</dd>
+        <dt>Report built</dt><dd>{{ manifest.build.built_at }}</dd>
+        <dt>Tool</dt><dd>{{ manifest.build.tool_name }} v{{ manifest.build.tool_version }}</dd>
+        <dt>Artifact</dt><dd><code>{{ manifest.artifact.id }}</code></dd>
+      </dl>
+      <h2>Sources</h2>
+      <ul>
+        {% for source in manifest.sources %}
+        <li><code>{{ source.file_name }}</code>: {{ source.rows }} rows, sha256 <code>{{ source.sha256[:12] }}</code></li>
+        {% endfor %}
+      </ul>
+      {% if manifest.checks.status == "warning" %}
+      <h2>Warnings</h2>
+      <ul>
+        {% for check in manifest.checks.tests if check.status == "warning" %}<li>{{ check.message }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+  </main>
+  <script type="application/json" id="motor-manifest">{{ manifest_json | safe }}</script>
+  <script type="application/json" id="motor-report-spec">{{ report_spec_json | safe }}</script>
+  {% for source in sources %}
+  <script type="application/octet-stream" id="motor-data-{{ source.passport.name }}" data-source-name="{{ source.passport.name }}" data-encoding="base64+gzip+csv">{{ source.encoded_data }}</script>
+  {% endfor %}
+</body>
+</html>

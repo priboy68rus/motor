@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "motor-reports"
+version = "0.1.0"
+description = "Compiler for trusted portable BI artifacts"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "motor contributors" }]
+dependencies = [
+  "Jinja2>=3.1,<4",
+  "pydantic>=2.11,<3",
+  "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2,<2",
+  "pytest>=8,<10",
+]
+
+[project.scripts]
+motor = "motor.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+motor = ["templates/*.j2"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
