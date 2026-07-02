@@ -389,7 +389,7 @@ group by 1
     ("stack", "group", "message"),
     [
         ("center", ' group="country"', "stack must be one of"),
-        ("zero", "", "requires a group attribute"),
+        ("normalize", "", "requires a group or color attribute"),
     ],
 )
 def test_bar_chart_stack_is_validated(
@@ -417,6 +417,33 @@ select country, value from events
 
     with pytest.raises(ReportValidationError, match=message):
         compile_report(report)
+
+
+def test_bar_chart_stack_defaults_to_zero(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("country,value\nDE,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+```sql name=summary kind=query
+select country, value from events
+```
+<BarChart query="summary" x="country" y="value" />
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    chart = next(item for item in spec["components"] if item["type"] == "BarChart")
+    assert chart["props"]["stack"] == "zero"
 
 
 def test_nested_rows_are_rejected(tmp_path: Path) -> None:

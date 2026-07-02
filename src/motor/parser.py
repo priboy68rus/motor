@@ -273,14 +273,14 @@ def _extract_components(
                 f"{component_type} is missing required attributes: {', '.join(sorted(missing))}"
             )
         if component_type == "BarChart":
-            stack = attributes.setdefault("stack", "none")
+            stack = attributes.setdefault("stack", "zero")
             if stack not in {"none", "zero", "normalize"}:
                 raise ReportValidationError(
                     "BarChart stack must be one of: none, zero, normalize"
                 )
-            if stack != "none" and "group" not in attributes:
+            if stack == "normalize" and not ({"group", "color"} & set(attributes)):
                 raise ReportValidationError(
-                    f"BarChart stack={stack!r} requires a group attribute"
+                    "BarChart stack='normalize' requires a group or color attribute"
                 )
         query = attributes.pop("query", None)
         if component_type == "Filters":

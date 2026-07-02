@@ -387,11 +387,15 @@ encoding without changing the grouped-bar layout; when both are present,
 
 | `stack` | Behavior |
 | --- | --- |
-| `none` | Default. Bars from each `group` are displayed side by side. |
-| `zero` | Group values are stacked from zero; bar height is the total. |
+| `zero` | Default. Group values are stacked from zero; bar height is the total. |
+| `none` | Bars from each `group` are displayed side by side on a discrete X scale. |
 | `normalize` | Group values are stacked and normalized to 100%. |
 
-`zero` and `normalize` require `group`. `LineChart` does not accept `stack`.
+Vega-Lite calls the ordinary accumulated mode `zero` because every stack starts
+from the zero baseline.
+
+`normalize` requires `group` or `color`. Without either series field, `zero`
+produces a normal single-series bar chart. `LineChart` does not accept `stack`.
 With a dimension parameter set to `none`, all rows use the empty-string group,
 so the chart has one series and may show a blank legend item. Its dynamic
 legend title ends in `Nothing`.

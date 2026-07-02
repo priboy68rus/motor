@@ -21,10 +21,12 @@ export async function renderChart(
   const y = String(component.props.y);
   const group = component.props.group ? String(component.props.group) : undefined;
   const color = group ?? (component.props.color ? String(component.props.color) : undefined);
-  const stack = component.type === "BarChart" ? String(component.props.stack ?? "none") : "none";
+  const stack = component.type === "BarChart" ? String(component.props.stack ?? "zero") : "none";
   const sampleX = rows.find((row) => row[x] != null)?.[x];
   const dateOnly = typeof sampleX === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sampleX);
+  const groupedBars = component.type === "BarChart" && Boolean(group) && stack === "none";
   const xType =
+    !groupedBars &&
     typeof sampleX === "string" &&
     /^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(sampleX) &&
     !Number.isNaN(Date.parse(sampleX))
@@ -53,7 +55,7 @@ export async function renderChart(
         field: x,
         type: xType,
         title: x,
-        ...(dateOnly ? { axis: { format: "%Y-%m-%d" } } : {}),
+        ...(dateOnly && xType === "temporal" ? { axis: { format: "%Y-%m-%d" } } : {}),
       },
       y: yEncoding,
       ...(color
@@ -65,7 +67,7 @@ export async function renderChart(
             },
           }
         : {}),
-      ...(component.type === "BarChart" && group && stack === "none"
+      ...(groupedBars && group
         ? { xOffset: { field: group, type: "nominal" } }
         : {}),
     },
