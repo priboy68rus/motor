@@ -1,5 +1,13 @@
 import { renderChart } from "./charts/vegaAdapter";
 import type { ChartHandle } from "./charts/vegaAdapter";
+import {
+  formatSignedPercent,
+  formatSignedValue,
+  formatValue,
+  type ValueFormat,
+  type ValueFormatOptions,
+  type ValueNotation,
+} from "./valueFormatting";
 import type {
   ComponentSpec,
   LayoutItem,
@@ -22,53 +30,18 @@ function text(tag: string, value: string, className?: string): HTMLElement {
   return element;
 }
 
-function formatValue(value: unknown, component: ComponentSpec): string {
-  if (value == null) return "—";
-  if (component.props.format === "currency") {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: String(component.props.currency ?? "USD"),
-    }).format(Number(value));
-  }
-  if (component.props.format === "percent") {
-    return new Intl.NumberFormat(undefined, {
-      style: "percent",
-      maximumFractionDigits: 1,
-    }).format(Number(value));
-  }
-  if (typeof value === "number") return new Intl.NumberFormat().format(value);
-  return String(value);
-}
-
 function emptyValue(value: unknown): boolean {
   return value == null || (typeof value === "string" && value.trim() === "");
 }
 
-function formatSignedValue(value: number, component: ComponentSpec): string {
-  if (component.props.format === "currency") {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: String(component.props.currency ?? "USD"),
-      signDisplay: "always",
-    }).format(value);
-  }
-  if (component.props.format === "percent") {
-    return new Intl.NumberFormat(undefined, {
-      style: "percent",
-      maximumFractionDigits: 1,
-      signDisplay: "always",
-    }).format(value);
-  }
-  return new Intl.NumberFormat(undefined, { signDisplay: "always" }).format(value);
-}
-
-function formatSignedPercent(value: number): string {
-  return new Intl.NumberFormat(undefined, {
-    style: "percent",
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-    signDisplay: "always",
-  }).format(value);
+function valueFormatOptions(component: ComponentSpec): ValueFormatOptions {
+  return {
+    format: component.props.format as ValueFormat | undefined,
+    currency:
+      component.props.currency == null ? undefined : String(component.props.currency),
+    notation: (component.props.notation ??
+      (component.type === "BigValue" ? "compact" : undefined)) as ValueNotation | undefined,
+  };
 }
 
 function renderDataStatus(element: HTMLElement, manifest: Manifest): void {
@@ -121,7 +94,9 @@ function renderTable(element: HTMLElement, rows: QueryRow[], component: Componen
   const body = document.createElement("tbody");
   for (const row of rows) {
     const tableRow = document.createElement("tr");
-    for (const column of columns) tableRow.append(text("td", formatValue(row[column], component)));
+    for (const column of columns) {
+      tableRow.append(text("td", formatValue(row[column], valueFormatOptions(component))));
+    }
     body.append(tableRow);
   }
   table.append(head, body);
@@ -131,8 +106,9 @@ function renderTable(element: HTMLElement, rows: QueryRow[], component: Componen
 function renderBigValue(element: HTMLElement, rows: QueryRow[], component: ComponentSpec): void {
   const row = rows[0];
   const value = row?.[String(component.props.value)];
+  const formatOptions = valueFormatOptions(component);
   element.append(
-    text("div", emptyValue(value) ? "—" : formatValue(value, component), "motor-big-value"),
+    text("div", emptyValue(value) ? "—" : formatValue(value, formatOptions), "motor-big-value"),
   );
 
   const compareColumn = component.props.compare_value;
@@ -165,7 +141,7 @@ function renderBigValue(element: HTMLElement, rows: QueryRow[], component: Compo
   const delta = String(component.props.delta ?? "both");
   if (delta === "absolute" || delta === "both") {
     comparisonElement.append(
-      text("span", formatSignedValue(absoluteDelta, component), "motor-big-value-delta"),
+      text("span", formatSignedValue(absoluteDelta, formatOptions), "motor-big-value-delta"),
     );
   }
   if (delta === "both") {

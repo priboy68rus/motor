@@ -734,6 +734,7 @@ select max(value) as current_value, min(value) as previous_value from events
         "delta": "both",
         "delta_label": "vs previous period",
         "direction": "neutral",
+        "notation": "compact",
     }
 
 
@@ -762,6 +763,7 @@ select retention from cohorts
 
     component = next(item for item in spec["components"] if item["type"] == "BigValue")
     assert component["props"]["format"] == "percent"
+    assert component["props"]["notation"] == "compact"
 
 
 @pytest.mark.parametrize(
@@ -772,6 +774,7 @@ select retention from cohorts
         ('compare_value="previous" delta="relative"', "delta must be one of"),
         ('compare_value="previous" direction="up"', "direction must be one of"),
         ('format="ratio"', "format must be one of"),
+        ('notation="human"', "notation must be one of"),
     ],
 )
 def test_big_value_comparison_is_validated(

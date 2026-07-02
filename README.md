@@ -411,7 +411,7 @@ should be quoted, and declarations may span multiple lines.
 | `Text` | `text` | `title`, `placement` | Plain text card. Line breaks are preserved; Markdown and HTML are not interpreted. `placement` is `content` (default) or `sidebar`. |
 | `DataStatus` | — | — | Check status, data-through time, processing time, and build time. |
 | `VersionBadge` | — | — | Tool version and artifact ID. |
-| `BigValue` | `query`, `value` | `title`, `format`, `currency`, `compare_value`, `delta`, `delta_label`, `direction` | Value and optional comparison from the first query row. `format` is `number`, `currency`, or `percent`. |
+| `BigValue` | `query`, `value` | `title`, `format`, `currency`, `notation`, `compare_value`, `delta`, `delta_label`, `direction` | Value and optional comparison from the first query row. `format` is `number`, `currency`, or `percent`; `notation` is `compact` (default) or `standard`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
 | `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `marker`, `color_scheme`, `color_direction`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
 | `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack`, `bar_width` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
@@ -434,6 +434,26 @@ BigValue uses ordinary localized number formatting by default.
   title="Current retention"
 />
 ```
+
+BigValue uses `notation="compact"` by default for localized human-readable
+abbreviations. It can be combined with ordinary numbers, currencies, or
+percentages:
+
+```md
+<BigValue
+  query="revenue_summary"
+  value="revenue"
+  format="currency"
+  currency="RUB"
+  notation="compact"
+  title="Revenue"
+/>
+```
+
+Formatting follows the browser locale. For example, a Russian locale renders
+`15123123` as approximately `15,1 млн`, while `15123123000` becomes
+approximately `15,1 млрд`. Compact formatting also applies to an absolute
+comparison delta. Set `notation="standard"` to show the full localized value.
 
 Keep period logic in SQL and return the current and comparison values as two
 columns of the same row:

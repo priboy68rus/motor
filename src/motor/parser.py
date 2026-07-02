@@ -60,6 +60,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "title",
             "format",
             "currency",
+            "notation",
             "compare_value",
             "delta",
             "delta_label",
@@ -581,6 +582,11 @@ def _extract_components(
             }:
                 raise ReportValidationError(
                     "BigValue format must be one of: number, currency, percent"
+                )
+            notation = attributes.setdefault("notation", "compact")
+            if notation not in {"standard", "compact"}:
+                raise ReportValidationError(
+                    "BigValue notation must be one of: standard, compact"
                 )
             comparison_attributes = {"delta", "delta_label", "direction"}
             compare_value = attributes.get("compare_value")
