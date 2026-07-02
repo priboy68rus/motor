@@ -57,7 +57,8 @@ def test_compiles_query_graph_and_components() -> None:
     assert chart["query"] == "revenue_by_day"
     assert chart["props"]["x"] == "day"
     filters = next(item for item in spec["components"] if item["type"] == "Filters")
-    assert filters["props"]["title"] == "Report controls"
+    assert filters["props"]["title"] == "Global filters"
+    assert filters["props"]["placement"] == "sidebar"
     assert spec["params"]["country"]["control"] == "dropdown"
     assert spec["params"]["breakdown"] == {
         "type": "dimension",
@@ -91,8 +92,14 @@ def test_compiles_query_graph_and_components() -> None:
         "LineChart",
         "BarChart",
     }
-    row = next(item for item in spec["layout"] if item["type"] == "row")
-    assert row["components"] == ["component_004", "component_005", "component_006"]
+    tabs = next(item for item in spec["layout"] if item["type"] == "tabs")
+    assert tabs["tabset_id"] == "tabs_001"
+    assert [tab["title"] for tab in tabs["tabs"]] == ["Overview", "Details"]
+    row = next(item for item in tabs["tabs"][0]["layout"] if item["type"] == "row")
+    assert row["components"] == ["component_005", "component_006", "component_007"]
+    assert tabs["tabs"][1]["layout"] == [
+        {"type": "component", "component": "component_008"}
+    ]
 
 
 def test_content_identity_excludes_build_time() -> None:
@@ -445,6 +452,65 @@ select country, value from events
     chart = next(item for item in spec["components"] if item["type"] == "BarChart")
     assert chart["props"]["stack"] == "zero"
     assert chart["props"]["bar_width"] == 24.5
+
+
+def test_sidebar_filters_cannot_be_inside_tab(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("created_at,value\n2026-07-01,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+params:
+  period:
+    type: date_range
+---
+<Tabs>
+  <Tab title="Overview">
+    <Filters params="period" placement="sidebar" />
+  </Tab>
+</Tabs>
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="sidebar Filters cannot be placed inside Tab"):
+        compile_report(report)
+
+
+def test_nested_tabs_are_rejected(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+<Tabs>
+  <Tab title="Outer">
+    <Tabs>
+      <Tab title="Inner">
+        <DataStatus />
+      </Tab>
+    </Tabs>
+  </Tab>
+</Tabs>
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="nested Tabs layouts"):
+        compile_report(report)
 
 
 def test_nested_rows_are_rejected(tmp_path: Path) -> None:

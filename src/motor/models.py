@@ -174,18 +174,44 @@ class ComponentSpec(StrictModel):
     props: dict[str, Any] = Field(default_factory=dict)
 
 
+class TabLayout(StrictModel):
+    id: str
+    title: str
+    layout: list["LayoutItem"] = Field(default_factory=list)
+
+
 class LayoutItem(StrictModel):
-    type: Literal["component", "row"]
+    type: Literal["component", "row", "tabs"]
     component: str | None = None
     components: list[str] = Field(default_factory=list)
+    tabset_id: str | None = None
+    tabs: list[TabLayout] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_shape(self) -> "LayoutItem":
         if self.type == "component":
-            if self.component is None or self.components:
+            if (
+                self.component is None
+                or self.components
+                or self.tabset_id is not None
+                or self.tabs
+            ):
                 raise ValueError("component layout items require exactly one component")
-        elif self.component is not None or not self.components:
-            raise ValueError("row layout items require one or more components")
+        elif self.type == "row":
+            if (
+                self.component is not None
+                or not self.components
+                or self.tabset_id is not None
+                or self.tabs
+            ):
+                raise ValueError("row layout items require one or more components")
+        elif (
+            self.component is not None
+            or self.components
+            or self.tabset_id is None
+            or not self.tabs
+        ):
+            raise ValueError("tabs layout items require a tabset id and one or more tabs")
         return self
 
 

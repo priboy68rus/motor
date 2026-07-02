@@ -4,6 +4,7 @@ import hashlib
 import math
 import re
 import shlex
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,7 @@ from motor.models import (
     QueryDependencies,
     QuerySpec,
     ReportConfig,
+    TabLayout,
 )
 
 
@@ -40,8 +42,12 @@ _COMPONENT = re.compile(r"<([A-Z][A-Za-z0-9]*)\b([^<>]*?)/>", re.DOTALL)
 _COMPONENT_START = re.compile(r"<([A-Z][A-Za-z0-9]*)\b")
 _ROW_TAG = re.compile(r"<(?P<closing>/)?Row(?P<attrs>\s+[^>]*)?\s*>")
 _ROW_START = re.compile(r"</?Row\b")
+_TABS_TAG = re.compile(r"<(?P<closing>/)?Tabs(?P<attrs>\s+[^>]*)?\s*>")
+_TABS_START = re.compile(r"</?Tabs\b")
+_TAB_TAG = re.compile(r"<(?P<closing>/)?Tab(?P<attrs>\s+[^>]*)?\s*>")
+_TAB_START = re.compile(r"</?Tab\b")
 _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
-    "Filters": ({"params"}, {"params", "title"}),
+    "Filters": ({"params"}, {"params", "title", "placement"}),
     "DataStatus": (set(), set()),
     "VersionBadge": (set(), set()),
     "BigValue": (
@@ -69,6 +75,26 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
         },
     ),
 }
+
+
+@dataclass(frozen=True)
+class _TabRange:
+    start: int
+    content_start: int
+    content_end: int
+    end: int
+    id: str
+    title: str
+
+
+@dataclass(frozen=True)
+class _TabsetRange:
+    start: int
+    content_start: int
+    content_end: int
+    end: int
+    id: str
+    tabs: tuple[_TabRange, ...]
 
 
 def _parse_sql_metadata(metadata: str, line_number: int) -> tuple[str, str]:
@@ -248,6 +274,98 @@ def _extract_rows(body: str) -> tuple[list[tuple[int, int, int, int]], set[int]]
     return rows, valid_starts
 
 
+def _extract_tabs(body: str) -> tuple[list[_TabsetRange], set[int]]:
+    tabset_matches = list(_TABS_TAG.finditer(body))
+    tab_matches = list(_TAB_TAG.finditer(body))
+    valid_starts = {match.start() for match in [*tabset_matches, *tab_matches]}
+    for start in [*_TABS_START.finditer(body), *_TAB_START.finditer(body)]:
+        if start.start() not in valid_starts:
+            raise ReportValidationError("malformed Tabs or Tab declaration")
+
+    tabset_bounds: list[tuple[int, int, int, int]] = []
+    opened_tabset: re.Match[str] | None = None
+    for match in tabset_matches:
+        if (match.group("attrs") or "").strip():
+            raise ReportValidationError("Tabs does not accept attributes")
+        if match.group("closing"):
+            if opened_tabset is None:
+                raise ReportValidationError("Tabs closing tag has no matching opening tag")
+            tabset_bounds.append(
+                (opened_tabset.start(), opened_tabset.end(), match.start(), match.end())
+            )
+            opened_tabset = None
+        else:
+            if opened_tabset is not None:
+                raise ReportValidationError("nested Tabs layouts are not supported")
+            opened_tabset = match
+    if opened_tabset is not None:
+        raise ReportValidationError("Tabs is missing its closing tag")
+
+    tabs: list[_TabRange] = []
+    opened_tab: tuple[re.Match[str], str] | None = None
+    for match in tab_matches:
+        if match.group("closing"):
+            if (match.group("attrs") or "").strip():
+                raise ReportValidationError("Tab closing tag does not accept attributes")
+            if opened_tab is None:
+                raise ReportValidationError("Tab closing tag has no matching opening tag")
+            opening, title = opened_tab
+            tabs.append(
+                _TabRange(
+                    start=opening.start(),
+                    content_start=opening.end(),
+                    content_end=match.start(),
+                    end=match.end(),
+                    id=f"tab_{len(tabs) + 1:03d}",
+                    title=title,
+                )
+            )
+            opened_tab = None
+        else:
+            if opened_tab is not None:
+                raise ReportValidationError("nested Tab layouts are not supported")
+            attributes = _parse_attributes(match.group("attrs") or "", "Tab")
+            if set(attributes) != {"title"} or not str(attributes.get("title", "")).strip():
+                raise ReportValidationError("Tab requires exactly one non-empty title attribute")
+            opened_tab = (match, str(attributes["title"]))
+    if opened_tab is not None:
+        raise ReportValidationError("Tab is missing its closing tag")
+
+    tabsets: list[_TabsetRange] = []
+    assigned_tabs: set[str] = set()
+    for index, (start, content_start, content_end, end) in enumerate(
+        tabset_bounds, start=1
+    ):
+        children = [
+            tab
+            for tab in tabs
+            if content_start <= tab.start and tab.end <= content_end
+        ]
+        if not children:
+            raise ReportValidationError("Tabs must contain at least one Tab")
+        remainder = body[content_start:content_end]
+        for tab in reversed(children):
+            relative_start = tab.start - content_start
+            relative_end = tab.end - content_start
+            remainder = remainder[:relative_start] + remainder[relative_end:]
+            assigned_tabs.add(tab.id)
+        if remainder.strip():
+            raise ReportValidationError("Tabs may contain only Tab blocks")
+        tabsets.append(
+            _TabsetRange(
+                start=start,
+                content_start=content_start,
+                content_end=content_end,
+                end=end,
+                id=f"tabs_{index:03d}",
+                tabs=tuple(children),
+            )
+        )
+    if len(assigned_tabs) != len(tabs):
+        raise ReportValidationError("Tab must be declared directly inside Tabs")
+    return tabsets, valid_starts
+
+
 def _extract_components(
     body: str, config: ReportConfig
 ) -> tuple[list[ComponentSpec], list[LayoutItem]]:
@@ -256,9 +374,12 @@ def _extract_components(
     identifiers: set[str] = set()
     matches = list(_COMPONENT.finditer(body))
     rows, row_starts = _extract_rows(body)
+    tabsets, tab_starts = _extract_tabs(body)
     valid_starts = {match.start() for match in matches}
     for start in _COMPONENT_START.finditer(body):
         if start.group(1) == "Row" and start.start() in row_starts:
+            continue
+        if start.group(1) in {"Tabs", "Tab"} and start.start() in tab_starts:
             continue
         if start.start() not in valid_starts:
             raise ReportValidationError(
@@ -313,15 +434,20 @@ def _extract_components(
                     f"Filters references undeclared parameters: {', '.join(sorted(unknown_params))}"
                 )
             attributes["params"] = params
+            placement = attributes.setdefault("placement", "content")
+            if placement not in {"content", "sidebar"}:
+                raise ReportValidationError(
+                    "Filters placement must be one of: content, sidebar"
+                )
         component = ComponentSpec(
             id=component_id, type=component_type, query=query, props=attributes
         )
         components.append(component)
         records.append((match, component))
 
-    layout_records: list[tuple[int, LayoutItem]] = []
+    row_layouts: dict[int, tuple[int, LayoutItem]] = {}
     row_component_ids: set[str] = set()
-    for row_start, content_start, content_end, _row_end in rows:
+    for row_start, content_start, content_end, row_end in rows:
         children = [
             (match, component)
             for match, component in records
@@ -336,14 +462,67 @@ def _extract_components(
             raise ReportValidationError("Row may contain only component declarations")
         if not children:
             raise ReportValidationError("Row must contain at least one component")
+        if any(
+            component.type == "Filters" and component.props.get("placement") == "sidebar"
+            for _match, component in children
+        ):
+            raise ReportValidationError("sidebar Filters cannot be placed inside Row")
         child_ids = [component.id for _match, component in children]
         row_component_ids.update(child_ids)
-        layout_records.append(
-            (row_start, LayoutItem(type="row", components=child_ids))
+        row_layouts[row_start] = (
+            row_end,
+            LayoutItem(type="row", components=child_ids),
         )
 
+    layout_records: list[tuple[int, LayoutItem]] = []
+    rows_in_tabs: set[int] = set()
+    components_in_tabs: set[str] = set()
+    for tabset in tabsets:
+        compiled_tabs: list[TabLayout] = []
+        for tab in tabset.tabs:
+            tab_records: list[tuple[int, LayoutItem]] = []
+            for row_start, (row_end, row_layout) in row_layouts.items():
+                if tab.content_start <= row_start and row_end <= tab.content_end:
+                    rows_in_tabs.add(row_start)
+                    tab_records.append((row_start, row_layout))
+            for match, component in records:
+                if not (tab.content_start <= match.start() and match.end() <= tab.content_end):
+                    continue
+                components_in_tabs.add(component.id)
+                if component.type == "Filters" and component.props.get("placement") == "sidebar":
+                    raise ReportValidationError("sidebar Filters cannot be placed inside Tab")
+                if component.id not in row_component_ids:
+                    tab_records.append(
+                        (match.start(), LayoutItem(type="component", component=component.id))
+                    )
+            if not tab_records:
+                raise ReportValidationError("Tab must contain at least one component")
+            compiled_tabs.append(
+                TabLayout(
+                    id=tab.id,
+                    title=tab.title,
+                    layout=[
+                        item
+                        for _position, item in sorted(
+                            tab_records, key=lambda record: record[0]
+                        )
+                    ],
+                )
+            )
+        layout_records.append(
+            (
+                tabset.start,
+                LayoutItem(
+                    type="tabs", tabset_id=tabset.id, tabs=compiled_tabs
+                ),
+            )
+        )
+
+    for row_start, (_row_end, row_layout) in row_layouts.items():
+        if row_start not in rows_in_tabs:
+            layout_records.append((row_start, row_layout))
     for match, component in records:
-        if component.id not in row_component_ids:
+        if component.id not in row_component_ids and component.id not in components_in_tabs:
             layout_records.append(
                 (match.start(), LayoutItem(type="component", component=component.id))
             )

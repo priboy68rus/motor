@@ -267,6 +267,11 @@ Render controls in the given order:
 <Filters params="date_range,country,breakdown" title="Report controls" />
 ```
 
+Reports may contain multiple `Filters` blocks. All controls read and write one
+shared parameter state, so repeated controls for the same parameter stay
+synchronized. Placement does not create SQL scope: a parameter affects exactly
+the queries that reference it directly or through a dependent view.
+
 ### SQL blocks
 
 SQL is executed by DuckDB-WASM in the browser. Use named fenced blocks:
@@ -366,7 +371,7 @@ should be quoted, and declarations may span multiple lines.
 
 | Component | Required attributes | Optional attributes | Behavior |
 | --- | --- | --- | --- |
-| `Filters` | `params` | `title` | Interactive controls for comma-separated parameter names. Defaults to the title `Filters`. |
+| `Filters` | `params` | `title`, `placement` | Interactive controls for comma-separated parameter names. `placement` is `content` (default) or `sidebar`. |
 | `DataStatus` | — | — | Check status, data-through time, processing time, and build time. |
 | `VersionBadge` | — | — | Tool version and artifact ID. |
 | `BigValue` | `query`, `value` | `title`, `format`, `currency` | First row of one query column. `format="currency"` uses the ISO currency code from `currency`. |
@@ -465,6 +470,70 @@ Top-level components occupy their own full-width line. Direct children of a
 `Row` accepts no attributes, may contain only component declarations, must not
 be empty, and cannot be nested. Rows collapse to two columns below 900 px and
 one column below 600 px.
+
+### Sticky filter sidebar
+
+Move global controls into a persistent sidebar with `placement="sidebar"`:
+
+```md
+<Filters
+  params="date_range,country"
+  title="Global filters"
+  placement="sidebar"
+/>
+```
+
+Multiple sidebar filter blocks are collected into one `<aside>`. On desktop it
+stays visible while report content scrolls and receives its own vertical
+scrollbar when necessary. Below 900 px it moves above the content and becomes a
+collapsible `Report controls` section.
+
+Sidebar filters must be top-level components. They cannot be placed inside a
+`Row` or `Tab`. Regular `placement="content"` filters may appear at top level or
+inside a tab.
+
+### Tabs
+
+Use `Tabs` and `Tab` to split a long report into sections:
+
+```md
+<Tabs>
+  <Tab title="Overview">
+    <Filters params="breakdown" title="Breakdown" />
+
+    <Row>
+      <BigValue query="summary" value="revenue" />
+      <BarChart
+        query="revenue_by_day"
+        x="day"
+        y="revenue"
+        group="breakdown"
+      />
+    </Row>
+  </Tab>
+
+  <Tab title="Details">
+    <Filters params="product_type" title="Detail filters" />
+    <Table query="detail" />
+  </Tab>
+</Tabs>
+```
+
+Tab rules:
+
+- `Tabs` accepts no attributes and contains one or more `Tab` blocks.
+- `Tab` requires a non-empty `title` and may contain components and `Row`.
+- `Tabs` and `Tab` cannot be nested.
+- Parameter values persist when switching tabs.
+- Only queries required by initially visible content run at startup.
+- Opening a tab runs its query dependency closure. Switching back can reuse the
+  in-memory query cache.
+- A parameter change reruns affected queries in active content only. Hidden
+  tabs use the latest values when opened.
+
+Filters inside a tab are local only by convention. To make one truly affect
+only that tab, reference its parameter only from that tab's SQL dependency
+graph. motor never injects layout-based predicates or hidden scoping rules.
 
 ### Complete example
 

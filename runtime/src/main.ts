@@ -13,8 +13,13 @@ async function start(): Promise<void> {
     const runner = new DuckDBRunner();
     await runner.initialize(sources, manifest.artifact.content_sha256);
     let controller: ReportController | undefined;
-    const renderer = new ReportRenderer(root, manifest, spec, (name, value) =>
-      controller?.updateParam(name, value),
+    const renderer = new ReportRenderer(
+      root,
+      manifest,
+      spec,
+      (name, value, sourceComponentId) =>
+        controller?.updateParam(name, value, sourceComponentId),
+      (queryNames) => controller?.activateQueries(queryNames),
     );
     controller = new ReportController(spec, runner, renderer, (message) => {
       if (status) status.textContent = message;

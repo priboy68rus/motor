@@ -31,9 +31,12 @@ export type ComponentSpec = {
   props: Record<string, unknown>;
 };
 
+export type TabLayout = { id: string; title: string; layout: LayoutItem[] };
+
 export type LayoutItem =
   | { type: "component"; component: string }
-  | { type: "row"; components: string[] };
+  | { type: "row"; components: string[] }
+  | { type: "tabs"; tabset_id: string; tabs: TabLayout[] };
 
 export type ReportSpec = {
   report: { title: string; slug: string; timezone: string };

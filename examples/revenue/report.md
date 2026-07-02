@@ -40,7 +40,11 @@ params:
 
 # Revenue Overview
 
-<Filters params="date_range,country,breakdown" title="Report controls" />
+<Filters
+  params="date_range,country"
+  title="Global filters"
+  placement="sidebar"
+/>
 
 <DataStatus />
 
@@ -77,6 +81,12 @@ group by day, breakdown
 order by day, breakdown
 ```
 
+<Tabs>
+
+<Tab title="Overview">
+
+<Filters params="breakdown" title="Breakdown" />
+
 <Row>
 
 <BigValue
@@ -110,7 +120,15 @@ order by day, breakdown
 
 </Row>
 
+</Tab>
+
+<Tab title="Details">
+
 <Table
   query="revenue_by_country"
   title="Country detail"
 />
+
+</Tab>
+
+</Tabs>

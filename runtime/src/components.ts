@@ -2,6 +2,7 @@ import { renderChart } from "./charts/vegaAdapter";
 import type { ChartHandle } from "./charts/vegaAdapter";
 import type {
   ComponentSpec,
+  LayoutItem,
   Manifest,
   ParamOptions,
   ParamSpec,
@@ -11,7 +12,7 @@ import type {
   ReportSpec,
 } from "./types";
 
-type ParamChangeHandler = (name: string, value: unknown) => void;
+type ParamChangeHandler = (name: string, value: unknown, sourceComponentId?: string) => void;
 const AUTO_DROPDOWN_THRESHOLD = 8;
 
 function text(tag: string, value: string, className?: string): HTMLElement {
@@ -331,12 +332,19 @@ function renderFilters(
 export class ReportRenderer {
   private elements = new Map<string, HTMLElement>();
   private chartHandles = new Map<string, ChartHandle>();
+  private componentTabs = new Map<string, { tabsetId: string; tabId: string }>();
+  private activeTabs = new Map<string, string>();
+  private latestResults: QueryResults = {};
+  private latestErrors: Record<string, string> = {};
+  private latestValues: ParamValues = {};
+  private latestOptions: ParamOptions = {};
 
   constructor(
     private root: HTMLElement,
     private manifest: Manifest,
     private spec: ReportSpec,
     private onParamChange: ParamChangeHandler,
+    private onTabChange?: (queryNames: ReadonlySet<string>) => void,
   ) {}
 
   async mount(
@@ -345,13 +353,45 @@ export class ReportRenderer {
     values: ParamValues,
     options: ParamOptions,
   ): Promise<void> {
+    this.latestResults = results;
+    this.latestErrors = errors;
+    this.latestValues = values;
+    this.latestOptions = options;
+    this.elements.clear();
+    this.componentTabs.clear();
+    this.activeTabs.clear();
     this.root.replaceChildren(text("h1", this.manifest.report.title));
     const components = new Map(this.spec.components.map((component) => [component.id, component]));
-    const createComponent = (parent: HTMLElement, component: ComponentSpec): void => {
+    const sidebarComponents = this.spec.components.filter(
+      (component) => component.type === "Filters" && component.props.placement === "sidebar",
+    );
+    let contentRoot = this.root;
+    let sidebarRoot: HTMLElement | undefined;
+    if (sidebarComponents.length > 0) {
+      const shell = document.createElement("div");
+      shell.className = "motor-report-shell";
+      const sidebarContainer = document.createElement("details");
+      sidebarContainer.className = "motor-sidebar-container";
+      sidebarContainer.open = true;
+      sidebarContainer.append(text("summary", "Report controls"));
+      sidebarRoot = document.createElement("aside");
+      sidebarRoot.className = "motor-sidebar";
+      sidebarContainer.append(sidebarRoot);
+      contentRoot = document.createElement("div");
+      contentRoot.className = "motor-report-content";
+      shell.append(sidebarContainer, contentRoot);
+      this.root.append(shell);
+    }
+    const createComponent = (
+      parent: HTMLElement,
+      component: ComponentSpec,
+      tabContext?: { tabsetId: string; tabId: string },
+    ): void => {
       const element = document.createElement("section");
       element.id = component.id;
       parent.append(element);
       this.elements.set(component.id, element);
+      if (tabContext) this.componentTabs.set(component.id, tabContext);
     };
     const layout =
       this.spec.layout ??
@@ -359,33 +399,165 @@ export class ReportRenderer {
         type: "component" as const,
         component: component.id,
       }));
-    for (const item of layout) {
-      if (item.type === "component") {
-        const component = components.get(item.component);
-        if (component) createComponent(this.root, component);
-        continue;
+    const renderLayout = (
+      items: LayoutItem[],
+      parent: HTMLElement,
+      tabContext?: { tabsetId: string; tabId: string },
+    ): void => {
+      for (const item of items) {
+        if (item.type === "component") {
+          const component = components.get(item.component);
+          if (!component) continue;
+          const target =
+            component.type === "Filters" && component.props.placement === "sidebar"
+              ? sidebarRoot
+              : parent;
+          if (target) createComponent(target, component, tabContext);
+          continue;
+        }
+        if (item.type === "row") {
+          const row = document.createElement("div");
+          row.className = "motor-row";
+          row.dataset.count = String(item.components.length);
+          row.style.setProperty("--motor-columns", String(item.components.length));
+          parent.append(row);
+          for (const componentId of item.components) {
+            const component = components.get(componentId);
+            if (component) createComponent(row, component, tabContext);
+          }
+          continue;
+        }
+        const tabsElement = document.createElement("div");
+        tabsElement.className = "motor-tabs";
+        const tabList = document.createElement("div");
+        tabList.className = "motor-tab-list";
+        tabList.setAttribute("role", "tablist");
+        const panels = new Map<string, HTMLElement>();
+        const buttons = new Map<string, HTMLButtonElement>();
+        const initialTab = item.tabs[0];
+        if (initialTab) this.activeTabs.set(item.tabset_id, initialTab.id);
+        for (const tab of item.tabs) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "motor-tab-button";
+          button.id = `${item.tabset_id}-${tab.id}-button`;
+          button.textContent = tab.title;
+          button.setAttribute("role", "tab");
+          button.setAttribute("aria-controls", `${item.tabset_id}-${tab.id}-panel`);
+          const selected = tab.id === initialTab?.id;
+          button.setAttribute("aria-selected", String(selected));
+          button.tabIndex = selected ? 0 : -1;
+          tabList.append(button);
+          buttons.set(tab.id, button);
+
+          const panel = document.createElement("div");
+          panel.className = "motor-tab-panel";
+          panel.id = `${item.tabset_id}-${tab.id}-panel`;
+          panel.setAttribute("role", "tabpanel");
+          panel.setAttribute("aria-labelledby", button.id);
+          panel.hidden = !selected;
+          panels.set(tab.id, panel);
+          renderLayout(tab.layout, panel, { tabsetId: item.tabset_id, tabId: tab.id });
+          tabsElement.append(panel);
+
+          button.addEventListener("click", () => {
+            void this.activateTab(item.tabset_id, tab.id, buttons, panels);
+          });
+        }
+        tabsElement.prepend(tabList);
+        parent.append(tabsElement);
       }
-      const row = document.createElement("div");
-      row.className = "motor-row";
-      row.dataset.count = String(item.components.length);
-      row.style.setProperty("--motor-columns", String(item.components.length));
-      this.root.append(row);
-      for (const componentId of item.components) {
-        const component = components.get(componentId);
-        if (component) createComponent(row, component);
-      }
-    }
+    };
+    renderLayout(layout, contentRoot);
     for (const component of this.spec.components) {
-      await this.renderComponent(component, results, errors, values, options);
+      if (this.isComponentVisible(component.id)) {
+        await this.renderComponent(component, results, errors, values, options);
+      }
     }
+  }
+
+  activeQueryNames(): Set<string> {
+    return new Set(
+      this.spec.components
+        .filter(
+          (component) =>
+            component.query &&
+            this.spec.queries[component.query]?.kind === "query" &&
+            this.isComponentVisible(component.id),
+        )
+        .map((component) => String(component.query)),
+    );
+  }
+
+  private isComponentVisible(componentId: string): boolean {
+    const tab = this.componentTabs.get(componentId);
+    return !tab || this.activeTabs.get(tab.tabsetId) === tab.tabId;
+  }
+
+  private async activateTab(
+    tabsetId: string,
+    tabId: string,
+    buttons: ReadonlyMap<string, HTMLButtonElement>,
+    panels: ReadonlyMap<string, HTMLElement>,
+  ): Promise<void> {
+    if (this.activeTabs.get(tabsetId) === tabId) return;
+    this.activeTabs.set(tabsetId, tabId);
+    for (const [candidateId, button] of buttons) {
+      const selected = candidateId === tabId;
+      button.setAttribute("aria-selected", String(selected));
+      button.tabIndex = selected ? 0 : -1;
+      const panel = panels.get(candidateId);
+      if (panel) panel.hidden = !selected;
+    }
+    const queryNames = new Set<string>();
+    for (const component of this.spec.components) {
+      const tab = this.componentTabs.get(component.id);
+      if (tab?.tabsetId !== tabsetId || tab.tabId !== tabId) continue;
+      await this.renderComponent(
+        component,
+        this.latestResults,
+        this.latestErrors,
+        this.latestValues,
+        this.latestOptions,
+      );
+      if (component.query && this.spec.queries[component.query]?.kind === "query") {
+        queryNames.add(component.query);
+      }
+    }
+    this.onTabChange?.(queryNames);
   }
 
   setLoading(queryNames: ReadonlySet<string>): void {
     for (const component of this.spec.components) {
-      if (!component.query || !queryNames.has(component.query)) continue;
+      if (
+        !component.query ||
+        !queryNames.has(component.query) ||
+        !this.isComponentVisible(component.id)
+      ) {
+        continue;
+      }
       const element = this.elements.get(component.id);
       element?.classList.add("motor-loading", "motor-stale");
       element?.setAttribute("aria-busy", "true");
+    }
+  }
+
+  async updateFilters(
+    values: ParamValues,
+    options: ParamOptions,
+    sourceComponentId?: string,
+  ): Promise<void> {
+    this.latestValues = values;
+    this.latestOptions = options;
+    for (const component of this.spec.components) {
+      if (
+        component.type !== "Filters" ||
+        component.id === sourceComponentId ||
+        !this.isComponentVisible(component.id)
+      ) {
+        continue;
+      }
+      await this.renderComponent(component, {}, {}, values, options);
     }
   }
 
@@ -397,8 +569,16 @@ export class ReportRenderer {
     options: ParamOptions,
     shouldRender?: (queryName: string) => boolean,
   ): Promise<void> {
+    this.latestResults = results;
+    this.latestErrors = errors;
+    this.latestValues = values;
+    this.latestOptions = options;
     for (const component of this.spec.components) {
-      if (component.query && queryNames.has(component.query)) {
+      if (
+        component.query &&
+        queryNames.has(component.query) &&
+        this.isComponentVisible(component.id)
+      ) {
         if (shouldRender && !shouldRender(component.query)) continue;
         await this.renderComponent(component, results, errors, values, options);
         if (shouldRender && !shouldRender(component.query)) {
@@ -447,7 +627,9 @@ export class ReportRenderer {
     if (component.type === "DataStatus") renderDataStatus(element, this.manifest);
     else if (component.type === "VersionBadge") renderVersionBadge(element, this.manifest);
     else if (component.type === "Filters") {
-      renderFilters(element, this.spec, component, values, options, this.onParamChange);
+      renderFilters(element, this.spec, component, values, options, (name, value) =>
+        this.onParamChange(name, value, component.id),
+      );
     } else if (component.query && errors[component.query]) {
       element.className = "motor-card motor-component-error";
       element.append(text("strong", "Query failed"), text("pre", errors[component.query] ?? ""));

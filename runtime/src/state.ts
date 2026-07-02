@@ -6,6 +6,40 @@ function sameValue(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function initialQueryNames(spec: ReportSpec): Set<string> {
+  const componentIds = new Set<string>();
+  const visit = (items: ReportSpec["layout"]): void => {
+    for (const item of items ?? []) {
+      if (item.type === "component") componentIds.add(item.component);
+      else if (item.type === "row") for (const componentId of item.components) componentIds.add(componentId);
+      else if (item.tabs[0]) visit(item.tabs[0].layout);
+    }
+  };
+  if (spec.layout) visit(spec.layout);
+  else for (const component of spec.components) componentIds.add(component.id);
+  return new Set(
+    spec.components
+      .filter(
+        (component) =>
+          componentIds.has(component.id) &&
+          component.query &&
+          spec.queries[component.query]?.kind === "query",
+      )
+      .map((component) => String(component.query)),
+  );
+}
+
+function queryClosure(spec: ReportSpec, queryNames: ReadonlySet<string>): Set<string> {
+  const closure = new Set<string>();
+  const visit = (queryName: string): void => {
+    if (closure.has(queryName)) return;
+    for (const dependency of spec.queries[queryName]?.depends_on.queries ?? []) visit(dependency);
+    closure.add(queryName);
+  };
+  for (const queryName of queryNames) visit(queryName);
+  return closure;
+}
+
 export class ReportController {
   private values: ParamValues;
   private options: ParamOptions = {};
@@ -30,29 +64,44 @@ export class ReportController {
     this.onProgress?.("Loading filter options…");
     this.options = await this.runner.loadParamOptions(this.spec);
     this.onProgress?.("Running report queries…");
-    const queryNames = new Set(Object.keys(this.spec.queries));
+    const queryNames = initialQueryNames(this.spec);
+    const executionNames = queryClosure(this.spec, queryNames);
     const outcome = await this.runner.run(
       this.spec,
       this.values,
       (queryName) => this.onProgress?.(`Running query ${queryName}…`),
-      queryNames,
+      executionNames,
     );
-    this.mergeOutcome(queryNames, outcome.results, outcome.errors);
+    this.mergeOutcome(executionNames, outcome.results, outcome.errors);
     await this.renderer.mount(this.results, this.errors, this.values, this.options);
   }
 
-  updateParam(name: string, value: unknown): void {
+  updateParam(name: string, value: unknown, sourceComponentId?: string): void {
     if (!(name in this.spec.params) || sameValue(this.values[name], value)) return;
     this.values[name] = value;
     this.stateVersion += 1;
+    void this.renderer.updateFilters(this.values, this.options, sourceComponentId);
+    const activeQueryNames = this.renderer.activeQueryNames();
     const affected = new Set(
       Object.entries(this.spec.queries)
-        .filter(([_queryName, query]) => query.depends_on.params.includes(name))
+        .filter(
+          ([queryName, query]) =>
+            query.kind === "query" &&
+            query.depends_on.params.includes(name) &&
+            activeQueryNames.has(queryName),
+        )
         .map(([queryName]) => queryName),
     );
     if (affected.size === 0) return;
     for (const queryName of affected) this.pendingQueries.add(queryName);
     this.renderer.setLoading(affected);
+    void this.drain();
+  }
+
+  activateQueries(queryNames: ReadonlySet<string>): void {
+    for (const queryName of queryNames) this.pendingQueries.add(queryName);
+    if (queryNames.size === 0) return;
+    this.renderer.setLoading(queryNames);
     void this.drain();
   }
 
@@ -63,15 +112,19 @@ export class ReportController {
       while (this.pendingQueries.size > 0) {
         const queryNames = new Set(this.pendingQueries);
         this.pendingQueries.clear();
+        const executionNames = queryClosure(this.spec, queryNames);
         const version = this.stateVersion;
         const values = structuredClone(this.values);
         try {
-          const outcome = await this.runner.run(this.spec, values, undefined, queryNames);
+          const outcome = await this.runner.run(this.spec, values, undefined, executionNames);
           if (version !== this.stateVersion) {
-            for (const queryName of queryNames) this.pendingQueries.add(queryName);
+            const activeQueryNames = this.renderer.activeQueryNames();
+            for (const queryName of queryNames) {
+              if (activeQueryNames.has(queryName)) this.pendingQueries.add(queryName);
+            }
             continue;
           }
-          this.mergeOutcome(queryNames, outcome.results, outcome.errors);
+          this.mergeOutcome(executionNames, outcome.results, outcome.errors);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           for (const queryName of queryNames) {
