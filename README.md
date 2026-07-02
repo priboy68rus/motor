@@ -43,6 +43,9 @@ npm run build
 - Components are self-closing declarations. `LineChart` and `BarChart` require
   `query`, `x`, and `y`; `BigValue` requires `query` and `value`; `Table`
   requires `query`; `Filters` requires a comma-separated `params` attribute.
+- Components inside `<Row>...</Row>` share one line in equal-width columns.
+  Top-level components occupy their own full-width line. Row attributes and
+  nested rows are intentionally unsupported in the MVP.
 - Query dependencies on sources, other SQL blocks, and parameters are inferred
   and embedded in the compiled report spec. Components may reference `query`
   blocks, but not intermediate `view` blocks.

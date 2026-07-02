@@ -63,6 +63,8 @@ group by day
 order by day
 ```
 
+<Row>
+
 <BigValue
   query="revenue_summary"
   value="revenue"
@@ -88,6 +90,8 @@ order by day
   format="currency"
   currency="EUR"
 />
+
+</Row>
 
 <Table
   query="revenue_by_country"

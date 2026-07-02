@@ -83,6 +83,10 @@ def compile_report(
             component.model_dump(mode="json", exclude_none=True)
             for component in parsed.components
         ],
+        "layout": [
+            item.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
+            for item in parsed.layout
+        ],
         "body": parsed.body,
     }
     manifest = build_manifest(

@@ -28,6 +28,7 @@ export async function renderChart(
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
     width: "container",
     height: 300,
+    autosize: { type: "fit", contains: "padding", resize: true },
     data: { values: rows },
     mark: { type: mark, tooltip: true },
     encoding: {

@@ -732,15 +732,19 @@ Use document-like layout, not a freeform Power BI canvas.
 Supported MVP layout:
 
 # Overview
-<Grid columns=3>
+<Row>
   <BigValue ... />
   <BigValue ... />
   <BigValue ... />
-</Grid>
-<Grid columns=2>
+</Row>
+<Row>
   <LineChart ... />
   <BarChart ... />
-</Grid>
+</Row>
+
+Direct children of `Row` use equal-width columns. Components outside a `Row`
+occupy their own full-width line. Nested rows and row-level sizing attributes
+are not part of the MVP.
 
 If implementing a custom component parser is too expensive for MVP, support a simpler syntax first and generate a default vertical layout.
 

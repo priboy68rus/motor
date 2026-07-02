@@ -101,6 +101,7 @@ class ParsedReport(StrictModel):
     source_sha256: str
     queries: dict[str, "QuerySpec"] = Field(default_factory=dict)
     components: list["ComponentSpec"] = Field(default_factory=list)
+    layout: list["LayoutItem"] = Field(default_factory=list)
 
 
 class QueryDependencies(StrictModel):
@@ -129,6 +130,21 @@ class ComponentSpec(StrictModel):
     ]
     query: str | None = None
     props: dict[str, Any] = Field(default_factory=dict)
+
+
+class LayoutItem(StrictModel):
+    type: Literal["component", "row"]
+    component: str | None = None
+    components: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "LayoutItem":
+        if self.type == "component":
+            if self.component is None or self.components:
+                raise ValueError("component layout items require exactly one component")
+        elif self.component is not None or not self.components:
+            raise ValueError("row layout items require one or more components")
+        return self
 
 
 class CompiledSource(StrictModel):

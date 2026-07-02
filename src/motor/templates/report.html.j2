@@ -15,6 +15,10 @@
     .motor-version { color: #667085; font-family: ui-monospace, monospace; font-size: .8rem; margin: 12px 0; overflow-wrap: anywhere; }
     .motor-big-value { font-size: 2.25rem; font-weight: 700; }
     .motor-empty, .motor-filter-placeholder p { color: #667085; margin: 0; }
+    .motor-chart.vega-embed { display: block; width: 100%; min-width: 0; }
+    .motor-row { display: grid; grid-template-columns: repeat(var(--motor-columns), minmax(0, 1fr)); gap: 16px; align-items: start; margin: 16px 0; }
+    .motor-row > * { min-width: 0; }
+    .motor-row > .motor-card { margin: 0; }
     .status-line { font-weight: 650; margin-bottom: 16px; }
     .warning { color: #8a5700; }
     dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 0; }
@@ -27,6 +31,13 @@
     th { color: #667085; font-size: .8rem; text-transform: uppercase; }
     pre { white-space: pre-wrap; overflow-wrap: anywhere; }
     #motor-loading-status { background: white; border: 1px solid #dce1e8; border-radius: 12px; padding: 20px; }
+    @media (max-width: 900px) {
+      .motor-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .motor-row[data-count="1"] { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .motor-row { grid-template-columns: minmax(0, 1fr); }
+    }
   </style>
 </head>
 <body>

@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from motor.errors import ReportValidationError
 from motor.models import (
     ComponentSpec,
+    LayoutItem,
     ParamConfig,
     ParsedReport,
     QueryDependencies,
@@ -29,8 +30,10 @@ _HELPER = re.compile(
 )
 _RELATION = re.compile(r"\b(?:from|join)\s+\"?([A-Za-z_]\w*)\"?", re.IGNORECASE)
 _CTE = re.compile(r"(?:\bwith|,)\s*([A-Za-z_]\w*)\s+as\s*\(", re.IGNORECASE)
-_COMPONENT = re.compile(r"<([A-Z][A-Za-z0-9]*)\b(.*?)/>", re.DOTALL)
+_COMPONENT = re.compile(r"<([A-Z][A-Za-z0-9]*)\b([^<>]*?)/>", re.DOTALL)
 _COMPONENT_START = re.compile(r"<([A-Z][A-Za-z0-9]*)\b")
+_ROW_TAG = re.compile(r"<(?P<closing>/)?Row(?P<attrs>\s+[^>]*)?\s*>")
+_ROW_START = re.compile(r"</?Row\b")
 _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
     "Filters": ({"params"}, {"params"}),
     "DataStatus": (set(), set()),
@@ -183,12 +186,44 @@ def _parse_attributes(raw: str, component_type: str) -> dict[str, Any]:
     return attributes
 
 
-def _extract_components(body: str, config: ReportConfig) -> list[ComponentSpec]:
+def _extract_rows(body: str) -> tuple[list[tuple[int, int, int, int]], set[int]]:
+    matches = list(_ROW_TAG.finditer(body))
+    valid_starts = {match.start() for match in matches}
+    for start in _ROW_START.finditer(body):
+        if start.start() not in valid_starts:
+            raise ReportValidationError("malformed Row declaration")
+
+    rows: list[tuple[int, int, int, int]] = []
+    opened: re.Match[str] | None = None
+    for match in matches:
+        if (match.group("attrs") or "").strip():
+            raise ReportValidationError("Row does not accept attributes")
+        if match.group("closing"):
+            if opened is None:
+                raise ReportValidationError("Row closing tag has no matching opening tag")
+            rows.append((opened.start(), opened.end(), match.start(), match.end()))
+            opened = None
+        else:
+            if opened is not None:
+                raise ReportValidationError("nested Row layouts are not supported")
+            opened = match
+    if opened is not None:
+        raise ReportValidationError("Row is missing its closing tag")
+    return rows, valid_starts
+
+
+def _extract_components(
+    body: str, config: ReportConfig
+) -> tuple[list[ComponentSpec], list[LayoutItem]]:
     components: list[ComponentSpec] = []
+    records: list[tuple[re.Match[str], ComponentSpec]] = []
     identifiers: set[str] = set()
     matches = list(_COMPONENT.finditer(body))
+    rows, row_starts = _extract_rows(body)
     valid_starts = {match.start() for match in matches}
     for start in _COMPONENT_START.finditer(body):
+        if start.group(1) == "Row" and start.start() in row_starts:
+            continue
         if start.start() not in valid_starts:
             raise ReportValidationError(
                 f"component {start.group(1)!r} must be a self-closing declaration"
@@ -222,10 +257,42 @@ def _extract_components(body: str, config: ReportConfig) -> list[ComponentSpec]:
                     f"Filters references undeclared parameters: {', '.join(sorted(unknown_params))}"
                 )
             attributes["params"] = params
-        components.append(
-            ComponentSpec(id=component_id, type=component_type, query=query, props=attributes)
+        component = ComponentSpec(
+            id=component_id, type=component_type, query=query, props=attributes
         )
-    return components
+        components.append(component)
+        records.append((match, component))
+
+    layout_records: list[tuple[int, LayoutItem]] = []
+    row_component_ids: set[str] = set()
+    for row_start, content_start, content_end, _row_end in rows:
+        children = [
+            (match, component)
+            for match, component in records
+            if content_start <= match.start() and match.end() <= content_end
+        ]
+        remainder = body[content_start:content_end]
+        for match, _component in reversed(children):
+            relative_start = match.start() - content_start
+            relative_end = match.end() - content_start
+            remainder = remainder[:relative_start] + remainder[relative_end:]
+        if remainder.strip():
+            raise ReportValidationError("Row may contain only component declarations")
+        if not children:
+            raise ReportValidationError("Row must contain at least one component")
+        child_ids = [component.id for _match, component in children]
+        row_component_ids.update(child_ids)
+        layout_records.append(
+            (row_start, LayoutItem(type="row", components=child_ids))
+        )
+
+    for match, component in records:
+        if component.id not in row_component_ids:
+            layout_records.append(
+                (match.start(), LayoutItem(type="component", component=component.id))
+            )
+    layout = [item for _position, item in sorted(layout_records, key=lambda item: item[0])]
+    return components, layout
 
 
 def _dependency_sql(sql: str) -> str:
@@ -333,7 +400,7 @@ def parse_report(path: Path) -> ParsedReport:
         body, config.params, first_body_line=closing_index + 2
     )
     queries = _resolve_dependencies(queries, set(config.data))
-    components = _extract_components(body_without_sql, config)
+    components, layout = _extract_components(body_without_sql, config)
     for component in components:
         if component.query is None:
             continue
@@ -352,4 +419,5 @@ def parse_report(path: Path) -> ParsedReport:
         source_sha256=hashlib.sha256(raw).hexdigest(),
         queries=queries,
         components=components,
+        layout=layout,
     )

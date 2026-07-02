@@ -64,6 +64,8 @@ def test_compiles_query_graph_and_components() -> None:
         "LineChart",
         "BarChart",
     }
+    row = next(item for item in spec["layout"] if item["type"] == "row")
+    assert row["components"] == ["component_004", "component_005", "component_006"]
 
 
 def test_content_identity_excludes_build_time() -> None:
@@ -257,4 +259,30 @@ params:
     )
 
     with pytest.raises(ReportValidationError, match="missing column events.country"):
+        compile_report(report)
+
+
+def test_nested_rows_are_rejected(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+<Row>
+  <Row>
+    <DataStatus />
+  </Row>
+</Row>
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="nested Row layouts"):
         compile_report(report)

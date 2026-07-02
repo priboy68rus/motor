@@ -97,9 +97,11 @@ export async function renderComponents(
   errors: Record<string, string>,
 ): Promise<void> {
   root.replaceChildren(text("h1", manifest.report.title));
-  for (const component of spec.components) {
+  const components = new Map(spec.components.map((component) => [component.id, component]));
+  const renderComponent = async (parent: HTMLElement, component: ComponentSpec): Promise<void> => {
     const element = document.createElement("section");
     element.id = component.id;
+    parent.append(element);
     if (component.props.title) element.append(text("h2", String(component.props.title)));
     if (component.type === "DataStatus") renderDataStatus(element, manifest);
     else if (component.type === "VersionBadge") renderVersionBadge(element, manifest);
@@ -113,9 +115,34 @@ export async function renderComponents(
       if (component.type === "Table") renderTable(element, rows, component);
       else if (component.type === "BigValue") renderBigValue(element, rows, component);
       else if (component.type === "LineChart" || component.type === "BarChart") {
-        await renderChart(element, component, rows);
+        const chart = document.createElement("div");
+        chart.className = "motor-chart";
+        element.append(chart);
+        await renderChart(chart, component, rows);
       }
     }
-    root.append(element);
+  };
+
+  const layout =
+    spec.layout ??
+    spec.components.map((component) => ({
+      type: "component" as const,
+      component: component.id,
+    }));
+  for (const item of layout) {
+    if (item.type === "component") {
+      const component = components.get(item.component);
+      if (component) await renderComponent(root, component);
+      continue;
+    }
+    const row = document.createElement("div");
+    row.className = "motor-row";
+    row.dataset.count = String(item.components.length);
+    row.style.setProperty("--motor-columns", String(item.components.length));
+    root.append(row);
+    for (const componentId of item.components) {
+      const component = components.get(componentId);
+      if (component) await renderComponent(row, component);
+    }
   }
 }

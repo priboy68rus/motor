@@ -26,12 +26,17 @@ export type ComponentSpec = {
   props: Record<string, unknown>;
 };
 
+export type LayoutItem =
+  | { type: "component"; component: string }
+  | { type: "row"; components: string[] };
+
 export type ReportSpec = {
   report: { title: string; slug: string; timezone: string };
   data: Record<string, { path: string }>;
   params: Record<string, ParamSpec>;
   queries: Record<string, QuerySpec>;
   components: ComponentSpec[];
+  layout?: LayoutItem[];
   body: string;
 };
 
