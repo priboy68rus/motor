@@ -56,6 +56,8 @@ def test_compiles_query_graph_and_components() -> None:
     chart = next(item for item in spec["components"] if item["type"] == "BarChart")
     assert chart["query"] == "revenue_by_country"
     assert chart["props"]["x"] == "country"
+    filters = next(item for item in spec["components"] if item["type"] == "Filters")
+    assert filters["props"]["title"] == "Report filters"
     assert {item["type"] for item in spec["components"]} >= {
         "DataStatus",
         "VersionBadge",

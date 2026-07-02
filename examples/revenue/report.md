@@ -25,7 +25,7 @@ params:
 
 # Revenue Overview
 
-<Filters params="date_range,country" />
+<Filters params="date_range,country" title="Report filters" />
 
 <DataStatus />
 

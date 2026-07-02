@@ -208,7 +208,7 @@ Selection semantics:
 Render controls in the given order:
 
 ```md
-<Filters params="date_range,country" />
+<Filters params="date_range,country" title="Report filters" />
 ```
 
 ### SQL blocks
@@ -287,7 +287,7 @@ should be quoted, and declarations may span multiple lines.
 
 | Component | Required attributes | Optional attributes | Behavior |
 | --- | --- | --- | --- |
-| `Filters` | `params` | — | Interactive controls for comma-separated parameter names. |
+| `Filters` | `params` | `title` | Interactive controls for comma-separated parameter names. Defaults to the title `Filters`. |
 | `DataStatus` | — | — | Check status, data-through time, processing time, and build time. |
 | `VersionBadge` | — | — | Tool version and artifact ID. |
 | `BigValue` | `query`, `value` | `title`, `format`, `currency` | First row of one query column. `format="currency"` uses the ISO currency code from `currency`. |
@@ -372,7 +372,7 @@ params:
       column: country
 ---
 
-<Filters params="country" />
+<Filters params="country" title="Report filters" />
 <DataStatus />
 <VersionBadge />
 

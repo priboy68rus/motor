@@ -227,7 +227,7 @@ function renderFilters(
   onChange: ParamChangeHandler,
 ): void {
   element.className = "motor-card motor-filters";
-  element.append(text("h2", "Filters"));
+  if (!component.props.title) element.append(text("h2", "Filters"));
   const fields = document.createElement("div");
   fields.className = "motor-filter-list";
   const names = Array.isArray(component.props.params) ? component.props.params : [];

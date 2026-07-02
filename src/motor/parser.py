@@ -35,7 +35,7 @@ _COMPONENT_START = re.compile(r"<([A-Z][A-Za-z0-9]*)\b")
 _ROW_TAG = re.compile(r"<(?P<closing>/)?Row(?P<attrs>\s+[^>]*)?\s*>")
 _ROW_START = re.compile(r"</?Row\b")
 _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
-    "Filters": ({"params"}, {"params"}),
+    "Filters": ({"params"}, {"params", "title"}),
     "DataStatus": (set(), set()),
     "VersionBadge": (set(), set()),
     "BigValue": (
