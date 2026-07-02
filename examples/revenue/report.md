@@ -46,6 +46,11 @@ params:
   placement="sidebar"
 />
 
+<Text
+  text="Revenue is shown after refunds. Use the controls below to narrow the report."
+  placement="sidebar"
+/>
+
 <DataStatus />
 
 <VersionBadge />

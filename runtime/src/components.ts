@@ -61,6 +61,11 @@ function renderVersionBadge(element: HTMLElement, manifest: Manifest): void {
   element.textContent = `${manifest.build.tool_name} v${manifest.build.tool_version} · ${manifest.artifact.id}`;
 }
 
+function renderText(element: HTMLElement, component: ComponentSpec): void {
+  element.className = "motor-card motor-text";
+  element.append(text("p", String(component.props.text), "motor-text-body"));
+}
+
 function renderTable(element: HTMLElement, rows: QueryRow[], component: ComponentSpec): void {
   if (rows.length === 0) {
     element.append(text("p", "No rows", "motor-empty"));
@@ -363,7 +368,7 @@ export class ReportRenderer {
     this.root.replaceChildren(text("h1", this.manifest.report.title));
     const components = new Map(this.spec.components.map((component) => [component.id, component]));
     const sidebarComponents = this.spec.components.filter(
-      (component) => component.type === "Filters" && component.props.placement === "sidebar",
+      (component) => component.props.placement === "sidebar",
     );
     let contentRoot = this.root;
     let sidebarRoot: HTMLElement | undefined;
@@ -408,10 +413,7 @@ export class ReportRenderer {
         if (item.type === "component") {
           const component = components.get(item.component);
           if (!component) continue;
-          const target =
-            component.type === "Filters" && component.props.placement === "sidebar"
-              ? sidebarRoot
-              : parent;
+          const target = component.props.placement === "sidebar" ? sidebarRoot : parent;
           if (target) createComponent(target, component, tabContext);
           continue;
         }
@@ -626,6 +628,7 @@ export class ReportRenderer {
     if (component.props.title) element.append(text("h2", String(component.props.title)));
     if (component.type === "DataStatus") renderDataStatus(element, this.manifest);
     else if (component.type === "VersionBadge") renderVersionBadge(element, this.manifest);
+    else if (component.type === "Text") renderText(element, component);
     else if (component.type === "Filters") {
       renderFilters(element, this.spec, component, values, options, (name, value) =>
         this.onParamChange(name, value, component.id),

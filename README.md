@@ -372,6 +372,7 @@ should be quoted, and declarations may span multiple lines.
 | Component | Required attributes | Optional attributes | Behavior |
 | --- | --- | --- | --- |
 | `Filters` | `params` | `title`, `placement` | Interactive controls for comma-separated parameter names. `placement` is `content` (default) or `sidebar`. |
+| `Text` | `text` | `title`, `placement` | Plain text card. Line breaks are preserved; Markdown and HTML are not interpreted. `placement` is `content` (default) or `sidebar`. |
 | `DataStatus` | — | — | Check status, data-through time, processing time, and build time. |
 | `VersionBadge` | — | — | Tool version and artifact ID. |
 | `BigValue` | `query`, `value` | `title`, `format`, `currency` | First row of one query column. `format="currency"` uses the ISO currency code from `currency`. |
@@ -429,6 +430,11 @@ number formatting.
 Examples:
 
 ```md
+<Text
+  title="About this report"
+  text="Revenue is shown after refunds."
+/>
+
 <BigValue
   query="revenue_summary"
   value="revenue"
@@ -471,7 +477,7 @@ Top-level components occupy their own full-width line. Direct children of a
 be empty, and cannot be nested. Rows collapse to two columns below 900 px and
 one column below 600 px.
 
-### Sticky filter sidebar
+### Sticky sidebar
 
 Move global controls into a persistent sidebar with `placement="sidebar"`:
 
@@ -481,16 +487,22 @@ Move global controls into a persistent sidebar with `placement="sidebar"`:
   title="Global filters"
   placement="sidebar"
 />
+
+<Text
+  text="Revenue is shown after refunds."
+  placement="sidebar"
+/>
 ```
 
-Multiple sidebar filter blocks are collected into one `<aside>`. On desktop it
-stays visible while report content scrolls and receives its own vertical
-scrollbar when necessary. Below 900 px it moves above the content and becomes a
-collapsible `Report controls` section.
+Multiple sidebar `Filters` and `Text` components are collected into one `<aside>`.
+This lets text cards label, explain, or visually separate groups of controls. On
+desktop it stays visible while report content scrolls and receives its own
+vertical scrollbar when necessary. Below 900 px it moves above the content and
+becomes a collapsible `Report controls` section.
 
-Sidebar filters must be top-level components. They cannot be placed inside a
-`Row` or `Tab`. Regular `placement="content"` filters may appear at top level or
-inside a tab.
+Sidebar components must be top-level. They cannot be placed inside a `Row` or
+`Tab`. Regular `placement="content"` filters and text may appear at top level,
+inside a row, or inside a tab.
 
 ### Tabs
 

@@ -48,6 +48,7 @@ _TAB_TAG = re.compile(r"<(?P<closing>/)?Tab(?P<attrs>\s+[^>]*)?\s*>")
 _TAB_START = re.compile(r"</?Tab\b")
 _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
     "Filters": ({"params"}, {"params", "title", "placement"}),
+    "Text": ({"text"}, {"text", "title", "placement"}),
     "DataStatus": (set(), set()),
     "VersionBadge": (set(), set()),
     "BigValue": (
@@ -434,10 +435,13 @@ def _extract_components(
                     f"Filters references undeclared parameters: {', '.join(sorted(unknown_params))}"
                 )
             attributes["params"] = params
+        if component_type == "Text" and not str(attributes["text"]).strip():
+            raise ReportValidationError("Text text must not be empty")
+        if component_type in {"Filters", "Text"}:
             placement = attributes.setdefault("placement", "content")
             if placement not in {"content", "sidebar"}:
                 raise ReportValidationError(
-                    "Filters placement must be one of: content, sidebar"
+                    f"{component_type} placement must be one of: content, sidebar"
                 )
         component = ComponentSpec(
             id=component_id, type=component_type, query=query, props=attributes
@@ -463,10 +467,10 @@ def _extract_components(
         if not children:
             raise ReportValidationError("Row must contain at least one component")
         if any(
-            component.type == "Filters" and component.props.get("placement") == "sidebar"
+            component.props.get("placement") == "sidebar"
             for _match, component in children
         ):
-            raise ReportValidationError("sidebar Filters cannot be placed inside Row")
+            raise ReportValidationError("sidebar components cannot be placed inside Row")
         child_ids = [component.id for _match, component in children]
         row_component_ids.update(child_ids)
         row_layouts[row_start] = (
@@ -489,8 +493,8 @@ def _extract_components(
                 if not (tab.content_start <= match.start() and match.end() <= tab.content_end):
                     continue
                 components_in_tabs.add(component.id)
-                if component.type == "Filters" and component.props.get("placement") == "sidebar":
-                    raise ReportValidationError("sidebar Filters cannot be placed inside Tab")
+                if component.props.get("placement") == "sidebar":
+                    raise ReportValidationError("sidebar components cannot be placed inside Tab")
                 if component.id not in row_component_ids:
                     tab_records.append(
                         (match.start(), LayoutItem(type="component", component=component.id))

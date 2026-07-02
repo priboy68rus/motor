@@ -163,6 +163,7 @@ class ComponentSpec(StrictModel):
     id: str
     type: Literal[
         "Filters",
+        "Text",
         "DataStatus",
         "VersionBadge",
         "BigValue",

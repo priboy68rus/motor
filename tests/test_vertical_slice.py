@@ -59,6 +59,11 @@ def test_compiles_query_graph_and_components() -> None:
     filters = next(item for item in spec["components"] if item["type"] == "Filters")
     assert filters["props"]["title"] == "Global filters"
     assert filters["props"]["placement"] == "sidebar"
+    report_text = next(item for item in spec["components"] if item["type"] == "Text")
+    assert report_text["props"] == {
+        "text": "Revenue is shown after refunds. Use the controls below to narrow the report.",
+        "placement": "sidebar",
+    }
     assert spec["params"]["country"]["control"] == "dropdown"
     assert spec["params"]["breakdown"] == {
         "type": "dimension",
@@ -86,6 +91,7 @@ def test_compiles_query_graph_and_components() -> None:
     assert chart["props"]["stack"] == "zero"
     assert {item["type"] for item in spec["components"]} >= {
         "DataStatus",
+        "Text",
         "VersionBadge",
         "BigValue",
         "Table",
@@ -96,9 +102,9 @@ def test_compiles_query_graph_and_components() -> None:
     assert tabs["tabset_id"] == "tabs_001"
     assert [tab["title"] for tab in tabs["tabs"]] == ["Overview", "Details"]
     row = next(item for item in tabs["tabs"][0]["layout"] if item["type"] == "row")
-    assert row["components"] == ["component_005", "component_006", "component_007"]
+    assert row["components"] == ["component_006", "component_007", "component_008"]
     assert tabs["tabs"][1]["layout"] == [
-        {"type": "component", "component": "component_008"}
+        {"type": "component", "component": "component_009"}
     ]
 
 
@@ -479,7 +485,9 @@ params:
         encoding="utf-8",
     )
 
-    with pytest.raises(ReportValidationError, match="sidebar Filters cannot be placed inside Tab"):
+    with pytest.raises(
+        ReportValidationError, match="sidebar components cannot be placed inside Tab"
+    ):
         compile_report(report)
 
 
