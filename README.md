@@ -204,6 +204,13 @@ not cascading.
 The dropdown keeps `All` and `empty_behavior` semantics unchanged and limits
 the visible option list with an internal scrollbar.
 
+Each entry in dimension `choices` supports:
+
+| Field | Required | Default | Description |
+| --- | --- | --- | --- |
+| `field` | yes | — | Simple or dotted SQL identifier emitted by `dimension()`. |
+| `label` | no | `field` | Text displayed in the dimension select. |
+
 ```yaml
 params:
   country:
@@ -229,7 +236,6 @@ params:
         label: Country
         field: country
       product_type:
-        label: Product type
         field: product_type
       transaction_type:
         label: Purchase / return
@@ -251,6 +257,8 @@ Selection semantics:
 - Dimension choice names must be identifiers. The name `none` is reserved.
 - Dimension fields must be simple or dotted SQL identifiers. Raw SQL and user
   input cannot be used as dimension expressions.
+- Every dimension choice requires `field`. Its `label` is optional and defaults
+  to the exact `field` string shown in the control.
 - `default: none` is valid only with `allow_none: true`.
 
 Render controls in the given order:

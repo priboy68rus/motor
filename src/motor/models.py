@@ -28,7 +28,7 @@ class ParamOptions(StrictModel):
 
 
 class DimensionChoice(StrictModel):
-    label: str = Field(min_length=1)
+    label: str | None = Field(default=None, min_length=1)
     field: str = Field(pattern=r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$")
 
 

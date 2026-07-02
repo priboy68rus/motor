@@ -65,7 +65,7 @@ def test_compiles_query_graph_and_components() -> None:
         "default": "none",
         "choices": {
             "country": {"label": "Country", "field": "country"},
-            "product_type": {"label": "Product type", "field": "product_type"},
+            "product_type": {"field": "product_type"},
             "transaction_type": {
                 "label": "Purchase / return",
                 "field": "transaction_type",

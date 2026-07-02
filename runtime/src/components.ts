@@ -289,7 +289,7 @@ function renderDimension(
   for (const [choiceName, choice] of Object.entries(param.choices ?? {})) {
     const option = document.createElement("option");
     option.value = choiceName;
-    option.textContent = choice.label;
+    option.textContent = choice.label ?? choice.field;
     select.append(option);
   }
   select.value = String(value);

@@ -13,7 +13,7 @@ export type ParamSpec = {
   empty_behavior?: "all" | "none";
   control?: "auto" | "checkboxes" | "dropdown";
   options?: { source: string; column: string };
-  choices?: Record<string, { label: string; field: string }>;
+  choices?: Record<string, { label?: string; field: string }>;
   allow_none?: boolean;
 };
 

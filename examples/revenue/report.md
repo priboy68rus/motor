@@ -32,7 +32,6 @@ params:
         label: Country
         field: country
       product_type:
-        label: Product type
         field: product_type
       transaction_type:
         label: Purchase / return
