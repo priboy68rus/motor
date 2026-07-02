@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 import shlex
 from pathlib import Path
@@ -54,7 +55,18 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
     ),
     "BarChart": (
         {"query", "x", "y"},
-        {"query", "x", "y", "title", "format", "currency", "group", "color", "stack"},
+        {
+            "query",
+            "x",
+            "y",
+            "title",
+            "format",
+            "currency",
+            "group",
+            "color",
+            "stack",
+            "bar_width",
+        },
     ),
 }
 
@@ -281,6 +293,16 @@ def _extract_components(
             if stack == "normalize" and not ({"group", "color"} & set(attributes)):
                 raise ReportValidationError(
                     "BarChart stack='normalize' requires a group or color attribute"
+                )
+            if "bar_width" in attributes:
+                try:
+                    bar_width = float(attributes["bar_width"])
+                except (TypeError, ValueError) as exc:
+                    raise ReportValidationError("BarChart bar_width must be a number") from exc
+                if not math.isfinite(bar_width) or bar_width <= 0:
+                    raise ReportValidationError("BarChart bar_width must be greater than zero")
+                attributes["bar_width"] = (
+                    int(bar_width) if bar_width.is_integer() else bar_width
                 )
         query = attributes.pop("query", None)
         if component_type == "Filters":

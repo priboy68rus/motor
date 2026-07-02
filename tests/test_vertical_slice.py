@@ -435,7 +435,7 @@ data:
 ```sql name=summary kind=query
 select country, value from events
 ```
-<BarChart query="summary" x="country" y="value" />
+<BarChart query="summary" x="country" y="value" bar_width="24.5" />
 """,
         encoding="utf-8",
     )
@@ -444,6 +444,7 @@ select country, value from events
 
     chart = next(item for item in spec["components"] if item["type"] == "BarChart")
     assert chart["props"]["stack"] == "zero"
+    assert chart["props"]["bar_width"] == 24.5
 
 
 def test_nested_rows_are_rejected(tmp_path: Path) -> None:

@@ -16,7 +16,6 @@ export async function renderChart(
   rows: QueryRow[],
   legendTitle?: string,
 ): Promise<ChartHandle> {
-  const mark = component.type === "LineChart" ? "line" : "bar";
   const x = String(component.props.x);
   const y = String(component.props.y);
   const group = component.props.group ? String(component.props.group) : undefined;
@@ -32,6 +31,21 @@ export async function renderChart(
     !Number.isNaN(Date.parse(sampleX))
       ? "temporal"
       : "nominal";
+  const configuredBarWidth = component.props.bar_width;
+  const barWidth =
+    configuredBarWidth == null
+      ? xType === "temporal"
+        ? 18
+        : undefined
+      : Number(configuredBarWidth);
+  const mark =
+    component.type === "LineChart"
+      ? ({ type: "line", tooltip: true } as const)
+      : ({
+          type: "bar",
+          tooltip: true,
+          ...(barWidth == null ? {} : { width: barWidth }),
+        } as const);
   const yEncoding = {
     field: y,
     type: "quantitative" as const,
@@ -49,7 +63,7 @@ export async function renderChart(
     height: 300,
     autosize: { type: "fit", contains: "padding", resize: true },
     data: { values: rows },
-    mark: { type: mark, tooltip: true },
+    mark,
     encoding: {
       x: {
         field: x,

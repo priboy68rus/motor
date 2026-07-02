@@ -372,7 +372,7 @@ should be quoted, and declarations may span multiple lines.
 | `BigValue` | `query`, `value` | `title`, `format`, `currency` | First row of one query column. `format="currency"` uses the ISO currency code from `currency`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
 | `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. |
-| `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
+| `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack`, `bar_width` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
 
 `query` must reference an existing `kind=query` SQL block. Referenced column
 names such as `value`, `x`, and `y` must exist in its result.
@@ -393,6 +393,22 @@ encoding without changing the grouped-bar layout; when both are present,
 
 Vega-Lite calls the ordinary accumulated mode `zero` because every stack starts
 from the zero baseline.
+
+Bars on a continuous temporal X axis default to `bar_width="18"` pixels. Set a
+positive custom width when the time series is especially dense or sparse:
+
+```md
+<BarChart
+  query="revenue_by_day"
+  x="day"
+  y="revenue"
+  group="country"
+  bar_width="24"
+/>
+```
+
+On a discrete X axis, Vega-Lite calculates the band width automatically unless
+`bar_width` is explicitly configured.
 
 `normalize` requires `group` or `color`. Without either series field, `zero`
 produces a normal single-series bar chart. `LineChart` does not accept `stack`.
