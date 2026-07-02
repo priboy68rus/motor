@@ -21,6 +21,7 @@ export type QuerySpec = {
   kind: "view" | "query";
   sql_template: string;
   depends_on: { sources: string[]; params: string[]; queries: string[] };
+  dimension_bindings: Record<string, string>;
 };
 
 export type ComponentSpec = {

@@ -14,6 +14,7 @@ export async function renderChart(
   element: HTMLElement,
   component: ComponentSpec,
   rows: QueryRow[],
+  legendTitle?: string,
 ): Promise<ChartHandle> {
   const mark = component.type === "LineChart" ? "line" : "bar";
   const x = String(component.props.x);
@@ -55,7 +56,15 @@ export async function renderChart(
         ...(dateOnly ? { axis: { format: "%Y-%m-%d" } } : {}),
       },
       y: yEncoding,
-      ...(color ? { color: { field: color, type: "nominal" } } : {}),
+      ...(color
+        ? {
+            color: {
+              field: color,
+              type: "nominal",
+              ...(legendTitle ? { title: legendTitle } : {}),
+            },
+          }
+        : {}),
       ...(component.type === "BarChart" && group && stack === "none"
         ? { xOffset: { field: group, type: "nominal" } }
         : {}),

@@ -29,6 +29,10 @@ _FILTER_HELPER = re.compile(
     r"(?P<param>[A-Za-z_]\w*)\s*\)"
 )
 _DIMENSION_HELPER = re.compile(r"dimension\(\s*(?P<param>[A-Za-z_]\w*)\s*\)")
+_DIMENSION_ALIAS = re.compile(
+    r'^\s+as\s+(?P<quote>["]?)(?P<alias>[A-Za-z_]\w*)(?P=quote)',
+    re.IGNORECASE,
+)
 _RELATION = re.compile(r"\b(?:from|join)\s+\"?([A-Za-z_]\w*)\"?", re.IGNORECASE)
 _CTE = re.compile(r"(?:\bwith|,)\s*([A-Za-z_]\w*)\s+as\s*\(", re.IGNORECASE)
 _COMPONENT = re.compile(r"<([A-Z][A-Za-z0-9]*)\b([^<>]*?)/>", re.DOTALL)
@@ -90,8 +94,9 @@ def _parse_sql_metadata(metadata: str, line_number: int) -> tuple[str, str]:
 
 def _template_params(
     sql: str, query_name: str, declared: dict[str, ParamConfig]
-) -> list[str]:
+) -> tuple[list[str], dict[str, str]]:
     params: set[str] = set()
+    dimension_bindings: dict[str, str] = {}
     matches = list(_TEMPLATE.finditer(sql))
     remainder = _TEMPLATE.sub("", sql)
     if "{{" in remainder or "}}" in remainder:
@@ -126,8 +131,20 @@ def _template_params(
                 f"{helper_name} in SQL block {query_name!r} cannot use "
                 f"{param_type} parameter {param!r}"
             )
+        if dimension_helper is not None:
+            alias_match = _DIMENSION_ALIAS.match(sql[match.end() :])
+            if alias_match is None:
+                raise ReportValidationError(
+                    f"dimension in SQL block {query_name!r} must be followed by AS alias"
+                )
+            alias = alias_match.group("alias")
+            if alias in dimension_bindings:
+                raise ReportValidationError(
+                    f"SQL block {query_name!r} has duplicate dimension alias {alias!r}"
+                )
+            dimension_bindings[alias] = param
         params.add(param)
-    return sorted(params)
+    return sorted(params), dimension_bindings
 
 
 def _extract_queries(
@@ -156,13 +173,15 @@ def _extract_queries(
         sql = "".join(lines[index + 1 : end]).strip()
         if not sql:
             raise ReportValidationError(f"SQL block {name!r} is empty")
+        params, dimension_bindings = _template_params(sql, name, declared_params)
         queries[name] = QuerySpec(
             name=name,
             kind=kind,
             sql_template=sql,
             depends_on=QueryDependencies(
-                params=_template_params(sql, name, declared_params),
+                params=params,
             ),
+            dimension_bindings=dimension_bindings,
         )
         index = end + 1
     return "".join(output), queries

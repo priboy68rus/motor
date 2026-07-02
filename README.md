@@ -335,7 +335,7 @@ dotted SQL column identifier.
 `dimension` accepts only a `dimension` parameter. It resolves the selected
 choice through the compiled `choices` allowlist and emits a quoted SQL field.
 When the selected value is `none`, it emits the SQL string literal `''`.
-Always give the expression a stable alias:
+The helper must be followed immediately by an explicit stable `AS alias`:
 
 ```sql
 select
@@ -349,6 +349,10 @@ order by month, breakdown
 
 The chart continues to reference the stable `breakdown` result column while a
 parameter change reruns this query with another allowlisted source field.
+The compiler records the alias-to-parameter binding. When that alias is used by
+chart `group` or `color`, the legend title updates automatically. For example,
+it becomes `Group by: Country`, using the parameter `label` and selected choice
+`label`; each missing label falls back to its parameter name or `field`.
 
 Shared filters are explicit. Put helpers in a named filtered view and read from
 that view in downstream queries. motor never inserts hidden `WHERE` clauses
@@ -389,7 +393,8 @@ encoding without changing the grouped-bar layout; when both are present,
 
 `zero` and `normalize` require `group`. `LineChart` does not accept `stack`.
 With a dimension parameter set to `none`, all rows use the empty-string group,
-so the chart has one series and may show a blank legend item.
+so the chart has one series and may show a blank legend item. Its dynamic
+legend title ends in `Nothing`.
 
 The chart `format` and `currency` attributes remain reserved for future axis
 formatting and are not yet applied by the Vega adapter. Number and currency

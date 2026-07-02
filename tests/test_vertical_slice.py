@@ -78,6 +78,9 @@ def test_compiles_query_graph_and_components() -> None:
         "params": ["breakdown", "country", "date_range"],
         "queries": ["filtered_orders"],
     }
+    assert spec["queries"]["revenue_by_day"]["dimension_bindings"] == {
+        "breakdown": "breakdown"
+    }
     assert chart["props"]["group"] == "breakdown"
     assert chart["props"]["stack"] == "zero"
     assert {item["type"] for item in spec["components"]} >= {
@@ -346,6 +349,39 @@ params:
     )
 
     with pytest.raises(ReportValidationError, match="requires allow_none: true"):
+        compile_report(report)
+
+
+def test_dimension_sql_requires_explicit_alias(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("country,value\nDE,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+params:
+  breakdown:
+    type: dimension
+    default: country
+    choices:
+      country:
+        field: country
+---
+```sql name=summary kind=query
+select {{ dimension(breakdown) }}, sum(value) as value
+from events
+group by 1
+```
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="must be followed by AS alias"):
         compile_report(report)
 
 

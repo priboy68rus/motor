@@ -156,6 +156,7 @@ class QuerySpec(StrictModel):
     kind: Literal["view", "query"]
     sql_template: str
     depends_on: QueryDependencies = Field(default_factory=QueryDependencies)
+    dimension_bindings: dict[str, str] = Field(default_factory=dict)
 
 
 class ComponentSpec(StrictModel):

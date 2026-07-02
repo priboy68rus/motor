@@ -408,6 +408,28 @@ export class ReportRenderer {
     }
   }
 
+  private dimensionLegendTitle(
+    component: ComponentSpec,
+    values: ParamValues,
+  ): string | undefined {
+    if (!component.query) return undefined;
+    const resultField = component.props.group ?? component.props.color;
+    if (!resultField) return undefined;
+    const paramName = this.spec.queries[component.query]?.dimension_bindings[String(resultField)];
+    if (!paramName) return undefined;
+    const param = this.spec.params[paramName];
+    if (!param || param.type !== "dimension") return undefined;
+    const value = values[paramName];
+    const choiceLabel =
+      value === "none"
+        ? "Nothing"
+        : typeof value === "string"
+          ? (param.choices?.[value]?.label ?? param.choices?.[value]?.field)
+          : undefined;
+    if (!choiceLabel) return undefined;
+    return `${param.label ?? paramLabel(paramName)}: ${choiceLabel}`;
+  }
+
   private async renderComponent(
     component: ComponentSpec,
     results: QueryResults,
@@ -439,7 +461,11 @@ export class ReportRenderer {
         chart.className = "motor-chart";
         element.append(chart);
         try {
-          this.chartHandles.set(component.id, await renderChart(chart, component, rows));
+          const legendTitle = this.dimensionLegendTitle(component, values);
+          this.chartHandles.set(
+            component.id,
+            await renderChart(chart, component, rows, legendTitle),
+          );
         } catch (error) {
           element.className = "motor-card motor-component-error";
           element.replaceChildren(
