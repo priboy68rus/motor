@@ -377,7 +377,7 @@ should be quoted, and declarations may span multiple lines.
 | `VersionBadge` | — | — | Tool version and artifact ID. |
 | `BigValue` | `query`, `value` | `title`, `format`, `currency` | First row of one query column. `format="currency"` uses the ISO currency code from `currency`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
-| `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. |
+| `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `marker`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
 | `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack`, `bar_width` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
 
 `query` must reference an existing `kind=query` SQL block. Referenced column
@@ -388,6 +388,11 @@ a line chart this produces separate colored lines. On a bar chart it also
 controls the bar layout through `stack`. `color` applies a categorical color
 encoding without changing the grouped-bar layout; when both are present,
 `group` takes precedence.
+
+`LineChart marker="point"` draws hollow value markers; `marker="circle"` draws
+filled markers. All line charts use a larger invisible hit area around each
+value, including when `marker="none"`, so tooltips do not require pixel-perfect
+hovering.
 
 `BarChart` stack modes:
 
@@ -448,6 +453,7 @@ Examples:
   x="day"
   y="revenue"
   group="country"
+  marker="circle"
   title="Revenue by day"
 />
 

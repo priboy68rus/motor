@@ -89,6 +89,8 @@ def test_compiles_query_graph_and_components() -> None:
     }
     assert chart["props"]["group"] == "breakdown"
     assert chart["props"]["stack"] == "zero"
+    line_chart = next(item for item in spec["components"] if item["type"] == "LineChart")
+    assert line_chart["props"]["marker"] == "circle"
     assert {item["type"] for item in spec["components"]} >= {
         "DataStatus",
         "Text",

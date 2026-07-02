@@ -58,7 +58,17 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
     "Table": ({"query"}, {"query", "title", "columns"}),
     "LineChart": (
         {"query", "x", "y"},
-        {"query", "x", "y", "title", "format", "currency", "group", "color"},
+        {
+            "query",
+            "x",
+            "y",
+            "title",
+            "format",
+            "currency",
+            "group",
+            "color",
+            "marker",
+        },
     ),
     "BarChart": (
         {"query", "x", "y"},
@@ -425,6 +435,12 @@ def _extract_components(
                     raise ReportValidationError("BarChart bar_width must be greater than zero")
                 attributes["bar_width"] = (
                     int(bar_width) if bar_width.is_integer() else bar_width
+                )
+        if component_type == "LineChart":
+            marker = attributes.setdefault("marker", "none")
+            if marker not in {"none", "point", "circle"}:
+                raise ReportValidationError(
+                    "LineChart marker must be one of: none, point, circle"
                 )
         query = attributes.pop("query", None)
         if component_type == "Filters":

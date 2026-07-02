@@ -107,6 +107,7 @@ order by day, breakdown
   x="day"
   y="revenue"
   group="breakdown"
+  marker="circle"
   title="Revenue by day"
   format="currency"
   currency="EUR"
