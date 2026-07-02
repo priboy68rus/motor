@@ -25,6 +25,89 @@ def test_script_escaping_preserves_javascript_regexes() -> None:
     assert "</script" not in escaped.lower()
 
 
+def test_markdown_comments_exclude_sql_components_and_layout(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("value\n10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+<!--
+```sql name=ignored kind=query
+select value from missing_source
+```
+<Unsupported query="ignored" />
+<Row><BigValue query="ignored" value="value" /></Row>
+-->
+```sql name=summary kind=query
+select value, '<!-- code literal -->' as marker from events
+```
+<BigValue query="summary" value="value" />
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert list(spec["queries"]) == ["summary"]
+    assert "<!-- code literal -->" in spec["queries"]["summary"]["sql_template"]
+    assert [component["type"] for component in spec["components"]] == ["BigValue"]
+    assert spec["layout"] == [
+        {"type": "component", "component": "component_001"}
+    ]
+
+
+def test_unclosed_markdown_comment_is_rejected(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("value\n10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+<!--
+<BigValue query="summary" value="value" />
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="missing its closing -->"):
+        compile_report(report)
+
+
+def test_nested_markdown_comment_is_rejected(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("value\n10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+<!-- outer <!-- inner --> -->
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="nested Markdown comment"):
+        compile_report(report)
+
+
 def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     output = tmp_path / "revenue.html"
 

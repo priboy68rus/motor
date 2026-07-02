@@ -84,11 +84,33 @@ A report is one UTF-8 Markdown file containing:
 
 1. YAML frontmatter between two `---` lines.
 2. Named SQL fenced blocks.
-3. Self-closing component declarations and optional `Row` layout blocks.
+3. Self-closing component declarations and optional `Row`/`Tabs` layout blocks.
+4. Optional Markdown comments for temporarily disabling body content.
 
 The current runtime renders the report title and declared components. Ordinary
 Markdown headings and prose in the body are preserved in the compiled spec but
-are not rendered yet.
+are not rendered yet; use `Text` for visible prose.
+
+### Commenting out report code
+
+Use standard Markdown/HTML comments to exclude any body fragment from the
+compiled report:
+
+````md
+<!--
+<BigValue query="old_summary" value="revenue" />
+
+```sql name=old_summary kind=query
+select sum(revenue) as revenue from orders
+```
+-->
+````
+
+Everything between `<!--` and `-->` is ignored, including components, layout
+tags, and complete SQL blocks. Comments may also be inline, cannot be nested,
+and must be closed. They apply only after YAML frontmatter; use YAML `#`
+comments inside frontmatter. Comment markers written inside a fenced code block
+are kept as code rather than interpreted by motor.
 
 ### Frontmatter
 
@@ -298,6 +320,10 @@ Every SQL block must depend, directly or through another named SQL block, on a
 configured data source. Relations after `FROM` and `JOIN` must be configured
 sources, named SQL blocks, or local CTEs. Duplicate names, unknown relations,
 cycles, and names conflicting with data sources are build errors.
+
+DuckDB CTEs work normally inside a SQL block and are scoped to that block. Use
+a named `kind=view` SQL block when the intermediate result must be reused by
+other queries.
 
 Example dependency chain:
 

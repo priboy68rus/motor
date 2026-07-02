@@ -25,6 +25,7 @@ from motor.models import (
 
 
 _SQL_OPEN = re.compile(r"^```sql(?:\s+(.*?))?\s*$")
+_MARKDOWN_FENCE = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})")
 _TEMPLATE = re.compile(r"{{\s*(.*?)\s*}}")
 _FILTER_HELPER = re.compile(
     r"(?P<helper>in_filter|between_filter)\(\s*(['\"])"
@@ -96,6 +97,76 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
         },
     ),
 }
+
+
+def _blank_comment(value: str) -> str:
+    return "".join(character if character in "\r\n" else " " for character in value)
+
+
+def _strip_markdown_comments(body: str, *, first_body_line: int) -> str:
+    output: list[str] = []
+    in_comment = False
+    comment_line: int | None = None
+    fence_character: str | None = None
+    for offset, line in enumerate(body.splitlines(keepends=True)):
+        line_number = first_body_line + offset
+        fence = _MARKDOWN_FENCE.match(line)
+        if not in_comment and fence is not None:
+            character = fence.group("fence")[0]
+            if fence_character is None:
+                fence_character = character
+            elif fence_character == character:
+                fence_character = None
+            output.append(line)
+            continue
+        if fence_character is not None:
+            output.append(line)
+            continue
+
+        cursor = 0
+        rendered: list[str] = []
+        while cursor < len(line):
+            if in_comment:
+                closing = line.find("-->", cursor)
+                nested = line.find("<!--", cursor)
+                if nested != -1 and (closing == -1 or nested < closing):
+                    raise ReportValidationError(
+                        f"nested Markdown comment at line {line_number} is not supported"
+                    )
+                if closing == -1:
+                    rendered.append(_blank_comment(line[cursor:]))
+                    cursor = len(line)
+                    continue
+                rendered.append(_blank_comment(line[cursor : closing + 3]))
+                cursor = closing + 3
+                in_comment = False
+                comment_line = None
+                continue
+
+            opening = line.find("<!--", cursor)
+            unexpected_closing = line.find("-->", cursor)
+            if unexpected_closing != -1 and (
+                opening == -1 or unexpected_closing < opening
+            ):
+                raise ReportValidationError(
+                    f"unexpected Markdown comment closing at line {line_number}"
+                )
+            if opening == -1:
+                rendered.append(line[cursor:])
+                cursor = len(line)
+                continue
+            rendered.append(line[cursor:opening])
+            rendered.append(_blank_comment(line[opening : opening + 4]))
+            cursor = opening + 4
+            in_comment = True
+            comment_line = line_number
+        output.append("".join(rendered))
+
+    if in_comment:
+        raise ReportValidationError(
+            f"Markdown comment opened at line {comment_line} is missing its closing -->"
+        )
+    return "".join(output)
 
 
 @dataclass(frozen=True)
@@ -589,8 +660,8 @@ def _extract_components(
 
 
 def _dependency_sql(sql: str) -> str:
-    without_comments = re.sub(r"/\*.*?\*/|--[^\r\n]*", " ", sql, flags=re.DOTALL)
-    return re.sub(r"'(?:''|[^'])*'", "''", without_comments)
+    without_literals = re.sub(r"'(?:''|[^'])*'", "''", sql)
+    return re.sub(r"/\*.*?\*/|--[^\r\n]*", " ", without_literals, flags=re.DOTALL)
 
 
 def _resolve_dependencies(
@@ -671,6 +742,7 @@ def parse_report(path: Path) -> ParsedReport:
 
     frontmatter_text = "".join(lines[1:closing_index])
     body = "".join(lines[closing_index + 1 :])
+    body = _strip_markdown_comments(body, first_body_line=closing_index + 2)
     try:
         frontmatter = yaml.safe_load(frontmatter_text)
     except yaml.YAMLError as exc:
