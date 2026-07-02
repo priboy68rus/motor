@@ -23,11 +23,12 @@ from motor.models import (
 
 _SQL_OPEN = re.compile(r"^```sql(?:\s+(.*?))?\s*$")
 _TEMPLATE = re.compile(r"{{\s*(.*?)\s*}}")
-_HELPER = re.compile(
+_FILTER_HELPER = re.compile(
     r"(?P<helper>in_filter|between_filter)\(\s*(['\"])"
     r"(?P<column>[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\2\s*,\s*"
     r"(?P<param>[A-Za-z_]\w*)\s*\)"
 )
+_DIMENSION_HELPER = re.compile(r"dimension\(\s*(?P<param>[A-Za-z_]\w*)\s*\)")
 _RELATION = re.compile(r"\b(?:from|join)\s+\"?([A-Za-z_]\w*)\"?", re.IGNORECASE)
 _CTE = re.compile(r"(?:\bwith|,)\s*([A-Za-z_]\w*)\s+as\s*\(", re.IGNORECASE)
 _COMPONENT = re.compile(r"<([A-Z][A-Za-z0-9]*)\b([^<>]*?)/>", re.DOTALL)
@@ -45,7 +46,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
     "Table": ({"query"}, {"query", "title", "columns"}),
     "LineChart": (
         {"query", "x", "y"},
-        {"query", "x", "y", "title", "format", "currency", "group", "color", "stack"},
+        {"query", "x", "y", "title", "format", "currency", "group", "color"},
     ),
     "BarChart": (
         {"query", "x", "y"},
@@ -98,24 +99,28 @@ def _template_params(
             f"SQL block {query_name!r} contains a malformed template expression"
         )
     for match in matches:
-        helper = _HELPER.fullmatch(match.group(1))
-        if helper is None:
+        expression = match.group(1)
+        filter_helper = _FILTER_HELPER.fullmatch(expression)
+        dimension_helper = _DIMENSION_HELPER.fullmatch(expression)
+        if filter_helper is None and dimension_helper is None:
             raise ReportValidationError(
                 f"SQL block {query_name!r} contains unsupported template expression "
                 f"{match.group(0)!r}"
             )
+        helper = filter_helper or dimension_helper
+        assert helper is not None
         param = helper.group("param")
         if param not in declared:
             raise ReportValidationError(
                 f"SQL block {query_name!r} references undeclared parameter {param!r}"
             )
-        helper_name = helper.group("helper")
+        helper_name = filter_helper.group("helper") if filter_helper else "dimension"
         param_type = declared[param].type
-        expected_types = (
-            {"select", "multiselect"}
-            if helper_name == "in_filter"
-            else {"date_range"}
-        )
+        expected_types = {
+            "in_filter": {"select", "multiselect"},
+            "between_filter": {"date_range"},
+            "dimension": {"dimension"},
+        }[helper_name]
         if param_type not in expected_types:
             raise ReportValidationError(
                 f"{helper_name} in SQL block {query_name!r} cannot use "
@@ -248,6 +253,16 @@ def _extract_components(
             raise ReportValidationError(
                 f"{component_type} is missing required attributes: {', '.join(sorted(missing))}"
             )
+        if component_type == "BarChart":
+            stack = attributes.setdefault("stack", "none")
+            if stack not in {"none", "zero", "normalize"}:
+                raise ReportValidationError(
+                    "BarChart stack must be one of: none, zero, normalize"
+                )
+            if stack != "none" and "group" not in attributes:
+                raise ReportValidationError(
+                    f"BarChart stack={stack!r} requires a group attribute"
+                )
         query = attributes.pop("query", None)
         if component_type == "Filters":
             params = [item.strip() for item in str(attributes["params"]).split(",") if item.strip()]

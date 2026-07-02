@@ -54,11 +54,32 @@ def test_compiles_query_graph_and_components() -> None:
         "queries": ["filtered_orders"],
     }
     chart = next(item for item in spec["components"] if item["type"] == "BarChart")
-    assert chart["query"] == "revenue_by_country"
-    assert chart["props"]["x"] == "country"
+    assert chart["query"] == "revenue_by_day"
+    assert chart["props"]["x"] == "day"
     filters = next(item for item in spec["components"] if item["type"] == "Filters")
-    assert filters["props"]["title"] == "Report filters"
+    assert filters["props"]["title"] == "Report controls"
     assert spec["params"]["country"]["control"] == "dropdown"
+    assert spec["params"]["breakdown"] == {
+        "type": "dimension",
+        "label": "Group by",
+        "default": "none",
+        "choices": {
+            "country": {"label": "Country", "field": "country"},
+            "product_type": {"label": "Product type", "field": "product_type"},
+            "transaction_type": {
+                "label": "Purchase / return",
+                "field": "transaction_type",
+            },
+        },
+        "allow_none": True,
+    }
+    assert spec["queries"]["revenue_by_day"]["depends_on"] == {
+        "sources": ["orders"],
+        "params": ["breakdown", "country", "date_range"],
+        "queries": ["filtered_orders"],
+    }
+    assert chart["props"]["group"] == "breakdown"
+    assert chart["props"]["stack"] == "zero"
     assert {item["type"] for item in spec["components"]} >= {
         "DataStatus",
         "VersionBadge",
@@ -297,6 +318,69 @@ params:
     assert spec["params"]["country"]["control"] == "auto"
     assert spec["params"]["period"]["default"] == "all"
     assert "empty_behavior" not in spec["params"]["period"]
+
+
+def test_dimension_none_default_requires_allow_none(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("country,value\nDE,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+params:
+  breakdown:
+    type: dimension
+    default: none
+    choices:
+      country:
+        label: Country
+        field: country
+---
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="requires allow_none: true"):
+        compile_report(report)
+
+
+@pytest.mark.parametrize(
+    ("stack", "group", "message"),
+    [
+        ("center", ' group="country"', "stack must be one of"),
+        ("zero", "", "requires a group attribute"),
+    ],
+)
+def test_bar_chart_stack_is_validated(
+    tmp_path: Path, stack: str, group: str, message: str
+) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("country,value\nDE,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        f"""---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+```sql name=summary kind=query
+select country, value from events
+```
+<BarChart query="summary" x="country" y="value"{group} stack="{stack}" />
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match=message):
+        compile_report(report)
 
 
 def test_nested_rows_are_rejected(tmp_path: Path) -> None:

@@ -98,12 +98,12 @@ function valueKey(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function filterField(name: string): { field: HTMLElement; controls: HTMLElement } {
+function filterField(name: string, label?: string): { field: HTMLElement; controls: HTMLElement } {
   const field = document.createElement("fieldset");
   field.className = "motor-filter";
   field.dataset.paramName = name;
   const legend = document.createElement("legend");
-  legend.textContent = paramLabel(name);
+  legend.textContent = label ?? paramLabel(name);
   const controls = document.createElement("div");
   controls.className = "motor-filter-controls";
   field.append(legend, controls);
@@ -126,7 +126,7 @@ function renderMultiselect(
   value: unknown,
   onChange: ParamChangeHandler,
 ): HTMLElement {
-  const { field, controls } = filterField(name);
+  const { field, controls } = filterField(name, param.label);
   const useDropdown =
     param.control === "dropdown" ||
     (param.control !== "checkboxes" && options.length > AUTO_DROPDOWN_THRESHOLD);
@@ -218,11 +218,12 @@ function renderMultiselect(
 
 function renderSelect(
   name: string,
+  param: ParamSpec,
   options: unknown[],
   value: unknown,
   onChange: ParamChangeHandler,
 ): HTMLElement {
-  const { field, controls } = filterField(name);
+  const { field, controls } = filterField(name, param.label);
   const select = document.createElement("select");
   select.className = "motor-select";
   const all = document.createElement("option");
@@ -246,10 +247,11 @@ function renderSelect(
 
 function renderDateRange(
   name: string,
+  param: ParamSpec,
   value: unknown,
   onChange: ParamChangeHandler,
 ): HTMLElement {
-  const { field, controls } = filterField(name);
+  const { field, controls } = filterField(name, param.label);
   controls.classList.add("motor-date-range");
   const range = value && typeof value === "object" ? (value as { start?: unknown; end?: unknown }) : {};
   const start = document.createElement("input");
@@ -266,6 +268,33 @@ function renderDateRange(
   start.addEventListener("change", emit);
   end.addEventListener("change", emit);
   controls.append(start, text("span", "to", "motor-date-separator"), end);
+  return field;
+}
+
+function renderDimension(
+  name: string,
+  param: ParamSpec,
+  value: unknown,
+  onChange: ParamChangeHandler,
+): HTMLElement {
+  const { field, controls } = filterField(name, param.label);
+  const select = document.createElement("select");
+  select.className = "motor-select";
+  if (param.allow_none) {
+    const option = document.createElement("option");
+    option.value = "none";
+    option.textContent = "Nothing";
+    select.append(option);
+  }
+  for (const [choiceName, choice] of Object.entries(param.choices ?? {})) {
+    const option = document.createElement("option");
+    option.value = choiceName;
+    option.textContent = choice.label;
+    select.append(option);
+  }
+  select.value = String(value);
+  select.addEventListener("change", () => onChange(name, select.value));
+  controls.append(select);
   return field;
 }
 
@@ -289,9 +318,11 @@ function renderFilters(
     if (param.type === "multiselect") {
       fields.append(renderMultiselect(name, param, options[name] ?? [], values[name], onChange));
     } else if (param.type === "select") {
-      fields.append(renderSelect(name, options[name] ?? [], values[name], onChange));
+      fields.append(renderSelect(name, param, options[name] ?? [], values[name], onChange));
+    } else if (param.type === "date_range") {
+      fields.append(renderDateRange(name, param, values[name], onChange));
     } else {
-      fields.append(renderDateRange(name, values[name], onChange));
+      fields.append(renderDimension(name, param, values[name], onChange));
     }
   }
   element.append(fields);

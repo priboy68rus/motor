@@ -18,7 +18,9 @@ export async function renderChart(
   const mark = component.type === "LineChart" ? "line" : "bar";
   const x = String(component.props.x);
   const y = String(component.props.y);
-  const group = component.props.group ?? component.props.color;
+  const group = component.props.group ? String(component.props.group) : undefined;
+  const color = group ?? (component.props.color ? String(component.props.color) : undefined);
+  const stack = component.type === "BarChart" ? String(component.props.stack ?? "none") : "none";
   const sampleX = rows.find((row) => row[x] != null)?.[x];
   const dateOnly = typeof sampleX === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sampleX);
   const xType =
@@ -27,6 +29,17 @@ export async function renderChart(
     !Number.isNaN(Date.parse(sampleX))
       ? "temporal"
       : "nominal";
+  const yEncoding = {
+    field: y,
+    type: "quantitative" as const,
+    title: y,
+    ...(component.type === "BarChart"
+      ? {
+          stack: stack === "none" ? null : (stack as "zero" | "normalize"),
+          ...(stack === "normalize" ? { axis: { format: ".0%" } } : {}),
+        }
+      : {}),
+  };
   const spec: TopLevelSpec = {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
     width: "container",
@@ -41,8 +54,11 @@ export async function renderChart(
         title: x,
         ...(dateOnly ? { axis: { format: "%Y-%m-%d" } } : {}),
       },
-      y: { field: y, type: "quantitative", title: y },
-      ...(group ? { color: { field: String(group), type: "nominal" } } : {}),
+      y: yEncoding,
+      ...(color ? { color: { field: color, type: "nominal" } } : {}),
+      ...(component.type === "BarChart" && group && stack === "none"
+        ? { xOffset: { field: group, type: "nominal" } }
+        : {}),
     },
   };
   const result = await vegaEmbed(element, spec, { actions: false, renderer: "svg" });

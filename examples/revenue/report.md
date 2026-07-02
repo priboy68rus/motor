@@ -22,11 +22,26 @@ params:
     default:
       start: "2026-06-01"
       end: "2026-07-01"
+  breakdown:
+    type: dimension
+    label: Group by
+    default: none
+    allow_none: true
+    choices:
+      country:
+        label: Country
+        field: country
+      product_type:
+        label: Product type
+        field: product_type
+      transaction_type:
+        label: Purchase / return
+        field: transaction_type
 ---
 
 # Revenue Overview
 
-<Filters params="date_range,country" title="Report filters" />
+<Filters params="date_range,country,breakdown" title="Report controls" />
 
 <DataStatus />
 
@@ -56,10 +71,11 @@ from filtered_orders
 ```sql name=revenue_by_day kind=query
 select
   substr(cast(created_at as varchar), 1, 10) as day,
+  {{ dimension(breakdown) }} as breakdown,
   sum(revenue) as revenue
 from filtered_orders
-group by day
-order by day
+group by day, breakdown
+order by day, breakdown
 ```
 
 <Row>
@@ -76,16 +92,19 @@ order by day
   query="revenue_by_day"
   x="day"
   y="revenue"
+  group="breakdown"
   title="Revenue by day"
   format="currency"
   currency="EUR"
 />
 
 <BarChart
-  query="revenue_by_country"
-  x="country"
+  query="revenue_by_day"
+  x="day"
   y="revenue"
-  title="Revenue by country"
+  group="breakdown"
+  stack="zero"
+  title="Stacked revenue by day"
   format="currency"
   currency="EUR"
 />

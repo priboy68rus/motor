@@ -1,7 +1,8 @@
 import type { ParamSpec, QuerySpec } from "./types";
 
 const TEMPLATE_EXPRESSION = /{{\s*(.*?)\s*}}/g;
-const HELPER_EXPRESSION = /^(in_filter|between_filter)\(\s*["']([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)["']\s*,\s*([A-Za-z_]\w*)\s*\)$/;
+const FILTER_HELPER_EXPRESSION = /^(in_filter|between_filter)\(\s*["']([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)["']\s*,\s*([A-Za-z_]\w*)\s*\)$/;
+const DIMENSION_HELPER_EXPRESSION = /^dimension\(\s*([A-Za-z_]\w*)\s*\)$/;
 
 function quoteIdentifier(value: string): string {
   return value
@@ -36,15 +37,33 @@ function betweenFilter(column: string, value: unknown): string {
   return `${quoteIdentifier(column)} >= ${quoteValue(range.start)} AND ${quoteIdentifier(column)} < (CAST(${quoteValue(range.end)} AS DATE) + INTERVAL 1 DAY)`;
 }
 
+function dimension(value: unknown, spec: ParamSpec): string {
+  if (value === "none" && spec.allow_none) return "''";
+  if (typeof value !== "string") throw new Error("dimension value must be a choice name");
+  const choice = spec.choices?.[value];
+  if (!choice) throw new Error(`unknown dimension choice: ${value}`);
+  return quoteIdentifier(choice.field);
+}
+
 export function renderQueryTemplate(
   query: QuerySpec,
   params: Record<string, ParamSpec>,
   values: Record<string, unknown>,
 ): string {
   return query.sql_template.replace(TEMPLATE_EXPRESSION, (_expression, body: string) => {
-    const helper = HELPER_EXPRESSION.exec(body);
-    if (!helper) throw new Error(`unsupported template expression: ${body}`);
-    const [, name, column, paramName] = helper;
+    const filterHelper = FILTER_HELPER_EXPRESSION.exec(body);
+    const dimensionHelper = DIMENSION_HELPER_EXPRESSION.exec(body);
+    if (!filterHelper && !dimensionHelper) {
+      throw new Error(`unsupported template expression: ${body}`);
+    }
+    if (dimensionHelper) {
+      const paramName = dimensionHelper[1];
+      if (!paramName || !params[paramName]) {
+        throw new Error(`invalid template expression: ${body}`);
+      }
+      return dimension(values[paramName], params[paramName]);
+    }
+    const [, name, column, paramName] = filterHelper ?? [];
     if (!name || !column || !paramName || !params[paramName]) {
       throw new Error(`invalid template expression: ${body}`);
     }

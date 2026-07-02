@@ -7,11 +7,14 @@ export type Manifest = {
 };
 
 export type ParamSpec = {
-  type: "select" | "multiselect" | "date_range";
+  type: "select" | "multiselect" | "date_range" | "dimension";
+  label?: string;
   default: unknown;
   empty_behavior?: "all" | "none";
   control?: "auto" | "checkboxes" | "dropdown";
   options?: { source: string; column: string };
+  choices?: Record<string, { label: string; field: string }>;
+  allow_none?: boolean;
 };
 
 export type QuerySpec = {

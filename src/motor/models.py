@@ -27,27 +27,61 @@ class ParamOptions(StrictModel):
     column: str
 
 
+class DimensionChoice(StrictModel):
+    label: str = Field(min_length=1)
+    field: str = Field(pattern=r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$")
+
+
 class ParamConfig(StrictModel):
-    type: Literal["select", "multiselect", "date_range"]
+    type: Literal["select", "multiselect", "date_range", "dimension"]
+    label: str | None = Field(default=None, min_length=1)
     default: Any = "all"
     empty_behavior: Literal["all", "none"] | None = None
     control: Literal["auto", "checkboxes", "dropdown"] | None = None
     options: ParamOptions | None = None
+    choices: dict[str, DimensionChoice] | None = None
+    allow_none: bool | None = None
 
     @model_validator(mode="after")
     def validate_options(self) -> "ParamConfig":
-        if self.type == "date_range" and self.options is not None:
-            raise ValueError("date_range parameters cannot declare options")
-        if self.type == "date_range" and self.empty_behavior is not None:
-            raise ValueError("date_range parameters cannot declare empty_behavior")
+        if self.type in {"date_range", "dimension"} and self.options is not None:
+            raise ValueError(f"{self.type} parameters cannot declare options")
+        if self.type in {"date_range", "dimension"} and self.empty_behavior is not None:
+            raise ValueError(f"{self.type} parameters cannot declare empty_behavior")
         if self.type != "multiselect" and self.control is not None:
             raise ValueError("only multiselect parameters can declare control")
+        if self.type != "dimension" and self.choices is not None:
+            raise ValueError("only dimension parameters can declare choices")
+        if self.type != "dimension" and self.allow_none is not None:
+            raise ValueError("only dimension parameters can declare allow_none")
         if self.type in {"select", "multiselect"} and self.options is None:
             raise ValueError(f"{self.type} parameters must declare options")
         if self.type in {"select", "multiselect"} and self.empty_behavior is None:
             self.empty_behavior = "none"
         if self.type == "multiselect" and self.control is None:
             self.control = "auto"
+        if self.type == "dimension":
+            if not self.choices:
+                raise ValueError("dimension parameters must declare choices")
+            invalid_names = [
+                name
+                for name in self.choices
+                if not name.isidentifier() or name == "none"
+            ]
+            if invalid_names:
+                raise ValueError(
+                    "dimension choice names must be identifiers and cannot use reserved name 'none'"
+                )
+            self.allow_none = bool(self.allow_none)
+            if "default" not in self.model_fields_set:
+                raise ValueError("dimension parameters must declare default")
+            if not isinstance(self.default, str):
+                raise ValueError("dimension parameter default must be a choice name or 'none'")
+            if self.default == "none":
+                if not self.allow_none:
+                    raise ValueError("dimension default 'none' requires allow_none: true")
+            elif self.default not in self.choices:
+                raise ValueError(f"dimension default {self.default!r} is not a declared choice")
         return self
 
 

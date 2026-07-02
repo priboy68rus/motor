@@ -168,11 +168,25 @@ Parameters are declared under `params` and become visible when referenced by a
 
 Supported parameter types:
 
-| Type | `options` | Default `default` | Default `empty_behavior` |
+| Type | Purpose | Required configuration | Default |
 | --- | --- | --- | --- |
-| `select` | required | `all` | `none` |
-| `multiselect` | required | `all` | `none` |
-| `date_range` | forbidden | `all` | forbidden |
+| `select` | One data-value filter | `options` | `all` |
+| `multiselect` | Multiple data-value filter | `options` | `all` |
+| `date_range` | Inclusive calendar-date filter | — | `all` |
+| `dimension` | Selects a SQL field used for grouping or coloring | `default`, `choices` | none; must be explicit |
+
+Parameter fields:
+
+| Field | Applies to | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `type` | all | yes | — | `select`, `multiselect`, `date_range`, or `dimension`. |
+| `label` | all | no | parameter name | Label displayed by the control. |
+| `default` | all | only `dimension` | `all` for other types | Initial value. A dimension default must name a choice, or `none` when enabled. |
+| `options` | `select`, `multiselect` | yes | — | Data source and column used to load filter values. |
+| `empty_behavior` | `select`, `multiselect` | no | `none` | Result of an empty selection: `all` disables the predicate; `none` returns no rows. |
+| `control` | `multiselect` | no | `auto` | Multiselect presentation: `auto`, `checkboxes`, or `dropdown`. |
+| `choices` | `dimension` | yes | — | Static allowlist of selectable SQL fields. |
+| `allow_none` | `dimension` | no | `false` | Adds a `Nothing` option that produces one empty-string group. |
 
 For `select` and `multiselect`, `options.source` must name a configured CSV
 source and `options.column` must exist in that source. The browser loads sorted
@@ -204,6 +218,22 @@ params:
     default:
       start: "2026-06-01"
       end: "2026-06-30"
+
+  breakdown:
+    type: dimension
+    label: Group by
+    default: none
+    allow_none: true
+    choices:
+      country:
+        label: Country
+        field: country
+      product_type:
+        label: Product type
+        field: product_type
+      transaction_type:
+        label: Purchase / return
+        field: transaction_type
 ```
 
 Selection semantics:
@@ -216,11 +246,17 @@ Selection semantics:
 - An empty multiselect with `empty_behavior: all` also disables the predicate.
 - An empty multiselect with `empty_behavior: none` produces no rows.
 - Date ranges include the complete end date.
+- A `dimension` is not a filter: changing it substitutes another declared field
+  into dependent SQL and reruns only affected queries.
+- Dimension choice names must be identifiers. The name `none` is reserved.
+- Dimension fields must be simple or dotted SQL identifiers. Raw SQL and user
+  input cannot be used as dimension expressions.
+- `default: none` is valid only with `allow_none: true`.
 
 Render controls in the given order:
 
 ```md
-<Filters params="date_range,country" title="Report filters" />
+<Filters params="date_range,country,breakdown" title="Report controls" />
 ```
 
 ### SQL blocks
@@ -279,6 +315,7 @@ accepted:
 ```sql
 {{ in_filter("column_name", selection_param) }}
 {{ between_filter("timestamp_column", date_range_param) }}
+{{ dimension(dimension_param) }}
 ```
 
 `in_filter` accepts a `select` or `multiselect` parameter and produces an
@@ -286,6 +323,24 @@ escaped `IN (...)` predicate, `TRUE`, or `FALSE` according to the selection and
 `empty_behavior`. `between_filter` accepts a `date_range` parameter and creates
 an inclusive calendar-date predicate. The first argument must be a simple or
 dotted SQL column identifier.
+
+`dimension` accepts only a `dimension` parameter. It resolves the selected
+choice through the compiled `choices` allowlist and emits a quoted SQL field.
+When the selected value is `none`, it emits the SQL string literal `''`.
+Always give the expression a stable alias:
+
+```sql
+select
+  date_trunc('month', created_at) as month,
+  {{ dimension(breakdown) }} as breakdown,
+  sum(revenue) as revenue
+from filtered_orders
+group by month, breakdown
+order by month, breakdown
+```
+
+The chart continues to reference the stable `breakdown` result column while a
+parameter change reruns this query with another allowlisted source field.
 
 Shared filters are explicit. Put helpers in a named filtered view and read from
 that view in downstream queries. motor never inserts hidden `WHERE` clauses
@@ -304,17 +359,34 @@ should be quoted, and declarations may span multiple lines.
 | `VersionBadge` | — | — | Tool version and artifact ID. |
 | `BigValue` | `query`, `value` | `title`, `format`, `currency` | First row of one query column. `format="currency"` uses the ISO currency code from `currency`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
-| `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. |
+| `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. |
 | `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
 
 `query` must reference an existing `kind=query` SQL block. Referenced column
 names such as `value`, `x`, and `y` must exist in its result.
 
-For charts, `group` or `color` creates a color series. The `format`, `currency`,
-and `stack` chart attributes are accepted for forward compatibility but are not
-yet applied by the current Vega adapter. Number and currency formatting is
-currently implemented for `BigValue`; table cells use basic automatic number
-formatting.
+For charts, `group` splits rows into series and assigns each series a color. On
+a line chart this produces separate colored lines. On a bar chart it also
+controls the bar layout through `stack`. `color` applies a categorical color
+encoding without changing the grouped-bar layout; when both are present,
+`group` takes precedence.
+
+`BarChart` stack modes:
+
+| `stack` | Behavior |
+| --- | --- |
+| `none` | Default. Bars from each `group` are displayed side by side. |
+| `zero` | Group values are stacked from zero; bar height is the total. |
+| `normalize` | Group values are stacked and normalized to 100%. |
+
+`zero` and `normalize` require `group`. `LineChart` does not accept `stack`.
+With a dimension parameter set to `none`, all rows use the empty-string group,
+so the chart has one series and may show a blank legend item.
+
+The chart `format` and `currency` attributes remain reserved for future axis
+formatting and are not yet applied by the Vega adapter. Number and currency
+formatting is implemented for `BigValue`; table cells use basic automatic
+number formatting.
 
 Examples:
 
@@ -427,7 +499,8 @@ order by revenue desc
 
 The repository's [revenue example](examples/revenue/report.md) demonstrates
 freshness, multiselect and date filters, a shared filtered view, dependent
-queries, all current visualization types, and Row layout.
+queries, a reactive dimension parameter with `none`, grouped and stacked
+charts, all current visualization types, and Row layout.
 
 Validate and build while authoring:
 
