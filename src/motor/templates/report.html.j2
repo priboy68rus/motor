@@ -21,6 +21,7 @@
     .motor-big-value-delta-separator { color: #98a2b3; }
     .motor-big-value-delta-label { margin: 4px 0 0; color: #667085; font-size: .82rem; }
     .motor-empty { color: #667085; margin: 0; }
+    .motor-filters { overflow: visible; }
     .motor-filter-list { display: flex; flex-wrap: wrap; gap: 20px 28px; align-items: flex-start; }
     .motor-filter { min-width: 180px; margin: 0; padding: 0; border: 0; }
     .motor-filter legend { margin-bottom: 8px; color: #475467; font-size: .82rem; font-weight: 650; }
@@ -29,13 +30,13 @@
     .motor-filter-option input { margin: 0; }
     .motor-select, .motor-date-range input { min-height: 36px; border: 1px solid #cbd2dc; border-radius: 7px; padding: 6px 9px; background: white; color: inherit; }
     .motor-multiselect-dropdown-controls { display: block; }
-    .motor-multiselect-dropdown { min-width: 240px; }
+    .motor-multiselect-dropdown { min-width: 240px; position: relative; }
     .motor-multiselect-dropdown summary { box-sizing: border-box; min-height: 36px; border: 1px solid #cbd2dc; border-radius: 7px; padding: 7px 34px 7px 10px; background: white; cursor: pointer; list-style: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; position: relative; }
     .motor-multiselect-dropdown summary::-webkit-details-marker { display: none; }
     .motor-multiselect-dropdown summary::after { content: "▾"; position: absolute; right: 10px; color: #667085; }
     .motor-multiselect-dropdown[open] summary { border-radius: 7px 7px 0 0; }
     .motor-multiselect-dropdown[open] summary::after { content: "▴"; }
-    .motor-multiselect-panel { box-sizing: border-box; border: 1px solid #cbd2dc; border-top: 0; border-radius: 0 0 7px 7px; padding: 8px; background: white; }
+    .motor-multiselect-panel { box-sizing: border-box; position: absolute; z-index: 100; top: 100%; left: 0; width: 100%; border: 1px solid #cbd2dc; border-top: 0; border-radius: 0 0 7px 7px; padding: 8px; background: white; box-shadow: 0 10px 24px #17203324; }
     .motor-multiselect-search { box-sizing: border-box; width: 100%; min-height: 34px; border: 1px solid #cbd2dc; border-radius: 6px; padding: 5px 8px; color: inherit; }
     .motor-multiselect-options { display: flex; flex-direction: column; gap: 7px; max-height: 220px; margin-top: 8px; overflow-y: auto; }
     .motor-multiselect-options .motor-filter-option { min-height: 24px; }

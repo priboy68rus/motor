@@ -224,7 +224,8 @@ not cascading.
 | `dropdown` | Always renders a searchable dropdown with a selected-value summary. |
 
 The dropdown keeps `All` and `empty_behavior` semantics unchanged and limits
-the visible option list with an internal scrollbar.
+the visible option list with an internal scrollbar. Its panel opens as an
+overlay above report content, so charts and other components do not move.
 
 Each entry in dimension `choices` supports:
 
