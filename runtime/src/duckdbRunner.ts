@@ -5,6 +5,29 @@ import { createEmbeddedDuckDBWorker } from "./dataLoader";
 import { renderQueryTemplate } from "./queryTemplates";
 import type { ParamOptions, ParamValues, QueryResults, QueryRow, ReportSpec } from "./types";
 
+function normalizeJsonScalar(value: unknown): unknown {
+  if (
+    typeof value !== "string" ||
+    value.length < 2 ||
+    value[0] !== '"' ||
+    value.at(-1) !== '"'
+  ) {
+    return value;
+  }
+  try {
+    const decoded: unknown = JSON.parse(value);
+    if (typeof decoded === "string" && /^-?\d+$/.test(decoded)) {
+      const integer = BigInt(decoded);
+      if (integer <= BigInt(Number.MAX_SAFE_INTEGER) && integer >= BigInt(Number.MIN_SAFE_INTEGER)) {
+        return Number(integer);
+      }
+    }
+    return decoded;
+  } catch {
+    return value;
+  }
+}
+
 function normalizeValue(value: unknown, field?: Field): unknown {
   if (value != null && field && (DataType.isDate(field.type) || DataType.isTimestamp(field.type))) {
     const date = value instanceof Date ? value : new Date(Number(value));
@@ -15,6 +38,16 @@ function normalizeValue(value: unknown, field?: Field): unknown {
         : iso;
     }
   }
+  if (
+    value != null &&
+    field &&
+    DataType.isDecimal(field.type) &&
+    typeof value === "object" &&
+    "valueOf" in value
+  ) {
+    const number = (value as { valueOf: (scale?: number) => unknown }).valueOf(field.type.scale);
+    if (typeof number === "number" && Number.isFinite(number)) return number;
+  }
   if (typeof value === "bigint") {
     return value <= BigInt(Number.MAX_SAFE_INTEGER) && value >= BigInt(Number.MIN_SAFE_INTEGER)
       ? Number(value)
@@ -22,7 +55,8 @@ function normalizeValue(value: unknown, field?: Field): unknown {
   }
   if (value instanceof Date) return value.toISOString();
   if (value && typeof value === "object" && "toJSON" in value) {
-    return normalizeValue((value as { toJSON: () => unknown }).toJSON());
+    const serialized = (value as { toJSON: () => unknown }).toJSON();
+    return normalizeValue(normalizeJsonScalar(serialized));
   }
   if (Array.isArray(value)) return value.map((item) => normalizeValue(item));
   if (value && typeof value === "object") {
