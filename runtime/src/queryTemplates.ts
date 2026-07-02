@@ -25,6 +25,7 @@ function inFilter(column: string, value: unknown, spec: ParamSpec): string {
 }
 
 function betweenFilter(column: string, value: unknown): string {
+  if (value === "all") return "TRUE";
   if (!value || typeof value !== "object") {
     throw new Error("date_range value must contain start and end");
   }

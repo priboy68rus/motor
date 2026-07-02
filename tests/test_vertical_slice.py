@@ -262,6 +262,39 @@ params:
         compile_report(report)
 
 
+def test_parameter_defaults_are_explicit_in_compiled_spec(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,country,created_at\n1,DE,2026-07-01\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+params:
+  country:
+    type: multiselect
+    options:
+      source: events
+      column: country
+  period:
+    type: date_range
+---
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert spec["params"]["country"]["default"] == "all"
+    assert spec["params"]["country"]["empty_behavior"] == "none"
+    assert spec["params"]["period"]["default"] == "all"
+    assert "empty_behavior" not in spec["params"]["period"]
+
+
 def test_nested_rows_are_rejected(tmp_path: Path) -> None:
     data = tmp_path / "data.csv"
     data.write_text("id,value\n1,10\n", encoding="utf-8")

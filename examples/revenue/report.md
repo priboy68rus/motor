@@ -13,8 +13,6 @@ data:
 params:
   country:
     type: multiselect
-    default: all
-    empty_behavior: all
     options:
       source: orders
       column: country

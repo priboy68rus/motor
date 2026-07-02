@@ -168,11 +168,11 @@ Parameters are declared under `params` and become visible when referenced by a
 
 Supported parameter types:
 
-| Type | `options` | Typical `default` | `empty_behavior` |
+| Type | `options` | Default `default` | Default `empty_behavior` |
 | --- | --- | --- | --- |
-| `select` | required | `all` or one scalar value | `all` or `none` |
-| `multiselect` | required | `all` or a YAML list | `all` or `none` |
-| `date_range` | forbidden | `{start: YYYY-MM-DD, end: YYYY-MM-DD}` | forbidden |
+| `select` | required | `all` | `none` |
+| `multiselect` | required | `all` | `none` |
+| `date_range` | forbidden | `all` | forbidden |
 
 For `select` and `multiselect`, `options.source` must name a configured CSV
 source and `options.column` must exist in that source. The browser loads sorted
@@ -183,8 +183,6 @@ not cascading.
 params:
   country:
     type: multiselect
-    default: all
-    empty_behavior: all
     options:
       source: orders
       column: country
@@ -198,11 +196,14 @@ params:
 
 Selection semantics:
 
+- `default` and `empty_behavior` may be omitted. The defaults are `all` and
+  `none`, respectively, for `select` and `multiselect`.
+- `date_range` also defaults to `all`, which disables its SQL predicate until
+  both dates are selected. It does not support `empty_behavior`.
 - `default: all` disables the corresponding SQL predicate.
 - An empty multiselect with `empty_behavior: all` also disables the predicate.
 - An empty multiselect with `empty_behavior: none` produces no rows.
 - Date ranges include the complete end date.
-- Set defaults explicitly for parameters used by SQL helpers.
 
 Render controls in the given order:
 
@@ -366,8 +367,6 @@ data:
 params:
   country:
     type: multiselect
-    default: all
-    empty_behavior: all
     options:
       source: orders
       column: country
