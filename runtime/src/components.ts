@@ -22,6 +22,7 @@ import type {
 
 type ParamChangeHandler = (name: string, value: unknown, sourceComponentId?: string) => void;
 const AUTO_DROPDOWN_THRESHOLD = 8;
+let selectGroupSequence = 0;
 
 function text(tag: string, value: string, className?: string): HTMLElement {
   const element = document.createElement(tag);
@@ -191,6 +192,50 @@ function checkbox(labelText: string): { label: HTMLLabelElement; input: HTMLInpu
   return { label, input };
 }
 
+function radio(
+  labelText: string,
+  groupName: string,
+): { label: HTMLLabelElement; input: HTMLInputElement } {
+  const label = document.createElement("label");
+  label.className = "motor-filter-option";
+  const input = document.createElement("input");
+  input.type = "radio";
+  input.name = groupName;
+  label.append(input, document.createTextNode(labelText));
+  return { label, input };
+}
+
+function filterDropdown(
+  name: string,
+  controls: HTMLElement,
+): { details: HTMLDetailsElement; summary: HTMLElement; optionList: HTMLElement } {
+  controls.classList.add("motor-multiselect-dropdown-controls");
+  const details = document.createElement("details");
+  details.className = "motor-multiselect-dropdown";
+  const summary = document.createElement("summary");
+  const panel = document.createElement("div");
+  panel.className = "motor-multiselect-panel";
+  const search = document.createElement("input");
+  search.type = "search";
+  search.className = "motor-multiselect-search";
+  search.placeholder = "Search…";
+  search.setAttribute("aria-label", `Search ${paramLabel(name)}`);
+  const optionList = document.createElement("div");
+  optionList.className = "motor-multiselect-options";
+  panel.append(search, optionList);
+  details.append(summary, panel);
+  controls.append(details);
+  search.addEventListener("input", () => {
+    const needle = search.value.trim().toLocaleLowerCase();
+    for (const label of optionList.querySelectorAll<HTMLLabelElement>(
+      ".motor-filter-option[data-filter-value]",
+    )) {
+      label.hidden = !String(label.dataset.filterValue).toLocaleLowerCase().includes(needle);
+    }
+  });
+  return { details, summary, optionList };
+}
+
 function renderMultiselect(
   name: string,
   param: ParamSpec,
@@ -205,30 +250,9 @@ function renderMultiselect(
   let optionList = controls;
   let summary: HTMLElement | undefined;
   if (useDropdown) {
-    controls.classList.add("motor-multiselect-dropdown-controls");
-    const details = document.createElement("details");
-    details.className = "motor-multiselect-dropdown";
-    summary = document.createElement("summary");
-    const panel = document.createElement("div");
-    panel.className = "motor-multiselect-panel";
-    const search = document.createElement("input");
-    search.type = "search";
-    search.className = "motor-multiselect-search";
-    search.placeholder = "Search…";
-    search.setAttribute("aria-label", `Search ${paramLabel(name)}`);
-    optionList = document.createElement("div");
-    optionList.className = "motor-multiselect-options";
-    panel.append(search, optionList);
-    details.append(summary, panel);
-    controls.append(details);
-    search.addEventListener("input", () => {
-      const needle = search.value.trim().toLocaleLowerCase();
-      for (const label of optionList.querySelectorAll<HTMLLabelElement>(
-        ".motor-filter-option[data-filter-value]",
-      )) {
-        label.hidden = !String(label.dataset.filterValue).toLocaleLowerCase().includes(needle);
-      }
-    });
+    const dropdown = filterDropdown(name, controls);
+    summary = dropdown.summary;
+    optionList = dropdown.optionList;
   }
   const all = checkbox("All");
   optionList.append(all.label);
@@ -296,24 +320,34 @@ function renderSelect(
   onChange: ParamChangeHandler,
 ): HTMLElement {
   const { field, controls } = filterField(name, param.label);
-  const select = document.createElement("select");
-  select.className = "motor-select";
-  const all = document.createElement("option");
-  all.value = "all";
-  all.textContent = "All";
-  select.append(all);
-  options.forEach((option, index) => {
-    const element = document.createElement("option");
-    element.value = String(index);
-    element.textContent = String(option);
-    element.selected = value !== "all" && valueKey(option) === valueKey(value);
-    select.append(element);
+  const { details, summary, optionList } = filterDropdown(name, controls);
+  const groupName = `motor-select-${name}-${selectGroupSequence++}`;
+  const all = radio("All", groupName);
+  all.input.checked = value === "all";
+  optionList.append(all.label);
+  const optionInputs = options.map((option) => {
+    const control = radio(String(option), groupName);
+    control.label.dataset.filterValue = String(option);
+    control.input.checked = value !== "all" && valueKey(option) === valueKey(value);
+    optionList.append(control.label);
+    return { input: control.input, value: option };
   });
-  if (value === "all") select.value = "all";
-  select.addEventListener("change", () => {
-    onChange(name, select.value === "all" ? "all" : options[Number(select.value)]);
+  const selected = optionInputs.find((option) => option.input.checked);
+  summary.textContent = all.input.checked ? "All" : selected ? String(selected.value) : "None";
+  all.input.addEventListener("change", () => {
+    if (!all.input.checked) return;
+    summary.textContent = "All";
+    details.open = false;
+    onChange(name, "all");
   });
-  controls.append(select);
+  for (const option of optionInputs) {
+    option.input.addEventListener("change", () => {
+      if (!option.input.checked) return;
+      summary.textContent = String(option.value);
+      details.open = false;
+      onChange(name, option.value);
+    });
+  }
   return field;
 }
 
