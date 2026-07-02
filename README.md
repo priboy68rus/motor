@@ -356,6 +356,14 @@ order by revenue desc
 motor infers source, parameter, and SQL-block dependencies. When a filter
 changes, only affected views, queries, and components are updated.
 
+### Debugging SQL failures
+
+When a browser query fails, every affected component shows the query name, the
+DuckDB error, and the rendered SQL after parameter helpers have been expanded.
+This makes it possible to copy the exact failing statement into DuckDB for
+debugging. A downstream query that was not executed lists the failed named
+dependencies instead.
+
 ### SQL template helpers
 
 Arbitrary Jinja/template expressions are not supported. Only these helpers are

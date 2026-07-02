@@ -701,7 +701,10 @@ export class ReportRenderer {
       );
     } else if (component.query && errors[component.query]) {
       element.className = "motor-card motor-component-error";
-      element.append(text("strong", "Query failed"), text("pre", errors[component.query] ?? ""));
+      element.append(
+        text("strong", `Query failed: ${component.query}`),
+        text("pre", errors[component.query] ?? ""),
+      );
     } else {
       element.className = "motor-card motor-component";
       const rows = component.query ? results[component.query] ?? [] : [];

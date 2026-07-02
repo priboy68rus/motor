@@ -8,14 +8,32 @@ const gzipAsync = promisify(gzip);
 
 await mkdir(destination, { recursive: true });
 const wasm = await readFile(new URL("duckdb-mvp.wasm", distribution));
+const workerSource = await readFile(
+  new URL("duckdb-browser-mvp.worker.js", distribution),
+  "utf8",
+);
+const setThrewMarker =
+  "stackRestore=e=>__emscripten_stack_restore(e),createInvokeFunction=";
+let patchedWorker = workerSource;
+if (workerSource.includes("_setThrew(") && !workerSource.includes("_setThrew=")) {
+  if (!workerSource.includes(setThrewMarker)) {
+    throw new Error("cannot patch DuckDB MVP worker: setThrew insertion point changed");
+  }
+  patchedWorker = workerSource.replace(
+    setThrewMarker,
+    "stackRestore=e=>__emscripten_stack_restore(e)," +
+      "_setThrew=(error,value)=>wasmExports.setThrew(error,value)," +
+      "createInvokeFunction=",
+  );
+}
 await Promise.all([
   writeFile(
     new URL("duckdb-mvp.wasm.gz", destination),
     await gzipAsync(wasm, { level: 9 }),
   ),
-  copyFile(
-    new URL("duckdb-browser-mvp.worker.js", distribution),
+  writeFile(
     new URL("duckdb-browser-mvp.worker.js", destination),
+    patchedWorker,
   ),
   copyFile(
     new URL("../node_modules/vega/build/vega.min.js", import.meta.url),

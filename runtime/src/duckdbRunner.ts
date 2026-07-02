@@ -98,6 +98,11 @@ function quoteIdentifier(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
+function queryError(name: string, error: unknown, sql: string): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return `Query: ${name}\n${message}\n\nRendered SQL:\n${sql}`;
+}
+
 export class DuckDBRunner {
   private database?: duckdb.AsyncDuckDB;
   private connection?: duckdb.AsyncDuckDBConnection;
@@ -156,13 +161,17 @@ export class DuckDBRunner {
       onProgress?.(name);
       const query = spec.queries[name];
       if (!query) continue;
-      if (query.depends_on.queries.some((dependency) => failed.has(dependency))) {
+      const failedDependencies = query.depends_on.queries.filter((dependency) =>
+        failed.has(dependency),
+      );
+      if (failedDependencies.length > 0) {
         failed.add(name);
-        errors[name] = "a query dependency failed";
+        errors[name] = `Query: ${name}\nSkipped because dependencies failed: ${failedDependencies.join(", ")}`;
         continue;
       }
+      let sql = query.sql_template;
       try {
-        const sql = renderQueryTemplate(query, spec.params, values);
+        sql = renderQueryTemplate(query, spec.params, values);
         if (query.kind === "view") {
           await this.connection.query(`CREATE OR REPLACE VIEW "${name}" AS ${sql}`);
         } else {
@@ -176,7 +185,7 @@ export class DuckDBRunner {
         }
       } catch (error) {
         failed.add(name);
-        errors[name] = error instanceof Error ? error.message : String(error);
+        errors[name] = queryError(name, error, sql);
       }
     }
     return { results, errors };

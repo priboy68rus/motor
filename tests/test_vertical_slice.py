@@ -14,6 +14,13 @@ from motor.inspect import inspect_artifact
 
 
 EXAMPLE = Path(__file__).parents[1] / "examples" / "revenue" / "report.md"
+DUCKDB_WORKER = (
+    Path(__file__).parents[1]
+    / "src"
+    / "motor"
+    / "static"
+    / "duckdb-browser-mvp.worker.js"
+)
 
 
 def test_script_escaping_preserves_javascript_regexes() -> None:
@@ -23,6 +30,12 @@ def test_script_escaping_preserves_javascript_regexes() -> None:
 
     assert r"/<\//g" in escaped
     assert "</script" not in escaped.lower()
+
+
+def test_duckdb_worker_preserves_sql_exception_messages() -> None:
+    worker = DUCKDB_WORKER.read_text(encoding="utf-8")
+
+    assert "_setThrew=(error,value)=>wasmExports.setThrew(error,value)" in worker
 
 
 def test_markdown_comments_exclude_sql_components_and_layout(tmp_path: Path) -> None:
