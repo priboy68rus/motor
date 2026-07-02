@@ -573,6 +573,15 @@ def _extract_components(
                     "Heatmap format must be one of: number, percent"
                 )
         if component_type == "BigValue":
+            value_format = attributes.get("format")
+            if value_format is not None and value_format not in {
+                "number",
+                "currency",
+                "percent",
+            }:
+                raise ReportValidationError(
+                    "BigValue format must be one of: number, currency, percent"
+                )
             comparison_attributes = {"delta", "delta_label", "direction"}
             compare_value = attributes.get("compare_value")
             if compare_value is not None and not str(compare_value).strip():

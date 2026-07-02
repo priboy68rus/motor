@@ -30,6 +30,12 @@ function formatValue(value: unknown, component: ComponentSpec): string {
       currency: String(component.props.currency ?? "USD"),
     }).format(Number(value));
   }
+  if (component.props.format === "percent") {
+    return new Intl.NumberFormat(undefined, {
+      style: "percent",
+      maximumFractionDigits: 1,
+    }).format(Number(value));
+  }
   if (typeof value === "number") return new Intl.NumberFormat().format(value);
   return String(value);
 }
@@ -43,6 +49,13 @@ function formatSignedValue(value: number, component: ComponentSpec): string {
     return new Intl.NumberFormat(undefined, {
       style: "currency",
       currency: String(component.props.currency ?? "USD"),
+      signDisplay: "always",
+    }).format(value);
+  }
+  if (component.props.format === "percent") {
+    return new Intl.NumberFormat(undefined, {
+      style: "percent",
+      maximumFractionDigits: 1,
       signDisplay: "always",
     }).format(value);
   }

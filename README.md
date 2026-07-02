@@ -411,7 +411,7 @@ should be quoted, and declarations may span multiple lines.
 | `Text` | `text` | `title`, `placement` | Plain text card. Line breaks are preserved; Markdown and HTML are not interpreted. `placement` is `content` (default) or `sidebar`. |
 | `DataStatus` | — | — | Check status, data-through time, processing time, and build time. |
 | `VersionBadge` | — | — | Tool version and artifact ID. |
-| `BigValue` | `query`, `value` | `title`, `format`, `currency`, `compare_value`, `delta`, `delta_label`, `direction` | Value and optional comparison from the first query row. `format="currency"` uses the ISO currency code from `currency`. |
+| `BigValue` | `query`, `value` | `title`, `format`, `currency`, `compare_value`, `delta`, `delta_label`, `direction` | Value and optional comparison from the first query row. `format` is `number`, `currency`, or `percent`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
 | `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `marker`, `color_scheme`, `color_direction`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
 | `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack`, `bar_width` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
@@ -421,6 +421,19 @@ should be quoted, and declarations may span multiple lines.
 names such as `value`, `x`, and `y` must exist in its result.
 
 #### BigValue comparisons
+
+BigValue uses ordinary localized number formatting by default.
+`format="currency"` uses the ISO currency code from `currency`;
+`format="percent"` expects a fractional value, so `0.425` renders as `42.5%`:
+
+```md
+<BigValue
+  query="retention_summary"
+  value="retention"
+  format="percent"
+  title="Current retention"
+/>
+```
 
 Keep period logic in SQL and return the current and comparison values as two
 columns of the same row:
@@ -442,6 +455,7 @@ columns of the same row:
 `value - compare_value`; percentage change divides that difference by the
 absolute comparison value. When the comparison is zero, the percentage is
 shown as `—` while the absolute delta remains available.
+An absolute delta inherits the main value format, including `percent`.
 
 `direction` controls semantic coloring: `higher_is_better`,
 `lower_is_better`, or `neutral` (default). `delta_label` is optional. If the

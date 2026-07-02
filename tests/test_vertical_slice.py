@@ -737,6 +737,33 @@ select max(value) as current_value, min(value) as previous_value from events
     }
 
 
+def test_big_value_accepts_percent_format(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("retention\n0.425\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  cohorts:
+    path: data.csv
+---
+```sql name=summary kind=query
+select retention from cohorts
+```
+<BigValue query="summary" value="retention" format="percent" />
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    component = next(item for item in spec["components"] if item["type"] == "BigValue")
+    assert component["props"]["format"] == "percent"
+
+
 @pytest.mark.parametrize(
     ("attributes", "message"),
     [
@@ -744,6 +771,7 @@ select max(value) as current_value, min(value) as previous_value from events
         ('delta="absolute"', "comparison attributes require compare_value"),
         ('compare_value="previous" delta="relative"', "delta must be one of"),
         ('compare_value="previous" direction="up"', "direction must be one of"),
+        ('format="ratio"', "format must be one of"),
     ],
 )
 def test_big_value_comparison_is_validated(
