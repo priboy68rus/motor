@@ -58,6 +58,7 @@ def test_compiles_query_graph_and_components() -> None:
     assert chart["props"]["x"] == "country"
     filters = next(item for item in spec["components"] if item["type"] == "Filters")
     assert filters["props"]["title"] == "Report filters"
+    assert spec["params"]["country"]["control"] == "dropdown"
     assert {item["type"] for item in spec["components"]} >= {
         "DataStatus",
         "VersionBadge",
@@ -293,6 +294,7 @@ params:
 
     assert spec["params"]["country"]["default"] == "all"
     assert spec["params"]["country"]["empty_behavior"] == "none"
+    assert spec["params"]["country"]["control"] == "auto"
     assert spec["params"]["period"]["default"] == "all"
     assert "empty_behavior" not in spec["params"]["period"]
 

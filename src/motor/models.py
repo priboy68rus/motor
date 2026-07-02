@@ -31,6 +31,7 @@ class ParamConfig(StrictModel):
     type: Literal["select", "multiselect", "date_range"]
     default: Any = "all"
     empty_behavior: Literal["all", "none"] | None = None
+    control: Literal["auto", "checkboxes", "dropdown"] | None = None
     options: ParamOptions | None = None
 
     @model_validator(mode="after")
@@ -39,10 +40,14 @@ class ParamConfig(StrictModel):
             raise ValueError("date_range parameters cannot declare options")
         if self.type == "date_range" and self.empty_behavior is not None:
             raise ValueError("date_range parameters cannot declare empty_behavior")
+        if self.type != "multiselect" and self.control is not None:
+            raise ValueError("only multiselect parameters can declare control")
         if self.type in {"select", "multiselect"} and self.options is None:
             raise ValueError(f"{self.type} parameters must declare options")
         if self.type in {"select", "multiselect"} and self.empty_behavior is None:
             self.empty_behavior = "none"
+        if self.type == "multiselect" and self.control is None:
+            self.control = "auto"
         return self
 
 

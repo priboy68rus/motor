@@ -179,10 +179,22 @@ source and `options.column` must exist in that source. The browser loads sorted
 distinct non-null values from that column. Filter options are currently static,
 not cascading.
 
+`multiselect` also accepts an optional `control` field:
+
+| `control` | Behavior |
+| --- | --- |
+| `auto` | Default. Uses checkboxes for up to 8 options and a searchable dropdown for 9 or more. |
+| `checkboxes` | Always renders inline checkboxes. |
+| `dropdown` | Always renders a searchable dropdown with a selected-value summary. |
+
+The dropdown keeps `All` and `empty_behavior` semantics unchanged and limits
+the visible option list with an internal scrollbar.
+
 ```yaml
 params:
   country:
     type: multiselect
+    control: dropdown
     options:
       source: orders
       column: country

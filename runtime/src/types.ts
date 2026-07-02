@@ -10,6 +10,7 @@ export type ParamSpec = {
   type: "select" | "multiselect" | "date_range";
   default: unknown;
   empty_behavior?: "all" | "none";
+  control?: "auto" | "checkboxes" | "dropdown";
   options?: { source: string; column: string };
 };
 

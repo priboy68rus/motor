@@ -12,6 +12,7 @@ import type {
 } from "./types";
 
 type ParamChangeHandler = (name: string, value: unknown) => void;
+const AUTO_DROPDOWN_THRESHOLD = 8;
 
 function text(tag: string, value: string, className?: string): HTMLElement {
   const element = document.createElement(tag);
@@ -126,18 +127,66 @@ function renderMultiselect(
   onChange: ParamChangeHandler,
 ): HTMLElement {
   const { field, controls } = filterField(name);
+  const useDropdown =
+    param.control === "dropdown" ||
+    (param.control !== "checkboxes" && options.length > AUTO_DROPDOWN_THRESHOLD);
+  let optionList = controls;
+  let summary: HTMLElement | undefined;
+  if (useDropdown) {
+    controls.classList.add("motor-multiselect-dropdown-controls");
+    const details = document.createElement("details");
+    details.className = "motor-multiselect-dropdown";
+    summary = document.createElement("summary");
+    const panel = document.createElement("div");
+    panel.className = "motor-multiselect-panel";
+    const search = document.createElement("input");
+    search.type = "search";
+    search.className = "motor-multiselect-search";
+    search.placeholder = "Search…";
+    search.setAttribute("aria-label", `Search ${paramLabel(name)}`);
+    optionList = document.createElement("div");
+    optionList.className = "motor-multiselect-options";
+    panel.append(search, optionList);
+    details.append(summary, panel);
+    controls.append(details);
+    search.addEventListener("input", () => {
+      const needle = search.value.trim().toLocaleLowerCase();
+      for (const label of optionList.querySelectorAll<HTMLLabelElement>(
+        ".motor-filter-option[data-filter-value]",
+      )) {
+        label.hidden = !String(label.dataset.filterValue).toLocaleLowerCase().includes(needle);
+      }
+    });
+  }
   const all = checkbox("All");
-  controls.append(all.label);
+  optionList.append(all.label);
   const selected = new Set(Array.isArray(value) ? value.map(valueKey) : []);
   const optionInputs = options.map((option) => {
     const control = checkbox(String(option));
+    control.label.dataset.filterValue = String(option);
     control.input.checked = selected.has(valueKey(option));
-    controls.append(control.label);
-    return { input: control.input, value: option };
+    optionList.append(control.label);
+    return { input: control.input, label: control.label, value: option };
   });
   const allSelected = value === "all" || (selected.size === 0 && param.empty_behavior === "all");
   all.input.checked = allSelected;
   if (allSelected) for (const option of optionInputs) option.input.checked = false;
+
+  const updateSummary = (): void => {
+    if (!summary) return;
+    if (all.input.checked) {
+      summary.textContent = "All";
+      return;
+    }
+    const selectedOptions = optionInputs.filter((item) => item.input.checked);
+    summary.textContent =
+      selectedOptions.length === 0
+        ? "None"
+        : selectedOptions.length === 1
+          ? String(selectedOptions[0]?.value)
+          : `${selectedOptions.length} selected`;
+  };
+  updateSummary();
 
   all.input.addEventListener("change", () => {
     if (all.input.checked) {
@@ -149,6 +198,7 @@ function renderMultiselect(
     } else {
       onChange(name, []);
     }
+    updateSummary();
   });
   for (const option of optionInputs) {
     option.input.addEventListener("change", () => {
@@ -160,6 +210,7 @@ function renderMultiselect(
       } else {
         onChange(name, values);
       }
+      updateSummary();
     });
   }
   return field;

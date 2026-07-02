@@ -13,6 +13,7 @@ data:
 params:
   country:
     type: multiselect
+    control: dropdown
     options:
       source: orders
       column: country
