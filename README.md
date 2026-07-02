@@ -403,8 +403,9 @@ should be quoted, and declarations may span multiple lines.
 | `VersionBadge` | — | — | Tool version and artifact ID. |
 | `BigValue` | `query`, `value` | `title`, `format`, `currency`, `compare_value`, `delta`, `delta_label`, `direction` | Value and optional comparison from the first query row. `format="currency"` uses the ISO currency code from `currency`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
-| `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `marker`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
+| `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `marker`, `color_scheme`, `color_direction`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
 | `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack`, `bar_width` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
+| `Heatmap` | `query`, `x`, `y`, `value` | `title`, `format`, `color_scheme`, `color_direction` | Rectangular heatmap with a quantitative gradient. `format` is `number` (default) or `percent`. |
 
 `query` must reference an existing `kind=query` SQL block. Referenced column
 names such as `value`, `x`, and `y` must exist in its result.
@@ -451,6 +452,58 @@ filled markers. All line charts use a larger invisible hit area around each
 value, including when `marker="none"`, so tooltips do not require pixel-perfect
 hovering.
 
+#### Cohorts, retention, and heatmaps
+
+Retention calculations stay in SQL. Return one row per cohort and period with
+a numeric retention value; `format="percent"` expects a fraction from `0` to
+`1`:
+
+```sql
+select cohort_month, period_number, retained_users * 1.0 / cohort_size as retention
+from cohort_metrics
+```
+
+Use a normal `LineChart` for cohort curves. `color_scheme` enables an ordered
+sequential palette for the `group` or `color` field:
+
+```md
+<LineChart
+  query="retention"
+  x="period_number"
+  y="retention"
+  group="cohort_month"
+  marker="point"
+  format="percent"
+  color_scheme="blues"
+  color_direction="higher_is_darker"
+  title="Retention by cohort"
+/>
+```
+
+For ISO cohort dates, `higher_is_darker` makes newer cohorts darker;
+`lower_is_darker` reverses the palette. The same direction names apply to a
+heatmap's numeric `value` scale:
+
+```md
+<Heatmap
+  query="retention"
+  x="period_number"
+  y="cohort_month"
+  value="retention"
+  format="percent"
+  color_scheme="blues"
+  color_direction="higher_is_darker"
+  title="Retention heatmap"
+/>
+```
+
+`Heatmap` defaults to `color_scheme="blues"` and
+`color_direction="higher_is_darker"`. Its X and Y values are discrete and
+sorted ascending. Missing rows produce empty cells; zero remains a real value.
+Any Vega sequential scheme name may be used, for example `blues`, `greens`,
+`viridis`, `magma`, `inferno`, or `cividis`. An unknown scheme is reported as a
+chart-rendering error in the report.
+
 `BarChart` stack modes:
 
 | `stack` | Behavior |
@@ -484,10 +537,10 @@ With a dimension parameter set to `none`, all rows use the empty-string group,
 so the chart has one series and may show a blank legend item. Its dynamic
 legend title ends in `Nothing`.
 
-The chart `format` and `currency` attributes remain reserved for future axis
-formatting and are not yet applied by the Vega adapter. Number and currency
-formatting is implemented for `BigValue`; table cells use basic automatic
-number formatting.
+Chart `format="percent"` formats quantitative axes as percentages and heatmap
+legends/tooltips as percentages. Other chart formatting and `currency` remain
+reserved for future adapter work. Number and currency formatting is implemented
+for `BigValue`; table cells use basic automatic number formatting.
 
 Examples:
 

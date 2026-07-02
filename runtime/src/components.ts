@@ -718,7 +718,11 @@ export class ReportRenderer {
       const rows = component.query ? results[component.query] ?? [] : [];
       if (component.type === "Table") renderTable(element, rows, component);
       else if (component.type === "BigValue") renderBigValue(element, rows, component);
-      else if (component.type === "LineChart" || component.type === "BarChart") {
+      else if (
+        component.type === "LineChart" ||
+        component.type === "BarChart" ||
+        component.type === "Heatmap"
+      ) {
         const chart = document.createElement("div");
         chart.className = "motor-chart";
         element.append(chart);

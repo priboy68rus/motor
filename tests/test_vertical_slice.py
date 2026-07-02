@@ -545,6 +545,115 @@ select country, value from events
     assert chart["props"]["bar_width"] == 24.5
 
 
+def test_cohort_gradient_and_heatmap_contract(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text(
+        "cohort_month,period_number,retention\n2026-01-01,0,1.0\n2026-01-01,1,0.5\n",
+        encoding="utf-8",
+    )
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  cohorts:
+    path: data.csv
+---
+```sql name=retention kind=query
+select cohort_month, period_number, retention from cohorts
+```
+<LineChart
+  query="retention"
+  x="period_number"
+  y="retention"
+  group="cohort_month"
+  color_scheme="viridis"
+  color_direction="lower_is_darker"
+/>
+<Heatmap
+  query="retention"
+  x="period_number"
+  y="cohort_month"
+  value="retention"
+  format="percent"
+/>
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    line = next(item for item in spec["components"] if item["type"] == "LineChart")
+    assert line["props"]["color_scheme"] == "viridis"
+    assert line["props"]["color_direction"] == "lower_is_darker"
+    heatmap = next(item for item in spec["components"] if item["type"] == "Heatmap")
+    assert heatmap["props"] == {
+        "x": "period_number",
+        "y": "cohort_month",
+        "value": "retention",
+        "format": "percent",
+        "color_scheme": "blues",
+        "color_direction": "higher_is_darker",
+    }
+
+
+@pytest.mark.parametrize(
+    ("component", "message"),
+    [
+        (
+            '<LineChart query="retention" x="period_number" y="retention" '
+            'color_scheme="blues" />',
+            "requires a group or color attribute",
+        ),
+        (
+            '<LineChart query="retention" x="period_number" y="retention" '
+            'group="cohort_month" color_direction="higher_is_darker" />',
+            "color_direction requires color_scheme",
+        ),
+        (
+            '<Heatmap query="retention" x="period_number" y="cohort_month" '
+            'value="retention" color_direction="sideways" />',
+            "color_direction must be one of",
+        ),
+        (
+            '<Heatmap query="retention" x="period_number" y="cohort_month" '
+            'value="retention" format="currency" />',
+            "format must be one of",
+        ),
+    ],
+)
+def test_cohort_chart_options_are_validated(
+    tmp_path: Path, component: str, message: str
+) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text(
+        "cohort_month,period_number,retention\n2026-01-01,0,1.0\n",
+        encoding="utf-8",
+    )
+    report = tmp_path / "report.md"
+    report.write_text(
+        f"""---
+title: Test
+slug: test
+timezone: UTC
+data:
+  cohorts:
+    path: data.csv
+---
+```sql name=retention kind=query
+select cohort_month, period_number, retention from cohorts
+```
+{component}
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match=message):
+        compile_report(report)
+
+
 def test_big_value_comparison_contract(tmp_path: Path) -> None:
     data = tmp_path / "data.csv"
     data.write_text("value\n100\n120\n", encoding="utf-8")

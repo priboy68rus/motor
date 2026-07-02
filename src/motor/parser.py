@@ -79,6 +79,8 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "group",
             "color",
             "marker",
+            "color_scheme",
+            "color_direction",
         },
     ),
     "BarChart": (
@@ -94,6 +96,19 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "color",
             "stack",
             "bar_width",
+        },
+    ),
+    "Heatmap": (
+        {"query", "x", "y", "value"},
+        {
+            "query",
+            "x",
+            "y",
+            "value",
+            "title",
+            "format",
+            "color_scheme",
+            "color_direction",
         },
     ),
 }
@@ -522,6 +537,40 @@ def _extract_components(
             if marker not in {"none", "point", "circle"}:
                 raise ReportValidationError(
                     "LineChart marker must be one of: none, point, circle"
+                )
+            color_scheme = attributes.get("color_scheme")
+            if color_scheme is not None:
+                if not str(color_scheme).strip():
+                    raise ReportValidationError(
+                        "LineChart color_scheme must not be empty"
+                    )
+                if not ({"group", "color"} & set(attributes)):
+                    raise ReportValidationError(
+                        "LineChart color_scheme requires a group or color attribute"
+                    )
+                attributes.setdefault("color_direction", "higher_is_darker")
+            elif "color_direction" in attributes:
+                raise ReportValidationError(
+                    "LineChart color_direction requires color_scheme"
+                )
+        if component_type in {"LineChart", "Heatmap"} and "color_direction" in attributes:
+            if attributes["color_direction"] not in {
+                "higher_is_darker",
+                "lower_is_darker",
+            }:
+                raise ReportValidationError(
+                    f"{component_type} color_direction must be one of: "
+                    "higher_is_darker, lower_is_darker"
+                )
+        if component_type == "Heatmap":
+            color_scheme = attributes.setdefault("color_scheme", "blues")
+            if not str(color_scheme).strip():
+                raise ReportValidationError("Heatmap color_scheme must not be empty")
+            attributes.setdefault("color_direction", "higher_is_darker")
+            heatmap_format = attributes.setdefault("format", "number")
+            if heatmap_format not in {"number", "percent"}:
+                raise ReportValidationError(
+                    "Heatmap format must be one of: number, percent"
                 )
         if component_type == "BigValue":
             comparison_attributes = {"delta", "delta_label", "direction"}

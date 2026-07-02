@@ -26,7 +26,7 @@ export type QuerySpec = {
 
 export type ComponentSpec = {
   id: string;
-  type: "Filters" | "Text" | "DataStatus" | "VersionBadge" | "BigValue" | "Table" | "LineChart" | "BarChart";
+  type: "Filters" | "Text" | "DataStatus" | "VersionBadge" | "BigValue" | "Table" | "LineChart" | "BarChart" | "Heatmap";
   query?: string;
   props: Record<string, unknown>;
 };

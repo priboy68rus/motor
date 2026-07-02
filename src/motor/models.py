@@ -170,6 +170,7 @@ class ComponentSpec(StrictModel):
         "Table",
         "LineChart",
         "BarChart",
+        "Heatmap",
     ]
     query: str | None = None
     props: dict[str, Any] = Field(default_factory=dict)
