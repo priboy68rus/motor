@@ -5,6 +5,55 @@ self-contained HTML artifact. The compiler validates a report's parameters,
 named SQL dependency graph, components, source identity, and freshness before
 packaging the source data.
 
+## Install from GitHub
+
+Python 3.11 or newer and Git are required. Node.js is not required to build
+reports; the compiled browser runtime is included in the Python package.
+
+Install motor into an isolated virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install "git+https://github.com/priboy68rus/motor.git@master"
+motor --help
+```
+
+For a reproducible installation, replace `master` with a specific commit SHA:
+
+```bash
+python -m pip install "git+https://github.com/priboy68rus/motor.git@<commit-sha>"
+```
+
+Alternatively, install the `motor` command globally with
+[pipx](https://pipx.pypa.io/):
+
+```bash
+pipx install "git+https://github.com/priboy68rus/motor.git@master"
+```
+
+### Build a report
+
+Source paths in `report.md` are resolved relative to that file. Validate the
+specification and its CSV files before building:
+
+```bash
+motor validate path/to/report.md
+motor build path/to/report.md --out report.html
+motor inspect report.html
+```
+
+Open `report.html` directly in a modern browser. The generated report contains
+its runtime and data and does not require a server or network connection.
+
+To update an existing virtual-environment installation from `master`:
+
+```bash
+python -m pip install --force-reinstall \
+  "git+https://github.com/priboy68rus/motor.git@master"
+```
+
 ## Development
 
 Python 3.11 or newer is required.
