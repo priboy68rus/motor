@@ -193,6 +193,51 @@ def test_compiles_query_graph_and_components() -> None:
     ]
 
 
+def test_select_parameter_is_a_reactive_single_value_filter(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("country,value\nDE,10\nFR,20\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+params:
+  country:
+    type: select
+    label: Country
+    options:
+      source: events
+      column: country
+---
+<Filters params="country" />
+```sql name=filtered kind=query
+select * from events where {{ in_filter("country", country) }}
+```
+<Table query="filtered" />
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert spec["params"]["country"] == {
+        "type": "select",
+        "label": "Country",
+        "default": "all",
+        "empty_behavior": "none",
+        "options": {"source": "events", "column": "country"},
+    }
+    assert spec["queries"]["filtered"]["depends_on"] == {
+        "sources": ["events"],
+        "params": ["country"],
+        "queries": [],
+    }
+
+
 def test_content_identity_excludes_build_time() -> None:
     first, _, _ = compile_report(
         EXAMPLE, built_at=datetime(2026, 7, 1, 10, tzinfo=timezone.utc)

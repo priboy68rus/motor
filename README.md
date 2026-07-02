@@ -235,6 +235,13 @@ Each entry in dimension `choices` supports:
 
 ```yaml
 params:
+  region:
+    type: select
+    label: Region
+    options:
+      source: orders
+      column: region
+
   country:
     type: multiselect
     control: dropdown
@@ -268,6 +275,9 @@ Selection semantics:
 
 - `default` and `empty_behavior` may be omitted. The defaults are `all` and
   `none`, respectively, for `select` and `multiselect`.
+- `select` renders one dropdown and stores either one source value or `all`.
+  It uses the same `in_filter` SQL helper and reactive query updates as
+  `multiselect`, but never returns an array.
 - `date_range` also defaults to `all`, which disables its SQL predicate until
   both dates are selected. It does not support `empty_behavior`.
 - `default: all` disables the corresponding SQL predicate.
