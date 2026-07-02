@@ -6,13 +6,15 @@ declare const vegaEmbed: (
   element: HTMLElement,
   spec: TopLevelSpec,
   options: { actions: boolean; renderer: "svg" },
-) => Promise<unknown>;
+) => Promise<{ view: { finalize: () => void } }>;
+
+export type ChartHandle = { finalize: () => void };
 
 export async function renderChart(
   element: HTMLElement,
   component: ComponentSpec,
   rows: QueryRow[],
-): Promise<void> {
+): Promise<ChartHandle> {
   const mark = component.type === "LineChart" ? "line" : "bar";
   const x = String(component.props.x);
   const y = String(component.props.y);
@@ -37,5 +39,6 @@ export async function renderChart(
       ...(group ? { color: { field: String(group), type: "nominal" } } : {}),
     },
   };
-  await vegaEmbed(element, spec, { actions: false, renderer: "svg" });
+  const result = await vegaEmbed(element, spec, { actions: false, renderer: "svg" });
+  return { finalize: () => result.view.finalize() };
 }

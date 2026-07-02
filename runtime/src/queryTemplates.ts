@@ -32,7 +32,7 @@ function betweenFilter(column: string, value: unknown): string {
   if (range.start == null || range.end == null) {
     throw new Error("date_range value must contain start and end");
   }
-  return `${quoteIdentifier(column)} BETWEEN ${quoteValue(range.start)} AND ${quoteValue(range.end)}`;
+  return `${quoteIdentifier(column)} >= ${quoteValue(range.start)} AND ${quoteIdentifier(column)} < (CAST(${quoteValue(range.end)} AS DATE) + INTERVAL 1 DAY)`;
 }
 
 export function renderQueryTemplate(

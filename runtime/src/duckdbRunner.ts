@@ -2,7 +2,7 @@ import * as duckdb from "@duckdb/duckdb-wasm";
 
 import { createEmbeddedDuckDBWorker } from "./dataLoader";
 import { renderQueryTemplate } from "./queryTemplates";
-import type { QueryResults, QueryRow, ReportSpec } from "./types";
+import type { ParamOptions, ParamValues, QueryResults, QueryRow, ReportSpec } from "./types";
 
 function normalizeValue(value: unknown): unknown {
   if (typeof value === "bigint") {
@@ -48,12 +48,19 @@ function queryOrder(spec: ReportSpec): string[] {
   return ordered;
 }
 
+function quoteIdentifier(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
 export class DuckDBRunner {
   private database?: duckdb.AsyncDuckDB;
   private connection?: duckdb.AsyncDuckDBConnection;
   private urls: string[] = [];
+  private snapshotKey = "";
+  private queryCache = new Map<string, QueryRow[]>();
 
-  async initialize(sources: Record<string, string>): Promise<void> {
+  async initialize(sources: Record<string, string>, snapshotKey: string): Promise<void> {
+    this.snapshotKey = snapshotKey;
     const { worker, workerUrl } = await createEmbeddedDuckDBWorker();
     this.urls.push(workerUrl);
     this.database = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
@@ -71,10 +78,25 @@ export class DuckDBRunner {
     }
   }
 
+  async loadParamOptions(spec: ReportSpec): Promise<ParamOptions> {
+    if (!this.connection) throw new Error("DuckDB is not initialized");
+    const options: ParamOptions = {};
+    for (const [name, param] of Object.entries(spec.params)) {
+      if (!param.options) continue;
+      const source = quoteIdentifier(param.options.source);
+      const column = quoteIdentifier(param.options.column);
+      const sql = `SELECT DISTINCT ${column} AS value FROM ${source} WHERE ${column} IS NOT NULL ORDER BY 1`;
+      const rows = tableRows(await this.connection.query(sql));
+      options[name] = rows.map((row) => row.value);
+    }
+    return options;
+  }
+
   async run(
     spec: ReportSpec,
-    values: Record<string, unknown>,
+    values: ParamValues,
     onProgress?: (queryName: string) => void,
+    queryNames?: ReadonlySet<string>,
   ): Promise<{
     results: QueryResults;
     errors: Record<string, string>;
@@ -84,6 +106,7 @@ export class DuckDBRunner {
     const errors: Record<string, string> = {};
     const failed = new Set<string>();
     for (const name of queryOrder(spec)) {
+      if (queryNames && !queryNames.has(name)) continue;
       onProgress?.(name);
       const query = spec.queries[name];
       if (!query) continue;
@@ -97,7 +120,13 @@ export class DuckDBRunner {
         if (query.kind === "view") {
           await this.connection.query(`CREATE OR REPLACE VIEW "${name}" AS ${sql}`);
         } else {
-          results[name] = tableRows(await this.connection.query(sql));
+          const paramKey = JSON.stringify(
+            query.depends_on.params.map((paramName) => [paramName, values[paramName]]),
+          );
+          const cacheKey = `${this.snapshotKey}\u0000${name}\u0000${sql}\u0000${paramKey}`;
+          const cached = this.queryCache.get(cacheKey);
+          results[name] = cached ?? tableRows(await this.connection.query(sql));
+          if (!cached) this.queryCache.set(cacheKey, results[name] ?? []);
         }
       } catch (error) {
         failed.add(name);

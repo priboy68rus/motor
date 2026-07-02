@@ -1,5 +1,17 @@
 import { renderChart } from "./charts/vegaAdapter";
-import type { ComponentSpec, Manifest, QueryResults, QueryRow, ReportSpec } from "./types";
+import type { ChartHandle } from "./charts/vegaAdapter";
+import type {
+  ComponentSpec,
+  Manifest,
+  ParamOptions,
+  ParamSpec,
+  ParamValues,
+  QueryResults,
+  QueryRow,
+  ReportSpec,
+} from "./types";
+
+type ParamChangeHandler = (name: string, value: unknown) => void;
 
 function text(tag: string, value: string, className?: string): HTMLElement {
   const element = document.createElement(tag);
@@ -77,36 +89,262 @@ function renderBigValue(element: HTMLElement, rows: QueryRow[], component: Compo
   element.append(text("div", formatValue(value, component), "motor-big-value"));
 }
 
-function renderFiltersPlaceholder(element: HTMLElement, spec: ReportSpec, component: ComponentSpec): void {
-  element.className = "motor-card motor-filter-placeholder";
-  element.append(text("h2", "Filters"));
-  const names = Array.isArray(component.props.params) ? component.props.params : [];
-  element.append(
-    text(
-      "p",
-      names.map((name) => `${String(name)}: ${JSON.stringify(spec.params[String(name)]?.default)}`).join(" · "),
-    ),
-  );
+function paramLabel(name: string): string {
+  return name.replaceAll("_", " ").replace(/^./, (value) => value.toUpperCase());
 }
 
-export async function renderComponents(
-  root: HTMLElement,
-  manifest: Manifest,
+function valueKey(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+function filterField(name: string): { field: HTMLElement; controls: HTMLElement } {
+  const field = document.createElement("fieldset");
+  field.className = "motor-filter";
+  field.dataset.paramName = name;
+  const legend = document.createElement("legend");
+  legend.textContent = paramLabel(name);
+  const controls = document.createElement("div");
+  controls.className = "motor-filter-controls";
+  field.append(legend, controls);
+  return { field, controls };
+}
+
+function checkbox(labelText: string): { label: HTMLLabelElement; input: HTMLInputElement } {
+  const label = document.createElement("label");
+  label.className = "motor-filter-option";
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  label.append(input, document.createTextNode(labelText));
+  return { label, input };
+}
+
+function renderMultiselect(
+  name: string,
+  param: ParamSpec,
+  options: unknown[],
+  value: unknown,
+  onChange: ParamChangeHandler,
+): HTMLElement {
+  const { field, controls } = filterField(name);
+  const all = checkbox("All");
+  controls.append(all.label);
+  const selected = new Set(Array.isArray(value) ? value.map(valueKey) : []);
+  const optionInputs = options.map((option) => {
+    const control = checkbox(String(option));
+    control.input.checked = selected.has(valueKey(option));
+    controls.append(control.label);
+    return { input: control.input, value: option };
+  });
+  const allSelected = value === "all" || (selected.size === 0 && param.empty_behavior === "all");
+  all.input.checked = allSelected;
+  if (allSelected) for (const option of optionInputs) option.input.checked = false;
+
+  all.input.addEventListener("change", () => {
+    if (all.input.checked) {
+      for (const option of optionInputs) option.input.checked = false;
+      onChange(name, "all");
+    } else if (param.empty_behavior === "all") {
+      all.input.checked = true;
+      onChange(name, "all");
+    } else {
+      onChange(name, []);
+    }
+  });
+  for (const option of optionInputs) {
+    option.input.addEventListener("change", () => {
+      all.input.checked = false;
+      const values = optionInputs.filter((item) => item.input.checked).map((item) => item.value);
+      if (values.length === 0 && param.empty_behavior === "all") {
+        all.input.checked = true;
+        onChange(name, "all");
+      } else {
+        onChange(name, values);
+      }
+    });
+  }
+  return field;
+}
+
+function renderSelect(
+  name: string,
+  options: unknown[],
+  value: unknown,
+  onChange: ParamChangeHandler,
+): HTMLElement {
+  const { field, controls } = filterField(name);
+  const select = document.createElement("select");
+  select.className = "motor-select";
+  const all = document.createElement("option");
+  all.value = "all";
+  all.textContent = "All";
+  select.append(all);
+  options.forEach((option, index) => {
+    const element = document.createElement("option");
+    element.value = String(index);
+    element.textContent = String(option);
+    element.selected = value !== "all" && valueKey(option) === valueKey(value);
+    select.append(element);
+  });
+  if (value === "all") select.value = "all";
+  select.addEventListener("change", () => {
+    onChange(name, select.value === "all" ? "all" : options[Number(select.value)]);
+  });
+  controls.append(select);
+  return field;
+}
+
+function renderDateRange(
+  name: string,
+  value: unknown,
+  onChange: ParamChangeHandler,
+): HTMLElement {
+  const { field, controls } = filterField(name);
+  controls.classList.add("motor-date-range");
+  const range = value && typeof value === "object" ? (value as { start?: unknown; end?: unknown }) : {};
+  const start = document.createElement("input");
+  start.type = "date";
+  start.value = range.start == null ? "" : String(range.start);
+  start.setAttribute("aria-label", `${paramLabel(name)} start`);
+  const end = document.createElement("input");
+  end.type = "date";
+  end.value = range.end == null ? "" : String(range.end);
+  end.setAttribute("aria-label", `${paramLabel(name)} end`);
+  const emit = (): void => {
+    if (start.value && end.value) onChange(name, { start: start.value, end: end.value });
+  };
+  start.addEventListener("change", emit);
+  end.addEventListener("change", emit);
+  controls.append(start, text("span", "to", "motor-date-separator"), end);
+  return field;
+}
+
+function renderFilters(
+  element: HTMLElement,
   spec: ReportSpec,
-  results: QueryResults,
-  errors: Record<string, string>,
-): Promise<void> {
-  root.replaceChildren(text("h1", manifest.report.title));
-  const components = new Map(spec.components.map((component) => [component.id, component]));
-  const renderComponent = async (parent: HTMLElement, component: ComponentSpec): Promise<void> => {
-    const element = document.createElement("section");
-    element.id = component.id;
-    parent.append(element);
+  component: ComponentSpec,
+  values: ParamValues,
+  options: ParamOptions,
+  onChange: ParamChangeHandler,
+): void {
+  element.className = "motor-card motor-filters";
+  element.append(text("h2", "Filters"));
+  const fields = document.createElement("div");
+  fields.className = "motor-filter-list";
+  const names = Array.isArray(component.props.params) ? component.props.params : [];
+  for (const rawName of names) {
+    const name = String(rawName);
+    const param = spec.params[name];
+    if (!param) continue;
+    if (param.type === "multiselect") {
+      fields.append(renderMultiselect(name, param, options[name] ?? [], values[name], onChange));
+    } else if (param.type === "select") {
+      fields.append(renderSelect(name, options[name] ?? [], values[name], onChange));
+    } else {
+      fields.append(renderDateRange(name, values[name], onChange));
+    }
+  }
+  element.append(fields);
+}
+
+export class ReportRenderer {
+  private elements = new Map<string, HTMLElement>();
+  private chartHandles = new Map<string, ChartHandle>();
+
+  constructor(
+    private root: HTMLElement,
+    private manifest: Manifest,
+    private spec: ReportSpec,
+    private onParamChange: ParamChangeHandler,
+  ) {}
+
+  async mount(
+    results: QueryResults,
+    errors: Record<string, string>,
+    values: ParamValues,
+    options: ParamOptions,
+  ): Promise<void> {
+    this.root.replaceChildren(text("h1", this.manifest.report.title));
+    const components = new Map(this.spec.components.map((component) => [component.id, component]));
+    const createComponent = (parent: HTMLElement, component: ComponentSpec): void => {
+      const element = document.createElement("section");
+      element.id = component.id;
+      parent.append(element);
+      this.elements.set(component.id, element);
+    };
+    const layout =
+      this.spec.layout ??
+      this.spec.components.map((component) => ({
+        type: "component" as const,
+        component: component.id,
+      }));
+    for (const item of layout) {
+      if (item.type === "component") {
+        const component = components.get(item.component);
+        if (component) createComponent(this.root, component);
+        continue;
+      }
+      const row = document.createElement("div");
+      row.className = "motor-row";
+      row.dataset.count = String(item.components.length);
+      row.style.setProperty("--motor-columns", String(item.components.length));
+      this.root.append(row);
+      for (const componentId of item.components) {
+        const component = components.get(componentId);
+        if (component) createComponent(row, component);
+      }
+    }
+    for (const component of this.spec.components) {
+      await this.renderComponent(component, results, errors, values, options);
+    }
+  }
+
+  setLoading(queryNames: ReadonlySet<string>): void {
+    for (const component of this.spec.components) {
+      if (!component.query || !queryNames.has(component.query)) continue;
+      const element = this.elements.get(component.id);
+      element?.classList.add("motor-loading", "motor-stale");
+      element?.setAttribute("aria-busy", "true");
+    }
+  }
+
+  async updateQueries(
+    results: QueryResults,
+    errors: Record<string, string>,
+    queryNames: ReadonlySet<string>,
+    values: ParamValues,
+    options: ParamOptions,
+    shouldRender?: (queryName: string) => boolean,
+  ): Promise<void> {
+    for (const component of this.spec.components) {
+      if (component.query && queryNames.has(component.query)) {
+        if (shouldRender && !shouldRender(component.query)) continue;
+        await this.renderComponent(component, results, errors, values, options);
+        if (shouldRender && !shouldRender(component.query)) {
+          this.setLoading(new Set([component.query]));
+        }
+      }
+    }
+  }
+
+  private async renderComponent(
+    component: ComponentSpec,
+    results: QueryResults,
+    errors: Record<string, string>,
+    values: ParamValues,
+    options: ParamOptions,
+  ): Promise<void> {
+    const element = this.elements.get(component.id);
+    if (!element) return;
+    this.chartHandles.get(component.id)?.finalize();
+    this.chartHandles.delete(component.id);
+    element.replaceChildren();
+    element.removeAttribute("aria-busy");
     if (component.props.title) element.append(text("h2", String(component.props.title)));
-    if (component.type === "DataStatus") renderDataStatus(element, manifest);
-    else if (component.type === "VersionBadge") renderVersionBadge(element, manifest);
-    else if (component.type === "Filters") renderFiltersPlaceholder(element, spec, component);
-    else if (component.query && errors[component.query]) {
+    if (component.type === "DataStatus") renderDataStatus(element, this.manifest);
+    else if (component.type === "VersionBadge") renderVersionBadge(element, this.manifest);
+    else if (component.type === "Filters") {
+      renderFilters(element, this.spec, component, values, options, this.onParamChange);
+    } else if (component.query && errors[component.query]) {
       element.className = "motor-card motor-component-error";
       element.append(text("strong", "Query failed"), text("pre", errors[component.query] ?? ""));
     } else {
@@ -118,31 +356,16 @@ export async function renderComponents(
         const chart = document.createElement("div");
         chart.className = "motor-chart";
         element.append(chart);
-        await renderChart(chart, component, rows);
+        try {
+          this.chartHandles.set(component.id, await renderChart(chart, component, rows));
+        } catch (error) {
+          element.className = "motor-card motor-component-error";
+          element.replaceChildren(
+            text("strong", "Chart render failed"),
+            text("pre", error instanceof Error ? error.message : String(error)),
+          );
+        }
       }
-    }
-  };
-
-  const layout =
-    spec.layout ??
-    spec.components.map((component) => ({
-      type: "component" as const,
-      component: component.id,
-    }));
-  for (const item of layout) {
-    if (item.type === "component") {
-      const component = components.get(item.component);
-      if (component) await renderComponent(root, component);
-      continue;
-    }
-    const row = document.createElement("div");
-    row.className = "motor-row";
-    row.dataset.count = String(item.components.length);
-    row.style.setProperty("--motor-columns", String(item.components.length));
-    root.append(row);
-    for (const componentId of item.components) {
-      const component = components.get(componentId);
-      if (component) await renderComponent(row, component);
     }
   }
 }

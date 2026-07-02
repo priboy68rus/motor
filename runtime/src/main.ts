@@ -1,6 +1,7 @@
-import { renderComponents } from "./components";
+import { ReportRenderer } from "./components";
 import { loadEmbeddedReport } from "./dataLoader";
 import { DuckDBRunner } from "./duckdbRunner";
+import { ReportController } from "./state";
 
 async function start(): Promise<void> {
   const root = document.getElementById("motor-app");
@@ -10,15 +11,15 @@ async function start(): Promise<void> {
     const { manifest, spec, sources } = await loadEmbeddedReport();
     if (status) status.textContent = "Starting query engine…";
     const runner = new DuckDBRunner();
-    await runner.initialize(sources);
-    if (status) status.textContent = "Running report queries…";
-    const values = Object.fromEntries(
-      Object.entries(spec.params).map(([name, param]) => [name, param.default]),
+    await runner.initialize(sources, manifest.artifact.content_sha256);
+    let controller: ReportController | undefined;
+    const renderer = new ReportRenderer(root, manifest, spec, (name, value) =>
+      controller?.updateParam(name, value),
     );
-    const { results, errors } = await runner.run(spec, values, (queryName) => {
-      if (status) status.textContent = `Running query ${queryName}…`;
+    controller = new ReportController(spec, runner, renderer, (message) => {
+      if (status) status.textContent = message;
     });
-    await renderComponents(root, manifest, spec, results, errors);
+    await controller.initialize();
     window.addEventListener("pagehide", () => void runner.close(), { once: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

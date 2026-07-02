@@ -11,10 +11,21 @@
     h1 { font-size: 2rem; margin: 0 0 24px; }
     h2 { font-size: 1rem; margin: 0 0 16px; }
     .motor-card { background: white; border: 1px solid #dce1e8; border-radius: 12px; padding: 20px; margin: 16px 0; box-shadow: 0 2px 8px #1720330a; overflow-x: auto; }
+    .motor-component { position: relative; transition: opacity .15s ease; }
     .motor-component-error, .motor-fatal-error { color: #a11b1b; background: #fff4f4; border: 1px solid #f2b8b8; border-radius: 12px; padding: 20px; }
     .motor-version { color: #667085; font-family: ui-monospace, monospace; font-size: .8rem; margin: 12px 0; overflow-wrap: anywhere; }
     .motor-big-value { font-size: 2.25rem; font-weight: 700; }
-    .motor-empty, .motor-filter-placeholder p { color: #667085; margin: 0; }
+    .motor-empty { color: #667085; margin: 0; }
+    .motor-filter-list { display: flex; flex-wrap: wrap; gap: 20px 28px; align-items: flex-start; }
+    .motor-filter { min-width: 180px; margin: 0; padding: 0; border: 0; }
+    .motor-filter legend { margin-bottom: 8px; color: #475467; font-size: .82rem; font-weight: 650; }
+    .motor-filter-controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+    .motor-filter-option { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    .motor-filter-option input { margin: 0; }
+    .motor-select, .motor-date-range input { min-height: 36px; border: 1px solid #cbd2dc; border-radius: 7px; padding: 6px 9px; background: white; color: inherit; }
+    .motor-date-separator { color: #667085; }
+    .motor-stale > * { opacity: .42; }
+    .motor-loading::after { content: "Updating…"; position: absolute; inset: 12px 12px auto auto; padding: 5px 8px; border-radius: 6px; color: #475467; background: #f2f4f7; font-size: .75rem; font-weight: 650; opacity: 1; }
     .motor-chart.vega-embed { display: block; width: 100%; min-width: 0; }
     .motor-row { display: grid; grid-template-columns: repeat(var(--motor-columns), minmax(0, 1fr)); gap: 16px; align-items: start; margin: 16px 0; }
     .motor-row > * { min-width: 0; }
@@ -37,6 +48,8 @@
     }
     @media (max-width: 600px) {
       .motor-row { grid-template-columns: minmax(0, 1fr); }
+      .motor-filter-list, .motor-filter-controls { display: grid; grid-template-columns: minmax(0, 1fr); }
+      .motor-filter { min-width: 0; }
     }
   </style>
 </head>

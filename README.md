@@ -49,6 +49,9 @@ npm run build
 - Query dependencies on sources, other SQL blocks, and parameters are inferred
   and embedded in the compiled report spec. Components may reference `query`
   blocks, but not intermediate `view` blocks.
+- Filter changes rerun only dependent SQL blocks and components. Runtime updates
+  are serialized, stale results are discarded, and prior query results are
+  cached in memory. Date ranges include the complete end date.
 - The generated HTML starts an embedded DuckDB-WASM instance, loads the
   packaged CSV files, creates declared views, runs queries, and renders
   `BigValue`, `Table`, `LineChart`, and `BarChart` components. Charts use the
@@ -69,7 +72,6 @@ The generated artifact embeds the source CSV. Anyone who can open the HTML can
 extract its full data. Do not use it to distribute data the recipient should
 not possess.
 
-The runtime currently evaluates parameter defaults so filtered views can run,
-but filter controls are not interactive yet. Interactive filter state,
-dependency-aware reruns, caching, and stale-result protection are the next
-implementation phase.
+For multiselect filters, `All` disables the predicate. Clearing every option
+uses the parameter's explicit `empty_behavior`: `all` disables the predicate,
+while `none` produces no rows.
