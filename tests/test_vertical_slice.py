@@ -35,7 +35,16 @@ def test_script_escaping_preserves_javascript_regexes() -> None:
 def test_duckdb_worker_preserves_sql_exception_messages() -> None:
     worker = DUCKDB_WORKER.read_text(encoding="utf-8")
 
-    assert "_setThrew=(error,value)=>wasmExports.setThrew(error,value)" in worker
+    expected_bindings = {
+        "_setThrew": "setThrew",
+        "___cxa_can_catch": "__cxa_can_catch",
+        "___cxa_get_exception_ptr": "__cxa_get_exception_ptr",
+        "___cxa_increment_exception_refcount": "__cxa_increment_exception_refcount",
+        "___cxa_decrement_exception_refcount": "__cxa_decrement_exception_refcount",
+        "___get_exception_message": "__get_exception_message",
+    }
+    for javascript_name, wasm_name in expected_bindings.items():
+        assert f"{javascript_name}=(...args)=>wasmExports.{wasm_name}(...args)" in worker
 
 
 def test_markdown_comments_exclude_sql_components_and_layout(tmp_path: Path) -> None:
