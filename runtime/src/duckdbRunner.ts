@@ -1,10 +1,20 @@
 import * as duckdb from "@duckdb/duckdb-wasm";
+import { DataType, DateUnit, type Field } from "apache-arrow";
 
 import { createEmbeddedDuckDBWorker } from "./dataLoader";
 import { renderQueryTemplate } from "./queryTemplates";
 import type { ParamOptions, ParamValues, QueryResults, QueryRow, ReportSpec } from "./types";
 
-function normalizeValue(value: unknown): unknown {
+function normalizeValue(value: unknown, field?: Field): unknown {
+  if (value != null && field && (DataType.isDate(field.type) || DataType.isTimestamp(field.type))) {
+    const date = value instanceof Date ? value : new Date(Number(value));
+    if (!Number.isNaN(date.getTime())) {
+      const iso = date.toISOString();
+      return DataType.isDate(field.type) && field.type.unit === DateUnit.DAY
+        ? iso.slice(0, 10)
+        : iso;
+    }
+  }
   if (typeof value === "bigint") {
     return value <= BigInt(Number.MAX_SAFE_INTEGER) && value >= BigInt(Number.MIN_SAFE_INTEGER)
       ? Number(value)
@@ -14,7 +24,7 @@ function normalizeValue(value: unknown): unknown {
   if (value && typeof value === "object" && "toJSON" in value) {
     return normalizeValue((value as { toJSON: () => unknown }).toJSON());
   }
-  if (Array.isArray(value)) return value.map(normalizeValue);
+  if (Array.isArray(value)) return value.map((item) => normalizeValue(item));
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [key, normalizeValue(item)]),
@@ -23,11 +33,13 @@ function normalizeValue(value: unknown): unknown {
   return value;
 }
 
-function tableRows(table: { schema: { fields: { name: string }[] }; toArray(): unknown[] }): QueryRow[] {
-  const fields = table.schema.fields.map((field) => field.name);
+function tableRows(table: { schema: { fields: Field[] }; toArray(): unknown[] }): QueryRow[] {
+  const fields = table.schema.fields;
   return table.toArray().map((row) => {
     const record = row as Record<string, unknown>;
-    return Object.fromEntries(fields.map((field) => [field, normalizeValue(record[field])]));
+    return Object.fromEntries(
+      fields.map((field) => [field.name, normalizeValue(record[field.name], field)]),
+    );
   });
 }
 

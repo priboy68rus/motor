@@ -291,8 +291,8 @@ should be quoted, and declarations may span multiple lines.
 | `VersionBadge` | — | — | Tool version and artifact ID. |
 | `BigValue` | `query`, `value` | `title`, `format`, `currency` | First row of one query column. `format="currency"` uses the ISO currency code from `currency`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
-| `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack` | Vega-Lite line chart. Date-like strings on `x` are treated as temporal values. |
-| `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack` | Vega-Lite bar chart. |
+| `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. |
+| `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
 
 `query` must reference an existing `kind=query` SQL block. Referenced column
 names such as `value`, `x`, and `y` must exist in its result.

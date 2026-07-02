@@ -20,9 +20,10 @@ export async function renderChart(
   const y = String(component.props.y);
   const group = component.props.group ?? component.props.color;
   const sampleX = rows.find((row) => row[x] != null)?.[x];
+  const dateOnly = typeof sampleX === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sampleX);
   const xType =
-    component.type === "LineChart" &&
     typeof sampleX === "string" &&
+    /^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(sampleX) &&
     !Number.isNaN(Date.parse(sampleX))
       ? "temporal"
       : "nominal";
@@ -34,7 +35,12 @@ export async function renderChart(
     data: { values: rows },
     mark: { type: mark, tooltip: true },
     encoding: {
-      x: { field: x, type: xType, title: x },
+      x: {
+        field: x,
+        type: xType,
+        title: x,
+        ...(dateOnly ? { axis: { format: "%Y-%m-%d" } } : {}),
+      },
       y: { field: y, type: "quantitative", title: y },
       ...(group ? { color: { field: String(group), type: "nominal" } } : {}),
     },
