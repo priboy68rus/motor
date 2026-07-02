@@ -462,6 +462,80 @@ select country, value from events
     assert chart["props"]["bar_width"] == 24.5
 
 
+def test_big_value_comparison_contract(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("value\n100\n120\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+```sql name=summary kind=query
+select max(value) as current_value, min(value) as previous_value from events
+```
+<BigValue
+  query="summary"
+  value="current_value"
+  compare_value="previous_value"
+  delta_label="vs previous period"
+/>
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    component = next(item for item in spec["components"] if item["type"] == "BigValue")
+    assert component["props"] == {
+        "value": "current_value",
+        "compare_value": "previous_value",
+        "delta": "both",
+        "delta_label": "vs previous period",
+        "direction": "neutral",
+    }
+
+
+@pytest.mark.parametrize(
+    ("attributes", "message"),
+    [
+        ('compare_value=""', "compare_value must not be empty"),
+        ('delta="absolute"', "comparison attributes require compare_value"),
+        ('compare_value="previous" delta="relative"', "delta must be one of"),
+        ('compare_value="previous" direction="up"', "direction must be one of"),
+    ],
+)
+def test_big_value_comparison_is_validated(
+    tmp_path: Path, attributes: str, message: str
+) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("value\n100\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        f"""---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+```sql name=summary kind=query
+select value, value as previous from events
+```
+<BigValue query="summary" value="value" {attributes} />
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match=message):
+        compile_report(report)
+
+
 def test_sidebar_filters_cannot_be_inside_tab(tmp_path: Path) -> None:
     data = tmp_path / "data.csv"
     data.write_text("created_at,value\n2026-07-01,10\n", encoding="utf-8")

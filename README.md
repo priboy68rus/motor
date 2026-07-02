@@ -375,13 +375,44 @@ should be quoted, and declarations may span multiple lines.
 | `Text` | `text` | `title`, `placement` | Plain text card. Line breaks are preserved; Markdown and HTML are not interpreted. `placement` is `content` (default) or `sidebar`. |
 | `DataStatus` | — | — | Check status, data-through time, processing time, and build time. |
 | `VersionBadge` | — | — | Tool version and artifact ID. |
-| `BigValue` | `query`, `value` | `title`, `format`, `currency` | First row of one query column. `format="currency"` uses the ISO currency code from `currency`. |
+| `BigValue` | `query`, `value` | `title`, `format`, `currency`, `compare_value`, `delta`, `delta_label`, `direction` | Value and optional comparison from the first query row. `format="currency"` uses the ISO currency code from `currency`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
 | `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `marker`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
 | `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack`, `bar_width` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
 
 `query` must reference an existing `kind=query` SQL block. Referenced column
 names such as `value`, `x`, and `y` must exist in its result.
+
+#### BigValue comparisons
+
+Keep period logic in SQL and return the current and comparison values as two
+columns of the same row:
+
+```md
+<BigValue
+  query="revenue_kpi"
+  value="current_revenue"
+  compare_value="previous_revenue"
+  delta="both"
+  delta_label="vs previous month"
+  direction="higher_is_better"
+  format="currency"
+  currency="EUR"
+/>
+```
+
+`delta` may be `absolute`, `percent`, or `both` (default). Absolute change is
+`value - compare_value`; percentage change divides that difference by the
+absolute comparison value. When the comparison is zero, the percentage is
+shown as `—` while the absolute delta remains available.
+
+`direction` controls semantic coloring: `higher_is_better`,
+`lower_is_better`, or `neutral` (default). `delta_label` is optional. If the
+current value is empty, the card shows `—`. If the comparison column is
+missing, `NULL`, or an empty string, the comparison block is simply omitted.
+Zero is always treated as a real value. A query returning multiple rows still
+uses its first row, so aggregate to one row or use an explicit `ORDER BY ...
+LIMIT 1`.
 
 For charts, `group` splits rows into series and assigns each series a color. On
 a line chart this produces separate colored lines. On a bar chart it also

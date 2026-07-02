@@ -53,7 +53,17 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
     "VersionBadge": (set(), set()),
     "BigValue": (
         {"query", "value"},
-        {"query", "value", "title", "format", "currency"},
+        {
+            "query",
+            "value",
+            "title",
+            "format",
+            "currency",
+            "compare_value",
+            "delta",
+            "delta_label",
+            "direction",
+        },
     ),
     "Table": ({"query"}, {"query", "title", "columns"}),
     "LineChart": (
@@ -442,6 +452,34 @@ def _extract_components(
                 raise ReportValidationError(
                     "LineChart marker must be one of: none, point, circle"
                 )
+        if component_type == "BigValue":
+            comparison_attributes = {"delta", "delta_label", "direction"}
+            compare_value = attributes.get("compare_value")
+            if compare_value is not None and not str(compare_value).strip():
+                raise ReportValidationError("BigValue compare_value must not be empty")
+            if compare_value is None:
+                invalid = comparison_attributes & set(attributes)
+                if invalid:
+                    raise ReportValidationError(
+                        "BigValue comparison attributes require compare_value: "
+                        + ", ".join(sorted(invalid))
+                    )
+            else:
+                delta = attributes.setdefault("delta", "both")
+                if delta not in {"absolute", "percent", "both"}:
+                    raise ReportValidationError(
+                        "BigValue delta must be one of: absolute, percent, both"
+                    )
+                direction = attributes.setdefault("direction", "neutral")
+                if direction not in {
+                    "higher_is_better",
+                    "lower_is_better",
+                    "neutral",
+                }:
+                    raise ReportValidationError(
+                        "BigValue direction must be one of: higher_is_better, "
+                        "lower_is_better, neutral"
+                    )
         query = attributes.pop("query", None)
         if component_type == "Filters":
             params = [item.strip() for item in str(attributes["params"]).split(",") if item.strip()]

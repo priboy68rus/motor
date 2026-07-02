@@ -34,6 +34,30 @@ function formatValue(value: unknown, component: ComponentSpec): string {
   return String(value);
 }
 
+function emptyValue(value: unknown): boolean {
+  return value == null || (typeof value === "string" && value.trim() === "");
+}
+
+function formatSignedValue(value: number, component: ComponentSpec): string {
+  if (component.props.format === "currency") {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: String(component.props.currency ?? "USD"),
+      signDisplay: "always",
+    }).format(value);
+  }
+  return new Intl.NumberFormat(undefined, { signDisplay: "always" }).format(value);
+}
+
+function formatSignedPercent(value: number): string {
+  return new Intl.NumberFormat(undefined, {
+    style: "percent",
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+    signDisplay: "always",
+  }).format(value);
+}
+
 function renderDataStatus(element: HTMLElement, manifest: Manifest): void {
   element.className = "motor-card motor-data-status";
   element.append(text("h2", "Data status"));
@@ -92,8 +116,61 @@ function renderTable(element: HTMLElement, rows: QueryRow[], component: Componen
 }
 
 function renderBigValue(element: HTMLElement, rows: QueryRow[], component: ComponentSpec): void {
-  const value = rows[0]?.[String(component.props.value)];
-  element.append(text("div", formatValue(value, component), "motor-big-value"));
+  const row = rows[0];
+  const value = row?.[String(component.props.value)];
+  element.append(
+    text("div", emptyValue(value) ? "—" : formatValue(value, component), "motor-big-value"),
+  );
+
+  const compareColumn = component.props.compare_value;
+  if (compareColumn == null || emptyValue(value)) return;
+  const comparison = row?.[String(compareColumn)];
+  if (emptyValue(comparison)) return;
+
+  const currentNumber = Number(value);
+  const comparisonNumber = Number(comparison);
+  if (!Number.isFinite(currentNumber) || !Number.isFinite(comparisonNumber)) return;
+
+  const absoluteDelta = currentNumber - comparisonNumber;
+  const direction = String(component.props.direction ?? "neutral");
+  const improves =
+    direction === "higher_is_better"
+      ? absoluteDelta > 0
+      : direction === "lower_is_better"
+        ? absoluteDelta < 0
+        : false;
+  const worsens =
+    direction === "higher_is_better"
+      ? absoluteDelta < 0
+      : direction === "lower_is_better"
+        ? absoluteDelta > 0
+        : false;
+  const comparisonElement = document.createElement("div");
+  comparisonElement.className = `motor-big-value-comparison${
+    improves ? " good" : worsens ? " bad" : ""
+  }`;
+  const delta = String(component.props.delta ?? "both");
+  if (delta === "absolute" || delta === "both") {
+    comparisonElement.append(
+      text("span", formatSignedValue(absoluteDelta, component), "motor-big-value-delta"),
+    );
+  }
+  if (delta === "both") {
+    comparisonElement.append(text("span", "·", "motor-big-value-delta-separator"));
+  }
+  if (delta === "percent" || delta === "both") {
+    const percent =
+      comparisonNumber === 0
+        ? "—"
+        : formatSignedPercent(absoluteDelta / Math.abs(comparisonNumber));
+    comparisonElement.append(text("span", percent, "motor-big-value-delta"));
+  }
+  element.append(comparisonElement);
+  if (component.props.delta_label) {
+    element.append(
+      text("p", String(component.props.delta_label), "motor-big-value-delta-label"),
+    );
+  }
 }
 
 function paramLabel(name: string): string {
