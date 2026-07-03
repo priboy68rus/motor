@@ -30,7 +30,7 @@
     .motor-filter-option input { margin: 0; }
     .motor-select, .motor-date-range input { min-height: 36px; border: 1px solid #cbd2dc; border-radius: 7px; padding: 6px 9px; background: white; color: inherit; }
     .motor-multiselect-dropdown-controls { display: block; }
-    .motor-multiselect-dropdown { min-width: 240px; position: relative; }
+    .motor-multiselect-dropdown { box-sizing: border-box; position: relative; width: 240px; max-width: 100%; }
     .motor-multiselect-dropdown summary { box-sizing: border-box; min-height: 36px; border: 1px solid #cbd2dc; border-radius: 7px; padding: 7px 34px 7px 10px; background: white; cursor: pointer; list-style: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; position: relative; }
     .motor-multiselect-dropdown summary::-webkit-details-marker { display: none; }
     .motor-multiselect-dropdown summary::after { content: "▾"; position: absolute; right: 10px; color: #667085; }
@@ -92,7 +92,7 @@
       .motor-row { grid-template-columns: minmax(0, 1fr); }
       .motor-filter-list, .motor-filter-controls { display: grid; grid-template-columns: minmax(0, 1fr); }
       .motor-filter { min-width: 0; }
-      .motor-multiselect-dropdown { min-width: 0; }
+      .motor-multiselect-dropdown { width: 100%; }
     }
   </style>
 </head>

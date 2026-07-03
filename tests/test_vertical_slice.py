@@ -146,6 +146,7 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert "Starting query engine" in html
     assert "<script src=" not in html
     assert ".motor-filters { overflow: visible; }" in html
+    assert "width: 240px; max-width: 100%;" in html
     assert ".motor-multiselect-panel { box-sizing: border-box; position: absolute;" in html
     assert ".motor-multiselect-dropdown.drop-up .motor-multiselect-panel" in html
     encoded = html.split('data-encoding="base64+gzip+csv">', 1)[1].split("</script>", 1)[0]
