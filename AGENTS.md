@@ -25,6 +25,20 @@ Avoid pasting or reading huge logs unless the concise output is insufficient.
 - Commit the intended source/configuration changes with a short, descriptive message.
 - Push the commit to GitHub, normally `origin main` unless working on another branch.
 
+## Documentation
+
+- Treat `docs/` as the canonical user-facing reference for the supported report
+  format, components, SQL helpers, CLI, artifact, and runtime behavior.
+- Every change to a user-visible field, default, allowed value, validation rule,
+  component, SQL helper, layout rule, CLI command, or runtime behavior must
+  update the relevant `docs/` page in the same change.
+- Keep documentation tables explicit about field type, whether it is required,
+  its default, every supported value, and important interactions or errors.
+- Keep README examples and links consistent with `docs/`, while avoiding making
+  README the only place where a supported feature is documented.
+- Review documentation accuracy against implementation and tests before
+  committing. Do not document planned behavior as already supported.
+
 ## Notes
 
 - Use PLAN.md as reference for architectural and functional details of the project.

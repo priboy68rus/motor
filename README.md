@@ -5,6 +5,21 @@ self-contained HTML artifact. The compiler validates a report's parameters,
 named SQL dependency graph, components, source identity, and freshness before
 packaging the source data.
 
+## Documentation
+
+The complete authoring and runtime contract lives in [`docs/`](docs/README.md):
+
+- [report file and frontmatter](docs/report-file.md);
+- [parameters and filters](docs/parameters.md);
+- [SQL blocks and template helpers](docs/sql.md);
+- [all components and attributes](docs/components.md);
+- [rows, tabs, and sidebar layout](docs/layout.md);
+- [CLI, artifact, and runtime behavior](docs/cli-and-runtime.md).
+
+These reference pages specify which fields are required, their defaults and
+allowed values, and their exact behavior. The sections below remain a shorter
+guide with examples.
+
 ## Install from GitHub
 
 Python 3.11 or newer and Git are required. Node.js is not required to build
@@ -447,7 +462,7 @@ names such as `value`, `x`, and `y` must exist in its result.
 
 #### BigValue comparisons
 
-BigValue uses ordinary localized number formatting by default.
+BigValue uses localized compact number formatting by default.
 `format="currency"` uses the ISO currency code from `currency`;
 `format="percent"` expects a fractional value, so `0.425` renders as `42.5%`:
 
