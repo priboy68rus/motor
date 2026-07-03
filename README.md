@@ -225,7 +225,9 @@ not cascading.
 
 The dropdown keeps `All` and `empty_behavior` semantics unchanged and limits
 the visible option list with an internal scrollbar. Its panel opens as an
-overlay above report content, so charts and other components do not move.
+overlay above report content, so charts and other components do not move. If
+the panel does not fit below the control, it automatically opens upward within
+the viewport or sidebar scroll area.
 
 Each entry in dimension `choices` supports:
 

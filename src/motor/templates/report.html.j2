@@ -37,6 +37,8 @@
     .motor-multiselect-dropdown[open] summary { border-radius: 7px 7px 0 0; }
     .motor-multiselect-dropdown[open] summary::after { content: "▴"; }
     .motor-multiselect-panel { box-sizing: border-box; position: absolute; z-index: 100; top: 100%; left: 0; width: 100%; border: 1px solid #cbd2dc; border-top: 0; border-radius: 0 0 7px 7px; padding: 8px; background: white; box-shadow: 0 10px 24px #17203324; }
+    .motor-multiselect-dropdown.drop-up[open] summary { border-radius: 0 0 7px 7px; }
+    .motor-multiselect-dropdown.drop-up .motor-multiselect-panel { top: auto; bottom: 100%; border-top: 1px solid #cbd2dc; border-bottom: 0; border-radius: 7px 7px 0 0; box-shadow: 0 -10px 24px #17203324; }
     .motor-multiselect-search { box-sizing: border-box; width: 100%; min-height: 34px; border: 1px solid #cbd2dc; border-radius: 6px; padding: 5px 8px; color: inherit; }
     .motor-multiselect-options { display: flex; flex-direction: column; gap: 7px; max-height: 220px; margin-top: 8px; overflow-y: auto; }
     .motor-multiselect-options .motor-filter-option { min-height: 24px; }

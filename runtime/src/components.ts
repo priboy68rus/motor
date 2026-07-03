@@ -233,6 +233,27 @@ function filterDropdown(
       label.hidden = !String(label.dataset.filterValue).toLocaleLowerCase().includes(needle);
     }
   });
+  details.addEventListener("toggle", () => {
+    details.classList.remove("drop-up");
+    if (!details.open) return;
+    requestAnimationFrame(() => {
+      if (!details.open || !details.isConnected) return;
+      const summaryRect = summary.getBoundingClientRect();
+      const panelHeight = panel.getBoundingClientRect().height;
+      const clippingContainer = details.closest<HTMLElement>(".motor-sidebar-container");
+      const clippingRect = clippingContainer?.getBoundingClientRect();
+      const upperBoundary = Math.max(0, clippingRect?.top ?? 0);
+      const lowerBoundary = Math.min(
+        window.innerHeight,
+        clippingRect?.bottom ?? window.innerHeight,
+      );
+      const spaceAbove = Math.max(0, summaryRect.top - upperBoundary - 8);
+      const spaceBelow = Math.max(0, lowerBoundary - summaryRect.bottom - 8);
+      if (panelHeight > spaceBelow && spaceAbove > spaceBelow) {
+        details.classList.add("drop-up");
+      }
+    });
+  });
   return { details, summary, optionList };
 }
 
