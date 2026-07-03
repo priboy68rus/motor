@@ -341,7 +341,19 @@ function renderSelect(
   onChange: ParamChangeHandler,
 ): HTMLElement {
   const { field, controls } = filterField(name, param.label);
-  const { details, summary, optionList } = filterDropdown(name, controls);
+  const useDropdown =
+    param.control == null ||
+    param.control === "dropdown" ||
+    (param.control === "auto" && options.length > AUTO_DROPDOWN_THRESHOLD);
+  let optionList = controls;
+  let details: HTMLDetailsElement | undefined;
+  let summary: HTMLElement | undefined;
+  if (useDropdown) {
+    const dropdown = filterDropdown(name, controls);
+    details = dropdown.details;
+    summary = dropdown.summary;
+    optionList = dropdown.optionList;
+  }
   const groupName = `motor-select-${name}-${radioGroupSequence++}`;
   const all = radio("All", groupName);
   all.input.checked = value === "all";
@@ -354,18 +366,20 @@ function renderSelect(
     return { input: control.input, value: option };
   });
   const selected = optionInputs.find((option) => option.input.checked);
-  summary.textContent = all.input.checked ? "All" : selected ? String(selected.value) : "None";
+  if (summary) {
+    summary.textContent = all.input.checked ? "All" : selected ? String(selected.value) : "None";
+  }
   all.input.addEventListener("change", () => {
     if (!all.input.checked) return;
-    summary.textContent = "All";
-    details.open = false;
+    if (summary) summary.textContent = "All";
+    if (details) details.open = false;
     onChange(name, "all");
   });
   for (const option of optionInputs) {
     option.input.addEventListener("change", () => {
       if (!option.input.checked) return;
-      summary.textContent = String(option.value);
-      details.open = false;
+      if (summary) summary.textContent = String(option.value);
+      if (details) details.open = false;
       onChange(name, option.value);
     });
   }

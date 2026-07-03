@@ -37,7 +37,7 @@ class ParamConfig(StrictModel):
     label: str | None = Field(default=None, min_length=1)
     default: Any = "all"
     empty_behavior: Literal["all", "none"] | None = None
-    control: Literal["auto", "checkboxes", "dropdown"] | None = None
+    control: Literal["auto", "checkboxes", "radio", "dropdown"] | None = None
     options: ParamOptions | None = None
     choices: dict[str, DimensionChoice] | None = None
     allow_none: bool | None = None
@@ -48,8 +48,12 @@ class ParamConfig(StrictModel):
             raise ValueError(f"{self.type} parameters cannot declare options")
         if self.type in {"date_range", "dimension"} and self.empty_behavior is not None:
             raise ValueError(f"{self.type} parameters cannot declare empty_behavior")
-        if self.type != "multiselect" and self.control is not None:
-            raise ValueError("only multiselect parameters can declare control")
+        if self.type not in {"select", "multiselect"} and self.control is not None:
+            raise ValueError("only select and multiselect parameters can declare control")
+        if self.type == "select" and self.control == "checkboxes":
+            raise ValueError("select control must be auto, radio, or dropdown")
+        if self.type == "multiselect" and self.control == "radio":
+            raise ValueError("multiselect control must be auto, checkboxes, or dropdown")
         if self.type != "dimension" and self.choices is not None:
             raise ValueError("only dimension parameters can declare choices")
         if self.type != "dimension" and self.allow_none is not None:
@@ -60,6 +64,8 @@ class ParamConfig(StrictModel):
             self.empty_behavior = "none"
         if self.type == "multiselect" and self.control is None:
             self.control = "auto"
+        if self.type == "select" and self.control is None:
+            self.control = "dropdown"
         if self.type == "dimension":
             if not self.choices:
                 raise ValueError("dimension parameters must declare choices")

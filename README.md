@@ -206,7 +206,7 @@ Parameter fields:
 | `default` | all | only `dimension` | `all` for other types | Initial value. A dimension default must name a choice, or `none` when enabled. |
 | `options` | `select`, `multiselect` | yes | — | Data source and column used to load filter values. |
 | `empty_behavior` | `select`, `multiselect` | no | `none` | Result of an empty selection: `all` disables the predicate; `none` returns no rows. |
-| `control` | `multiselect` | no | `auto` | Multiselect presentation: `auto`, `checkboxes`, or `dropdown`. |
+| `control` | `select`, `multiselect` | no | type-specific | Select presentation: `auto`, `radio`, or `dropdown`; multiselect presentation: `auto`, `checkboxes`, or `dropdown`. |
 | `choices` | `dimension` | yes | — | Static allowlist of selectable SQL fields. |
 | `allow_none` | `dimension` | no | `false` | Adds a `Nothing` option that produces one empty-string group. |
 
@@ -222,6 +222,14 @@ not cascading.
 | `auto` | Default. Uses checkboxes for up to 8 options and a searchable dropdown for 9 or more. |
 | `checkboxes` | Always renders inline checkboxes. |
 | `dropdown` | Always renders a searchable dropdown with a selected-value summary. |
+
+`select` accepts a parallel `control` field:
+
+| `control` | Behavior |
+| --- | --- |
+| `dropdown` | Default. Always renders the searchable radio-button overlay. |
+| `radio` | Always renders inline radio buttons. |
+| `auto` | Uses inline radio buttons for up to 8 options and the dropdown for 9 or more. |
 
 The dropdown keeps `All` and `empty_behavior` semantics unchanged and limits
 the visible option list with an internal scrollbar. Its panel opens as an
@@ -245,6 +253,7 @@ params:
   region:
     type: select
     label: Region
+    control: dropdown
     options:
       source: orders
       column: region

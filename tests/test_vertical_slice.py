@@ -234,6 +234,7 @@ params:
   country:
     type: select
     label: Country
+    control: radio
     options:
       source: events
       column: country
@@ -254,6 +255,7 @@ select * from events where {{ in_filter("country", country) }}
         "label": "Country",
         "default": "all",
         "empty_behavior": "none",
+        "control": "radio",
         "options": {"source": "events", "column": "country"},
     }
     assert spec["queries"]["filtered"]["depends_on"] == {
@@ -475,6 +477,11 @@ params:
     options:
       source: events
       column: country
+  single_country:
+    type: select
+    options:
+      source: events
+      column: country
   period:
     type: date_range
 ---
@@ -487,6 +494,7 @@ params:
     assert spec["params"]["country"]["default"] == "all"
     assert spec["params"]["country"]["empty_behavior"] == "none"
     assert spec["params"]["country"]["control"] == "auto"
+    assert spec["params"]["single_country"]["control"] == "dropdown"
     assert spec["params"]["period"]["default"] == "all"
     assert "empty_behavior" not in spec["params"]["period"]
 

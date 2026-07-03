@@ -11,7 +11,7 @@ export type ParamSpec = {
   label?: string;
   default: unknown;
   empty_behavior?: "all" | "none";
-  control?: "auto" | "checkboxes" | "dropdown";
+  control?: "auto" | "checkboxes" | "radio" | "dropdown";
   options?: { source: string; column: string };
   choices?: Record<string, { label?: string; field: string }>;
   allow_none?: boolean;
