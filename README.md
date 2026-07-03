@@ -234,6 +234,10 @@ Each entry in dimension `choices` supports:
 | `field` | yes | — | Simple or dotted SQL identifier emitted by `dimension()`. |
 | `label` | no | `field` | Text displayed in the dimension select. |
 
+Dimension controls use the same searchable radio-button overlay as `select`.
+The selected choice label is shown in the summary, and `allow_none: true` adds
+the `Nothing` radio option.
+
 ```yaml
 params:
   region:

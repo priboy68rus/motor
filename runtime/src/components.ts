@@ -22,7 +22,7 @@ import type {
 
 type ParamChangeHandler = (name: string, value: unknown, sourceComponentId?: string) => void;
 const AUTO_DROPDOWN_THRESHOLD = 8;
-let selectGroupSequence = 0;
+let radioGroupSequence = 0;
 
 function text(tag: string, value: string, className?: string): HTMLElement {
   const element = document.createElement(tag);
@@ -321,7 +321,7 @@ function renderSelect(
 ): HTMLElement {
   const { field, controls } = filterField(name, param.label);
   const { details, summary, optionList } = filterDropdown(name, controls);
-  const groupName = `motor-select-${name}-${selectGroupSequence++}`;
+  const groupName = `motor-select-${name}-${radioGroupSequence++}`;
   const all = radio("All", groupName);
   all.input.checked = value === "all";
   optionList.append(all.label);
@@ -384,23 +384,44 @@ function renderDimension(
   onChange: ParamChangeHandler,
 ): HTMLElement {
   const { field, controls } = filterField(name, param.label);
-  const select = document.createElement("select");
-  select.className = "motor-select";
+  const { details, summary, optionList } = filterDropdown(name, controls);
+  const groupName = `motor-dimension-${name}-${radioGroupSequence++}`;
+  let none: ReturnType<typeof radio> | undefined;
   if (param.allow_none) {
-    const option = document.createElement("option");
-    option.value = "none";
-    option.textContent = "Nothing";
-    select.append(option);
+    none = radio("Nothing", groupName);
+    none.input.checked = value === "none";
+    optionList.append(none.label);
   }
-  for (const [choiceName, choice] of Object.entries(param.choices ?? {})) {
-    const option = document.createElement("option");
-    option.value = choiceName;
-    option.textContent = choice.label ?? choice.field;
-    select.append(option);
+  const choices = Object.entries(param.choices ?? {}).map(([choiceName, choice]) => {
+    const labelText = choice.label ?? choice.field;
+    const control = radio(labelText, groupName);
+    control.label.dataset.filterValue = `${labelText} ${choiceName} ${choice.field}`;
+    control.input.checked = value === choiceName;
+    optionList.append(control.label);
+    return { input: control.input, label: labelText, value: choiceName };
+  });
+  const selected = choices.find((choice) => choice.input.checked);
+  summary.textContent = none?.input.checked
+    ? "Nothing"
+    : selected
+      ? selected.label
+      : "None";
+  if (none) {
+    none.input.addEventListener("change", () => {
+      if (!none?.input.checked) return;
+      summary.textContent = "Nothing";
+      details.open = false;
+      onChange(name, "none");
+    });
   }
-  select.value = String(value);
-  select.addEventListener("change", () => onChange(name, select.value));
-  controls.append(select);
+  for (const choice of choices) {
+    choice.input.addEventListener("change", () => {
+      if (!choice.input.checked) return;
+      summary.textContent = choice.label;
+      details.open = false;
+      onChange(name, choice.value);
+    });
+  }
   return field;
 }
 
