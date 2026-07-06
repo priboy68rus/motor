@@ -221,6 +221,16 @@ renaming and presentation formatting should currently be done in SQL.
   charts but do not change rendering. Currency chart axes are not implemented;
   format or scale values in SQL if needed.
 
+When `group` or `color` is configured, line and bar charts use a shared tooltip
+for the hovered X value. It lists every query row with that same X as
+`series: value`, with a swatch taken from the chart's actual color scale. This
+makes one month show all cohorts, channels, countries, or other series at once.
+Tooltip values respect `format="percent"`; currency values use `currency` even
+though currency axis formatting is not yet implemented. Query results should
+contain at most one row per X/series pair to avoid duplicate series lines in
+the tooltip. Charts without `group` or `color` retain the ordinary single-mark
+tooltip.
+
 X-axis type is inferred from the first non-null X value. ISO `YYYY-MM-DD` and
 ISO datetime strings use a temporal axis, except side-by-side grouped bars,
 which use a discrete axis. Date-only temporal labels render as `YYYY-MM-DD`.
@@ -260,6 +270,8 @@ Markers:
 - `circle` draws filled markers.
 - Every mode includes a larger invisible point hit area, so hover tooltips do
   not require pixel-perfect pointer placement.
+- On a grouped line chart, hitting any series point opens the shared tooltip
+  containing all series at that X, not only the nearest series.
 
 Sequential color is useful for cohorts:
 
