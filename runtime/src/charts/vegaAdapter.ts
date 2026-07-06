@@ -178,34 +178,67 @@ async function renderHeatmap(
   const scheme = String(component.props.color_scheme ?? "blues");
   const reverse = component.props.color_direction === "lower_is_darker";
   const percent = component.props.format === "percent";
+  const showValues = component.props.show_values !== false;
+  const yCount = new Set(rows.map((row) => tooltipKey(row[y], "nominal"))).size;
+  const height = Math.max(300, yCount * 34);
+  const tooltip = [
+    { field: y, type: "ordinal" as const, title: y },
+    { field: x, type: "ordinal" as const, title: x },
+    {
+      field: value,
+      type: "quantitative" as const,
+      title: value,
+      ...(percent ? { format: ".1%" } : {}),
+    },
+  ];
   const spec: TopLevelSpec = {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
     width: "container",
-    height: 300,
+    height,
     autosize: { type: "fit", contains: "padding", resize: true },
     data: { values: rows },
-    mark: { type: "rect", tooltip: true, stroke: "white", strokeWidth: 1 },
     encoding: {
       x: { field: x, type: "ordinal", title: x, sort: "ascending" },
       y: { field: y, type: "ordinal", title: y, sort: "ascending" },
-      color: {
-        field: value,
-        type: "quantitative",
-        title: value,
-        scale: { scheme: scheme as ColorScheme, reverse },
-        ...(percent ? { legend: { format: ".0%" } } : {}),
-      },
-      tooltip: [
-        { field: y, type: "ordinal", title: y },
-        { field: x, type: "ordinal", title: x },
-        {
-          field: value,
-          type: "quantitative",
-          title: value,
-          ...(percent ? { format: ".1%" } : {}),
-        },
-      ],
     },
+    layer: [
+      {
+        mark: { type: "rect", tooltip: true, stroke: "white", strokeWidth: 1 },
+        encoding: {
+          color: {
+            field: value,
+            type: "quantitative",
+            title: value,
+            scale: { scheme: scheme as ColorScheme, reverse },
+            ...(percent ? { legend: { format: ".0%" } } : {}),
+          },
+          tooltip,
+        },
+      },
+      ...(showValues
+        ? [
+            {
+              mark: {
+                type: "text" as const,
+                color: "#172033",
+                stroke: "white",
+                strokeWidth: 2,
+                fontSize: 12,
+                fontWeight: "bold" as const,
+                tooltip: true,
+              },
+              encoding: {
+                text: {
+                  field: value,
+                  type: "quantitative" as const,
+                  format: percent ? ".1%" : ",.2~f",
+                },
+                tooltip,
+              },
+            },
+          ]
+        : []),
+    ],
   };
   return embedChart(element, spec);
 }

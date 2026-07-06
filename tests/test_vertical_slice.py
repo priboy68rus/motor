@@ -677,7 +677,35 @@ select cohort_month, period_number, retention from cohorts
         "format": "percent",
         "color_scheme": "blues",
         "color_direction": "higher_is_darker",
+        "show_values": True,
     }
+
+
+def test_heatmap_value_labels_can_be_disabled(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("x,y,value\n1,A,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  values:
+    path: data.csv
+---
+```sql name=heatmap kind=query
+select x, y, value from values
+```
+<Heatmap query="heatmap" x="x" y="y" value="value" show_values="false" />
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    heatmap = next(item for item in spec["components"] if item["type"] == "Heatmap")
+    assert heatmap["props"]["show_values"] is False
 
 
 @pytest.mark.parametrize(
@@ -702,6 +730,11 @@ select cohort_month, period_number, retention from cohorts
             '<Heatmap query="retention" x="period_number" y="cohort_month" '
             'value="retention" format="currency" />',
             "format must be one of",
+        ),
+        (
+            '<Heatmap query="retention" x="period_number" y="cohort_month" '
+            'value="retention" show_values="sometimes" />',
+            "show_values must be true or false",
         ),
     ],
 )

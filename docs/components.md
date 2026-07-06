@@ -39,7 +39,7 @@ values or chart errors rather than build-time validation errors.
 | [`Table`](#table) | `query` | `id`, `title`, `columns` |
 | [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `marker`, `color_scheme`, `color_direction` |
 | [`BarChart`](#barchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `stack`, `bar_width` |
-| [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `format`, `color_scheme`, `color_direction` |
+| [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `format`, `color_scheme`, `color_direction`, `show_values` |
 
 ## `Filters`
 
@@ -344,6 +344,7 @@ Renders one rectangular cell per query row.
   format="percent"
   color_scheme="blues"
   color_direction="higher_is_darker"
+  show_values="true"
   title="Retention heatmap"
 />
 ```
@@ -358,11 +359,23 @@ Renders one rectangular cell per query row.
 | `format` | enum | no | `number` | `number` or `percent`. Percent expects a fraction. |
 | `color_scheme` | non-empty string | no | `blues` | Vega sequential scheme name. |
 | `color_direction` | enum | no | `higher_is_darker` | `higher_is_darker` or `lower_is_darker`. |
+| `show_values` | boolean | no | `true` | `true` draws the formatted value inside every non-null cell; `false` leaves cells unlabelled. |
 
 The legend and tooltip use percent formatting when requested. Missing rows
 produce empty cells; a zero value remains a real colored cell. Cells have white
 borders and tooltips containing Y, X, and value. Unknown color schemes are
 reported as chart rendering errors inside the report.
+
+Value labels are enabled by default. Percent labels use one decimal place;
+number labels use thousands separators and at most two decimal
+places. Labels use dark text with a light outline so they remain readable
+across the gradient. Set `show_values="false"` when cells are too narrow or the
+heatmap is intended to show only the color pattern.
+
+Heatmap height remains at least 300 px and grows when necessary to reserve
+approximately 34 px for every distinct Y value. A large cohort matrix therefore
+becomes taller instead of compressing row labels and cell values until they no
+longer fit.
 
 Retention calculation remains SQL responsibility. Return one row per cohort
 and period and a fraction from 0 to 1 when using percent formatting.

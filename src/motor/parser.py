@@ -110,6 +110,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "format",
             "color_scheme",
             "color_direction",
+            "show_values",
         },
     ),
 }
@@ -568,6 +569,9 @@ def _extract_components(
             if not str(color_scheme).strip():
                 raise ReportValidationError("Heatmap color_scheme must not be empty")
             attributes.setdefault("color_direction", "higher_is_darker")
+            show_values = attributes.setdefault("show_values", True)
+            if not isinstance(show_values, bool):
+                raise ReportValidationError("Heatmap show_values must be true or false")
             heatmap_format = attributes.setdefault("format", "number")
             if heatmap_format not in {"number", "percent"}:
                 raise ReportValidationError(

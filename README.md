@@ -455,7 +455,7 @@ should be quoted, and declarations may span multiple lines.
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
 | `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `marker`, `color_scheme`, `color_direction`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
 | `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack`, `bar_width` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
-| `Heatmap` | `query`, `x`, `y`, `value` | `title`, `format`, `color_scheme`, `color_direction` | Rectangular heatmap with a quantitative gradient. `format` is `number` (default) or `percent`. |
+| `Heatmap` | `query`, `x`, `y`, `value` | `title`, `format`, `color_scheme`, `color_direction`, `show_values` | Rectangular heatmap with a quantitative gradient. `format` is `number` (default) or `percent`; `show_values` defaults to `true`. |
 
 `query` must reference an existing `kind=query` SQL block. Referenced column
 names such as `value`, `x`, and `y` must exist in its result.
@@ -580,6 +580,7 @@ heatmap's numeric `value` scale:
   format="percent"
   color_scheme="blues"
   color_direction="higher_is_darker"
+  show_values="true"
   title="Retention heatmap"
 />
 ```
@@ -587,6 +588,9 @@ heatmap's numeric `value` scale:
 `Heatmap` defaults to `color_scheme="blues"` and
 `color_direction="higher_is_darker"`. Its X and Y values are discrete and
 sorted ascending. Missing rows produce empty cells; zero remains a real value.
+Cell values are displayed by default; set `show_values="false"` to hide them.
+The chart keeps at least 34 pixels per distinct Y value, growing beyond its
+300-pixel minimum when needed so cohort rows and value labels remain readable.
 Any Vega sequential scheme name may be used, for example `blues`, `greens`,
 `viridis`, `magma`, `inferno`, or `cividis`. An unknown scheme is reported as a
 chart-rendering error in the report.
