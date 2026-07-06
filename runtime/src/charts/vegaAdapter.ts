@@ -63,6 +63,18 @@ function tooltipText(value: unknown): string {
   return value == null || String(value).trim() === "" ? "—" : String(value);
 }
 
+function heatmapTextColor(valueField: string): { expr: string } {
+  const cell = `scale('color', datum[${JSON.stringify(valueField)}])`;
+  const cellHsl = `hsl(${cell})`;
+  const dark = `hsl(${cellHsl}.h, ${cellHsl}.s * 0.85, 0.10)`;
+  const light = `hsl(${cellHsl}.h, ${cellHsl}.s * 0.30, 0.93)`;
+  const tinted = `contrast(${cell}, ${dark}) >= contrast(${cell}, ${light}) ? ${dark} : ${light}`;
+  const fallback = `contrast(${cell}, '#000') >= contrast(${cell}, '#fff') ? '#000' : '#fff'`;
+  return {
+    expr: `contrast(${cell}, ${tinted}) >= 4.7 ? ${tinted} : ${fallback}`,
+  };
+}
+
 function mountSharedTooltip(
   view: View,
   config: SharedTooltipConfig,
@@ -220,9 +232,7 @@ async function renderHeatmap(
             {
               mark: {
                 type: "text" as const,
-                color: "#172033",
-                stroke: "white",
-                strokeWidth: 2,
+                color: heatmapTextColor(value),
                 fontSize: 12,
                 fontWeight: "bold" as const,
                 tooltip: true,

@@ -368,9 +368,12 @@ reported as chart rendering errors inside the report.
 
 Value labels are enabled by default. Percent labels use one decimal place;
 number labels use thousands separators and at most two decimal
-places. Labels use dark text with a light outline so they remain readable
-across the gradient. Set `show_values="false"` when cells are too narrow or the
-heatmap is intended to show only the color pattern.
+places. Their text color is derived from the actual cell color: a darker shade
+of the same hue is used on light cells and a lighter shade on dark cells. motor
+checks the contrast ratio and falls back to black or white when the tinted
+variant would be insufficient; labels have no outline. Set
+`show_values="false"` when cells are too narrow or the heatmap is intended to
+show only the color pattern.
 
 Heatmap height remains at least 300 px and grows when necessary to reserve
 approximately 34 px for every distinct Y value. A large cohort matrix therefore

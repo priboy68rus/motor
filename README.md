@@ -589,6 +589,8 @@ heatmap's numeric `value` scale:
 `color_direction="higher_is_darker"`. Its X and Y values are discrete and
 sorted ascending. Missing rows produce empty cells; zero remains a real value.
 Cell values are displayed by default; set `show_values="false"` to hide them.
+Their text automatically switches between a contrasting darker or lighter
+variant of the cell color, without an outline.
 The chart keeps at least 34 pixels per distinct Y value, growing beyond its
 300-pixel minimum when needed so cohort rows and value labels remain readable.
 Any Vega sequential scheme name may be used, for example `blues`, `greens`,
