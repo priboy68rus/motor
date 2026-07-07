@@ -45,10 +45,13 @@
     .motor-multiselect-options .motor-filter-option[hidden] { display: none; }
     .motor-date-separator { color: #667085; }
     .motor-report-shell { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 20px; align-items: start; }
-    .motor-sidebar-container { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+    .motor-sidebar-container { box-sizing: border-box; position: sticky; top: 16px; min-width: 0; max-width: 100%; max-height: calc(100vh - 32px); overflow-x: hidden; overflow-y: auto; }
     .motor-sidebar-container > summary { display: none; }
-    .motor-sidebar { display: grid; gap: 12px; }
-    .motor-sidebar .motor-card { margin: 0; }
+    .motor-sidebar { display: grid; width: 100%; min-width: 0; gap: 12px; }
+    .motor-sidebar .motor-card { box-sizing: border-box; width: 100%; min-width: 0; margin: 0; }
+    .motor-sidebar .motor-filter-list, .motor-sidebar .motor-filter, .motor-sidebar .motor-filter-controls { min-width: 0; max-width: 100%; }
+    .motor-sidebar .motor-filter { width: 100%; }
+    .motor-sidebar .motor-multiselect-dropdown { width: 100%; max-width: 100%; }
     .motor-text-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
     .motor-report-content { min-width: 0; }
     .motor-tabs { min-width: 0; margin: 16px 0; }

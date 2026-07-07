@@ -75,6 +75,9 @@ Contract:
   when content declarations appear between them.
 - On desktop the sidebar remains visible while content scrolls and has its own
   vertical overflow area.
+- Sidebar cards and controls are constrained to its available inner width;
+  horizontal overflow is clipped, so a vertical scrollbar never creates a
+  secondary horizontal scrollbar.
 - Below 900 px it moves above content into an initially open, collapsible
   `Report controls` section.
 - Select, multiselect, and dimension dropdown panels overlay other content.

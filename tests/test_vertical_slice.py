@@ -149,6 +149,8 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert "width: 240px; max-width: 100%;" in html
     assert ".motor-multiselect-panel { box-sizing: border-box; position: absolute;" in html
     assert ".motor-multiselect-dropdown.drop-up .motor-multiselect-panel" in html
+    assert "max-height: calc(100vh - 32px); overflow-x: hidden; overflow-y: auto;" in html
+    assert ".motor-sidebar .motor-multiselect-dropdown { width: 100%; max-width: 100%; }" in html
     assert ".motor-chart-shared-tooltip { position: fixed;" in html
     assert "motor-chart-shared-tooltip-swatch" in html
     assert ".motor-chart-shared-tooltip-row.is-hovered" in html
