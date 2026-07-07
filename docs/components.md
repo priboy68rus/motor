@@ -228,8 +228,10 @@ makes one month show all cohorts, channels, countries, or other series at once.
 Tooltip values respect `format="percent"`; currency values use `currency` even
 though currency axis formatting is not yet implemented. Query results should
 contain at most one row per X/series pair to avoid duplicate series lines in
-the tooltip. Charts without `group` or `color` retain the ordinary single-mark
-tooltip.
+the tooltip. The row belonging to the mark directly under the cursor is
+highlighted with a background and accent while other rows are slightly muted.
+This does not reorder the list: tooltip rows always retain their query-result
+order. Charts without `group` or `color` retain the ordinary single-mark tooltip.
 
 X-axis type is inferred from the first non-null X value. ISO `YYYY-MM-DD` and
 ISO datetime strings use a temporal axis, except side-by-side grouped bars,

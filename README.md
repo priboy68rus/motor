@@ -537,7 +537,8 @@ value, including when `marker="none"`, so tooltips do not require pixel-perfect
 hovering. When a line or bar chart has `group` or `color`, its tooltip groups
 all rows at the hovered X value and shows every series with the same color used
 on the chart. For example, hovering one month can show retention for every
-cohort or GMV for every channel.
+cohort or GMV for every channel. The series directly under the cursor is
+highlighted without changing the list order.
 
 #### Cohorts, retention, and heatmaps
 

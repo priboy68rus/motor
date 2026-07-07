@@ -66,7 +66,10 @@
     .motor-chart-shared-tooltip[hidden] { display: none; }
     .motor-chart-shared-tooltip-heading { margin-bottom: 8px; color: #d0d5dd; font-weight: 650; }
     .motor-chart-shared-tooltip-rows { display: grid; gap: 5px; }
-    .motor-chart-shared-tooltip-row { display: grid; grid-template-columns: 9px minmax(0, 1fr) max-content; gap: 7px; align-items: center; }
+    .motor-chart-shared-tooltip-row { display: grid; grid-template-columns: 9px minmax(0, 1fr) max-content; gap: 7px; align-items: center; margin: 0 -6px; padding: 4px 6px; border-left: 2px solid transparent; border-radius: 4px; transition: opacity .08s ease, background .08s ease; }
+    .motor-chart-shared-tooltip-row.is-hovered { border-left-color: white; background: #ffffff20; }
+    .motor-chart-shared-tooltip-row.is-muted { opacity: .62; }
+    .motor-chart-shared-tooltip-row.is-hovered .motor-chart-shared-tooltip-swatch { box-shadow: 0 0 0 2px white; }
     .motor-chart-shared-tooltip-swatch { width: 9px; height: 9px; border-radius: 50%; background: #98a2b3; }
     .motor-chart-shared-tooltip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .motor-chart-shared-tooltip-value { font-variant-numeric: tabular-nums; font-weight: 650; text-align: right; }

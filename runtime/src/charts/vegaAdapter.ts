@@ -98,19 +98,25 @@ function mountSharedTooltip(
       item?.mark.role !== "mark" ||
       !datum ||
       typeof datum !== "object" ||
-      !(config.x in datum)
+      !(config.x in datum) ||
+      !(config.series in datum)
     ) {
       hide();
       return;
     }
     const key = tooltipKey((datum as QueryRow)[config.x], config.xType);
+    const hoveredSeriesKey = tooltipKey(
+      (datum as QueryRow)[config.series],
+      "nominal",
+    );
+    const renderKey = `${key}\u0000${hoveredSeriesKey}`;
     const bucket = buckets.get(key);
     if (!bucket) {
       hide();
       return;
     }
 
-    if (activeKey !== key) {
+    if (activeKey !== renderKey) {
       const heading = document.createElement("div");
       heading.className = "motor-chart-shared-tooltip-heading";
       heading.textContent = `${config.x}: ${tooltipText(bucket.x)}`;
@@ -120,6 +126,11 @@ function mountSharedTooltip(
       for (const entry of bucket.entries) {
         const row = document.createElement("div");
         row.className = "motor-chart-shared-tooltip-row";
+        row.classList.add(
+          tooltipKey(entry.series, "nominal") === hoveredSeriesKey
+            ? "is-hovered"
+            : "is-muted",
+        );
         const swatch = document.createElement("span");
         swatch.className = "motor-chart-shared-tooltip-swatch";
         const color = colorScale?.(entry.series);
@@ -134,7 +145,7 @@ function mountSharedTooltip(
         rows.append(row);
       }
       tooltip.replaceChildren(heading, rows);
-      activeKey = key;
+      activeKey = renderKey;
     }
     tooltip.hidden = false;
 
