@@ -370,16 +370,21 @@ When every finite value is non-negative, Heatmap uses the configured sequential
 `color_scheme` and `color_direction`. As soon as the result contains a negative
 value, motor automatically switches to a zero-centered diverging scale:
 
-- the minimum value is dark red and negative values become lighter toward zero;
+- negative values become darker red as they approach the shared negative limit;
 - zero is neutral light gray;
-- positive values progress from light blue to dark blue at the maximum;
-- the scale domain is exactly `[minimum, 0, maximum]`, so unequal negative and
-  positive ranges each receive half of the available color gradient;
+- positive values become darker blue as they approach the shared positive limit;
+- the scale is symmetric: motor calculates
+  `limit = max(abs(minimum), abs(maximum))` and uses the domain
+  `[-limit, 0, limit]`;
+- equal absolute values therefore have equal color intensity on the red and
+  blue sides, while the shorter observed side uses only part of its available
+  gradient;
 - `color_scheme` and `color_direction` are ignored in this mode to preserve the
   fixed red-negative/blue-positive meaning.
 
-An entirely negative result still includes zero as its neutral endpoint. Null,
-empty, and non-finite values are excluded when deciding the color domain.
+An entirely negative result still reserves the equally sized positive half of
+the scale even though no positive cells use it. Null, empty, and non-finite
+values are excluded when deciding the color domain.
 
 Value labels are enabled by default. Percent labels use one decimal place;
 number labels use thousands separators and at most two decimal

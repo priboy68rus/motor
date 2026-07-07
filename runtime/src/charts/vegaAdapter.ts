@@ -202,10 +202,11 @@ async function renderHeatmap(
     maximum = Math.max(maximum, numericValue);
   }
   const diverging = minimum < 0;
+  const magnitude = Math.max(Math.abs(minimum), Math.abs(maximum));
   const colorScale = diverging
     ? {
         scheme: "redblue" as ColorScheme,
-        domain: [minimum, 0, maximum],
+        domain: [-magnitude, 0, magnitude],
       }
     : {
         scheme: scheme as ColorScheme,
