@@ -191,6 +191,26 @@ async function renderHeatmap(
   const reverse = component.props.color_direction === "lower_is_darker";
   const percent = component.props.format === "percent";
   const showValues = component.props.show_values !== false;
+  let minimum = 0;
+  let maximum = 0;
+  for (const row of rows) {
+    const rawValue = row[value];
+    if (rawValue == null || String(rawValue).trim() === "") continue;
+    const numericValue = Number(rawValue);
+    if (!Number.isFinite(numericValue)) continue;
+    minimum = Math.min(minimum, numericValue);
+    maximum = Math.max(maximum, numericValue);
+  }
+  const diverging = minimum < 0;
+  const colorScale = diverging
+    ? {
+        scheme: "redblue" as ColorScheme,
+        domain: [minimum, 0, maximum],
+      }
+    : {
+        scheme: scheme as ColorScheme,
+        reverse,
+      };
   const yCount = new Set(rows.map((row) => tooltipKey(row[y], "nominal"))).size;
   const height = Math.max(300, yCount * 34);
   const tooltip = [
@@ -221,7 +241,7 @@ async function renderHeatmap(
             field: value,
             type: "quantitative",
             title: value,
-            scale: { scheme: scheme as ColorScheme, reverse },
+            scale: colorScale,
             ...(percent ? { legend: { format: ".0%" } } : {}),
           },
           tooltip,

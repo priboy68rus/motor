@@ -357,14 +357,29 @@ Renders one rectangular cell per query row.
 | `value` | result column | yes | — | Quantitative color value. |
 | `title` | string | no | — | Card heading. |
 | `format` | enum | no | `number` | `number` or `percent`. Percent expects a fraction. |
-| `color_scheme` | non-empty string | no | `blues` | Vega sequential scheme name. |
-| `color_direction` | enum | no | `higher_is_darker` | `higher_is_darker` or `lower_is_darker`. |
+| `color_scheme` | non-empty string | no | `blues` | Vega sequential scheme used when all values are non-negative. |
+| `color_direction` | enum | no | `higher_is_darker` | Sequential-scale direction: `higher_is_darker` or `lower_is_darker`. |
 | `show_values` | boolean | no | `true` | `true` draws the formatted value inside every non-null cell; `false` leaves cells unlabelled. |
 
 The legend and tooltip use percent formatting when requested. Missing rows
 produce empty cells; a zero value remains a real colored cell. Cells have white
 borders and tooltips containing Y, X, and value. Unknown color schemes are
-reported as chart rendering errors inside the report.
+reported as chart rendering errors inside a non-negative report.
+
+When every finite value is non-negative, Heatmap uses the configured sequential
+`color_scheme` and `color_direction`. As soon as the result contains a negative
+value, motor automatically switches to a zero-centered diverging scale:
+
+- the minimum value is dark red and negative values become lighter toward zero;
+- zero is neutral light gray;
+- positive values progress from light blue to dark blue at the maximum;
+- the scale domain is exactly `[minimum, 0, maximum]`, so unequal negative and
+  positive ranges each receive half of the available color gradient;
+- `color_scheme` and `color_direction` are ignored in this mode to preserve the
+  fixed red-negative/blue-positive meaning.
+
+An entirely negative result still includes zero as its neutral endpoint. Null,
+empty, and non-finite values are excluded when deciding the color domain.
 
 Value labels are enabled by default. Percent labels use one decimal place;
 number labels use thousands separators and at most two decimal

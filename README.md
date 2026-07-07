@@ -588,6 +588,9 @@ heatmap's numeric `value` scale:
 `Heatmap` defaults to `color_scheme="blues"` and
 `color_direction="higher_is_darker"`. Its X and Y values are discrete and
 sorted ascending. Missing rows produce empty cells; zero remains a real value.
+If any value is negative, Heatmap automatically switches to a zero-centered
+diverging scale: negative values are red, zero is neutral gray, and positive
+values are blue. In that mode the sequential scheme and direction are ignored.
 Cell values are displayed by default; set `show_values="false"` to hide them.
 Their text automatically switches between a contrasting darker or lighter
 variant of the cell color, without an outline.
