@@ -155,6 +155,7 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert "motor-chart-shared-tooltip-swatch" in html
     assert ".motor-chart-shared-tooltip-row.is-hovered" in html
     assert ".motor-chart-shared-tooltip-row.is-muted" in html
+    assert 'querySelectorAll(".motor-multiselect-dropdown[open]")' in html
     encoded = html.split('data-encoding="base64+gzip+csv">', 1)[1].split("</script>", 1)[0]
     assert gzip.decompress(b64decode(encoded.strip())).startswith(b"order_id,country")
 

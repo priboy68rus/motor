@@ -82,7 +82,8 @@ Contract:
   `Report controls` section.
 - Select, multiselect, and dimension dropdown panels overlay other content.
   They open upward when there is insufficient space below within the viewport
-  or sidebar scroll area.
+  or sidebar scroll area. Only one filter dropdown can be open at a time across
+  the report.
 
 The sidebar exists only if at least one component uses sidebar placement.
 

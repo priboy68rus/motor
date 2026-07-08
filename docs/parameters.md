@@ -63,6 +63,9 @@ Control modes:
 | `radio` | All radio buttons are displayed inline. |
 | `auto` | Inline radio buttons for at most 8 source options; dropdown for 9 or more. |
 
+Opening any select, multiselect, or dimension dropdown closes every other open
+filter dropdown in the report.
+
 `All` is always offered and sets the runtime value to `all`, disabling an
 `in_filter` predicate. `select` never emits an array.
 
@@ -100,6 +103,9 @@ Control modes:
 | `auto` | Inline checkboxes for at most 8 source options; dropdown for 9 or more. |
 | `checkboxes` | All checkboxes are displayed inline. |
 | `dropdown` | Searchable checkbox overlay with `All`, `None`, one-value, or count summary. |
+
+Opening any select, multiselect, or dimension dropdown closes every other open
+filter dropdown in the report.
 
 Selection behavior:
 
@@ -200,6 +206,9 @@ params:
 
 It does not accept `options`, `empty_behavior`, or `control`. The control is
 always a searchable radio-button dropdown.
+
+Opening a dimension dropdown closes every other open select, multiselect, or
+dimension dropdown in the report.
 
 Choice contract:
 

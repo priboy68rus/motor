@@ -205,6 +205,16 @@ function radio(
   return { label, input };
 }
 
+function closeOtherFilterDropdowns(active: HTMLDetailsElement): void {
+  for (const dropdown of active.ownerDocument.querySelectorAll<HTMLDetailsElement>(
+    ".motor-multiselect-dropdown[open]",
+  )) {
+    if (dropdown === active) continue;
+    dropdown.open = false;
+    dropdown.classList.remove("drop-up");
+  }
+}
+
 function filterDropdown(
   name: string,
   controls: HTMLElement,
@@ -236,6 +246,7 @@ function filterDropdown(
   details.addEventListener("toggle", () => {
     details.classList.remove("drop-up");
     if (!details.open) return;
+    closeOtherFilterDropdowns(details);
     requestAnimationFrame(() => {
       if (!details.open || !details.isConnected) return;
       const summaryRect = summary.getBoundingClientRect();
