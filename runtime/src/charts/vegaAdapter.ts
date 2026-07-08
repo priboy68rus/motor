@@ -149,82 +149,56 @@ function mountSharedTooltip(
       heading.className = "motor-chart-shared-tooltip-heading";
       heading.textContent = `${config.x}: ${tooltipText(bucket.x)}`;
       const colorScale = view.scale("color") as ((value: unknown) => unknown) | undefined;
-      if (config.details.length > 0) {
-        const table = document.createElement("table");
-        table.className = "motor-chart-shared-tooltip-table";
-        const head = document.createElement("thead");
-        const headRow = document.createElement("tr");
-        if (config.series) {
-          headRow.append(text("th", "", "motor-chart-shared-tooltip-swatch-heading"));
-          headRow.append(text("th", config.series, "motor-chart-shared-tooltip-series-heading"));
-        }
-        headRow.append(text("th", config.y, "motor-chart-shared-tooltip-value-heading"));
-        for (const field of config.details) {
-          headRow.append(
-            text("th", detailLabel(field), "motor-chart-shared-tooltip-detail-heading"),
-          );
-        }
-        head.append(headRow);
+      const table = document.createElement("table");
+      table.className = "motor-chart-shared-tooltip-table";
+      const head = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      if (config.series) {
+        headRow.append(text("th", "", "motor-chart-shared-tooltip-swatch-heading"));
+        headRow.append(text("th", config.series, "motor-chart-shared-tooltip-series-heading"));
+      }
+      headRow.append(text("th", config.y, "motor-chart-shared-tooltip-value-heading"));
+      for (const field of config.details) {
+        headRow.append(
+          text("th", detailLabel(field), "motor-chart-shared-tooltip-detail-heading"),
+        );
+      }
+      head.append(headRow);
 
-        const body = document.createElement("tbody");
-        for (const entry of bucket.entries) {
-          const row = document.createElement("tr");
-          row.className =
-            tooltipKey(entry.series, "nominal") === hoveredSeriesKey ? "is-hovered" : "is-muted";
-          if (config.series) {
-            const swatchCell = document.createElement("td");
-            const swatch = document.createElement("span");
-            swatch.className = "motor-chart-shared-tooltip-swatch";
-            const color = colorScale?.(entry.series);
-            if (color != null) swatch.style.backgroundColor = String(color);
-            swatchCell.append(swatch);
-            row.append(
-              swatchCell,
-              text("td", tooltipText(entry.series), "motor-chart-shared-tooltip-label"),
-            );
-          }
-          row.append(
-            text(
-              "td",
-              formatValue(entry.value, config.valueFormat),
-              "motor-chart-shared-tooltip-value",
-            ),
-          );
-          for (const detail of entry.details) {
-            row.append(
-              text("td", formatValue(detail.value), "motor-chart-shared-tooltip-detail-value"),
-            );
-          }
-          body.append(row);
-        }
-        table.append(head, body);
-        tooltip.replaceChildren(heading, table);
-      } else {
-        const rows = document.createElement("div");
-        rows.className = "motor-chart-shared-tooltip-rows";
-        for (const entry of bucket.entries) {
-          const row = document.createElement("div");
-          row.className = "motor-chart-shared-tooltip-row";
-          row.classList.add(
-            tooltipKey(entry.series, "nominal") === hoveredSeriesKey
-              ? "is-hovered"
-              : "is-muted",
-          );
+      const body = document.createElement("tbody");
+      for (const entry of bucket.entries) {
+        const row = document.createElement("tr");
+        row.className =
+          tooltipKey(entry.series, "nominal") === hoveredSeriesKey ? "is-hovered" : "is-muted";
+        if (config.series) {
+          const swatchCell = document.createElement("td");
+          swatchCell.className = "motor-chart-shared-tooltip-swatch-cell";
           const swatch = document.createElement("span");
           swatch.className = "motor-chart-shared-tooltip-swatch";
           const color = colorScale?.(entry.series);
           if (color != null) swatch.style.backgroundColor = String(color);
-          const label = document.createElement("span");
-          label.className = "motor-chart-shared-tooltip-label";
-          label.textContent = tooltipText(entry.series);
-          const value = document.createElement("span");
-          value.className = "motor-chart-shared-tooltip-value";
-          value.textContent = formatValue(entry.value, config.valueFormat);
-          row.append(swatch, label, value);
-          rows.append(row);
+          swatchCell.append(swatch);
+          row.append(
+            swatchCell,
+            text("td", tooltipText(entry.series), "motor-chart-shared-tooltip-label"),
+          );
         }
-        tooltip.replaceChildren(heading, rows);
+        row.append(
+          text(
+            "td",
+            formatValue(entry.value, config.valueFormat),
+            "motor-chart-shared-tooltip-value",
+          ),
+        );
+        for (const detail of entry.details) {
+          row.append(
+            text("td", formatValue(detail.value), "motor-chart-shared-tooltip-detail-value"),
+          );
+        }
+        body.append(row);
       }
+      table.append(head, body);
+      tooltip.replaceChildren(heading, table);
       activeKey = renderKey;
     }
     tooltip.hidden = false;

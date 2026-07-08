@@ -248,12 +248,12 @@ This does not reorder the list: tooltip rows always retain their query-result
 order. Charts without `group`, `color`, or `details` retain the ordinary
 single-mark tooltip.
 
-When `details` is configured, the tooltip switches to a table layout: detail
-labels are rendered once as column headers, and each series row contains only
-the corresponding values. The fields are read from the query result. They do
-not affect grouping, color, stacking, axes, or query dependencies. Labels are
-generated from field names, for example `cohort_size` becomes `Cohort size`.
-Missing or empty values render as `—`.
+Shared line/bar tooltips use the same table layout with or without `details`.
+When `details` is configured, detail labels are rendered once as extra column
+headers, and each series row contains only the corresponding values. The fields
+are read from the query result. They do not affect grouping, color, stacking,
+axes, or query dependencies. Labels are generated from field names, for example
+`cohort_size` becomes `Cohort size`. Missing or empty values render as `—`.
 
 X-axis type is inferred from the first non-null X value. ISO `YYYY-MM-DD` and
 ISO datetime strings use a temporal axis, except side-by-side grouped bars,
