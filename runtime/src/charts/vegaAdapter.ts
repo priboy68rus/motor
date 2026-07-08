@@ -17,6 +17,7 @@ type XType = "temporal" | "nominal";
 type SharedTooltipEntry = {
   series: unknown;
   value: unknown;
+  details: { label: string; value: unknown }[];
 };
 
 type SharedTooltipBucket = {
@@ -27,11 +28,24 @@ type SharedTooltipBucket = {
 type SharedTooltipConfig = {
   x: string;
   y: string;
-  series: string;
+  series?: string;
   xType: XType;
   rows: QueryRow[];
   valueFormat: ValueFormatOptions;
+  details: string[];
 };
+
+function parseDetails(value: unknown): string[] {
+  if (value == null) return [];
+  return String(value)
+    .split(",")
+    .map((field) => field.trim())
+    .filter(Boolean);
+}
+
+function detailLabel(field: string): string {
+  return field.replaceAll("_", " ").replace(/^./, (value) => value.toUpperCase());
+}
 
 function tooltipKey(value: unknown, xType: XType): string {
   if (xType === "temporal" && value != null) {
@@ -54,7 +68,14 @@ function sharedTooltipBuckets(config: SharedTooltipConfig): Map<string, SharedTo
       bucket = { x: xValue, entries: [] };
       buckets.set(key, bucket);
     }
-    bucket.entries.push({ series: row[config.series], value: row[config.y] });
+    bucket.entries.push({
+      series: config.series ? row[config.series] : config.y,
+      value: row[config.y],
+      details: config.details.map((field) => ({
+        label: detailLabel(field),
+        value: row[field],
+      })),
+    });
   }
   return buckets;
 }
@@ -99,14 +120,14 @@ function mountSharedTooltip(
       !datum ||
       typeof datum !== "object" ||
       !(config.x in datum) ||
-      !(config.series in datum)
+      (config.series != null && !(config.series in datum))
     ) {
       hide();
       return;
     }
     const key = tooltipKey((datum as QueryRow)[config.x], config.xType);
     const hoveredSeriesKey = tooltipKey(
-      (datum as QueryRow)[config.series],
+      config.series ? (datum as QueryRow)[config.series] : config.y,
       "nominal",
     );
     const renderKey = `${key}\u0000${hoveredSeriesKey}`;
@@ -142,6 +163,23 @@ function mountSharedTooltip(
         value.className = "motor-chart-shared-tooltip-value";
         value.textContent = formatValue(entry.value, config.valueFormat);
         row.append(swatch, label, value);
+        if (entry.details.length > 0) {
+          const details = document.createElement("div");
+          details.className = "motor-chart-shared-tooltip-details";
+          for (const detail of entry.details) {
+            const detailRow = document.createElement("div");
+            detailRow.className = "motor-chart-shared-tooltip-detail";
+            const detailLabelElement = document.createElement("span");
+            detailLabelElement.className = "motor-chart-shared-tooltip-detail-label";
+            detailLabelElement.textContent = detail.label;
+            const detailValueElement = document.createElement("span");
+            detailValueElement.className = "motor-chart-shared-tooltip-detail-value";
+            detailValueElement.textContent = formatValue(detail.value);
+            detailRow.append(detailLabelElement, detailValueElement);
+            details.append(detailRow);
+          }
+          row.append(details);
+        }
         rows.append(row);
       }
       tooltip.replaceChildren(heading, rows);
@@ -302,6 +340,7 @@ export async function renderChart(
   const colorScheme = component.props.color_scheme
     ? String(component.props.color_scheme)
     : undefined;
+  const details = parseDetails(component.props.details);
   const reverseColors = component.props.color_direction === "lower_is_darker";
   const percent = component.props.format === "percent";
   const sampleX = rows.find((row) => row[x] != null)?.[x];
@@ -368,13 +407,14 @@ export async function renderChart(
     data: { values: rows },
     encoding,
   };
-  const sharedTooltip = color
+  const sharedTooltip = color || details.length > 0
     ? {
         x,
         y,
-        series: color,
+        ...(color ? { series: color } : {}),
         xType,
         rows,
+        details,
         valueFormat: {
           format: component.props.format as ValueFormat | undefined,
           currency:

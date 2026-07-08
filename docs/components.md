@@ -37,8 +37,8 @@ values or chart errors rather than build-time validation errors.
 | [`VersionBadge`](#versionbadge) | — | `id` |
 | [`BigValue`](#bigvalue) | `query`, `value` | `id`, `title`, `format`, `currency`, `notation`, `compare_value`, `delta`, `delta_label`, `direction` |
 | [`Table`](#table) | `query` | `id`, `title`, `columns` |
-| [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `marker`, `color_scheme`, `color_direction` |
-| [`BarChart`](#barchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `stack`, `bar_width` |
+| [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction` |
+| [`BarChart`](#barchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `stack`, `bar_width` |
 | [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `format`, `color_scheme`, `color_direction`, `show_values` |
 
 ## `Filters`
@@ -225,6 +225,8 @@ renaming and presentation formatting should currently be done in SQL.
 - `group` splits observations into series and colors each series.
 - `color` assigns categorical color without all layout semantics of `group`.
 - If both `group` and `color` are set, `group` takes precedence.
+- `details` is a comma-separated list of additional result columns shown only
+  in the tooltip.
 - Charts are responsive, container-width, 300 px high, and use SVG.
 - Tooltips show data under the pointer.
 - `format="percent"` treats Y values as fractions and formats the Y axis as
@@ -243,7 +245,14 @@ contain at most one row per X/series pair to avoid duplicate series lines in
 the tooltip. The row belonging to the mark directly under the cursor is
 highlighted with a background and accent while other rows are slightly muted.
 This does not reorder the list: tooltip rows always retain their query-result
-order. Charts without `group` or `color` retain the ordinary single-mark tooltip.
+order. Charts without `group`, `color`, or `details` retain the ordinary
+single-mark tooltip.
+
+When `details` is configured, those fields are shown under each tooltip row.
+The fields are read from the query result. They do not affect grouping, color,
+stacking, axes, or query dependencies. Labels are generated from field names,
+for example `cohort_size` becomes `Cohort size`. Missing or empty values render
+as `—`.
 
 X-axis type is inferred from the first non-null X value. ISO `YYYY-MM-DD` and
 ISO datetime strings use a temporal axis, except side-by-side grouped bars,
@@ -271,6 +280,7 @@ Other values use a nominal axis.
 | `title` | string | no | — | Card heading. |
 | `group` | result column | no | — | Creates separate colored lines. |
 | `color` | result column | no | — | Categorical color field; ignored when `group` is set. |
+| `details` | comma-separated result columns | no | — | Extra fields displayed below each tooltip series row. |
 | `marker` | enum | no | `none` | `none`, `point`, or `circle`. |
 | `color_scheme` | non-empty string | no | — | Vega sequential scheme; requires `group` or `color`. |
 | `color_direction` | enum | conditional | `higher_is_darker` | Requires `color_scheme`; `higher_is_darker` or `lower_is_darker`. |
@@ -328,6 +338,7 @@ scheme becomes an in-report chart rendering error.
 | `title` | string | no | — | Card heading. |
 | `group` | result column | no | — | Series color; also controls side-by-side offset for `stack="none"`. |
 | `color` | result column | no | — | Series color without grouped-bar offset; ignored when `group` is set. |
+| `details` | comma-separated result columns | no | — | Extra fields displayed below each tooltip series row. |
 | `stack` | enum | no | `zero` | `zero`, `none`, or `normalize`. |
 | `bar_width` | positive finite number | no | axis-specific | Explicit bar width in pixels. |
 | `format` | string | no | — | Only `percent` currently changes rendering. |

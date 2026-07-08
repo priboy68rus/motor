@@ -163,6 +163,7 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert "motor-chart-shared-tooltip-swatch" in html
     assert ".motor-chart-shared-tooltip-row.is-hovered" in html
     assert ".motor-chart-shared-tooltip-row.is-muted" in html
+    assert ".motor-chart-shared-tooltip-details" in html
     assert 'querySelectorAll(".motor-multiselect-dropdown[open]")' in html
     assert "Reset filters" in html
     encoded = html.split('data-encoding="base64+gzip+csv">', 1)[1].split("</script>", 1)[0]
@@ -642,6 +643,51 @@ group by 1
 
     with pytest.raises(ReportValidationError, match="must be followed by AS alias"):
         compile_report(report)
+
+
+def test_line_and_bar_chart_details_are_compiled(tmp_path: Path) -> None:
+    data = tmp_path / "cohorts.csv"
+    data.write_text(
+        "cohort_month,period_number,retention,cohort_size,retained_users\n"
+        "2026-01-01,0,1.0,100,100\n",
+        encoding="utf-8",
+    )
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  cohorts:
+    path: cohorts.csv
+---
+```sql name=retention kind=query
+select cohort_month, period_number, retention, cohort_size, retained_users from cohorts
+```
+<LineChart
+  query="retention"
+  x="period_number"
+  y="retention"
+  group="cohort_month"
+  details="cohort_size, retained_users"
+/>
+<BarChart
+  query="retention"
+  x="period_number"
+  y="retention"
+  details="cohort_size"
+/>
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    line = next(item for item in spec["components"] if item["type"] == "LineChart")
+    bar = next(item for item in spec["components"] if item["type"] == "BarChart")
+    assert line["props"]["details"] == "cohort_size, retained_users"
+    assert bar["props"]["details"] == "cohort_size"
 
 
 @pytest.mark.parametrize(

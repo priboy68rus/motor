@@ -9,7 +9,7 @@ from motor import __version__
 from motor.models import CheckResult, ParsedReport, SourcePassport
 
 
-RUNTIME_VERSION = "0.7.5-source-freshness-status"
+RUNTIME_VERSION = "0.7.6-chart-tooltip-details"
 
 
 def _content_identity(parsed: ParsedReport, sources: list[SourcePassport]) -> tuple[str, str]:

@@ -460,8 +460,8 @@ should be quoted, and declarations may span multiple lines.
 | `VersionBadge` | — | — | Tool version and artifact ID. |
 | `BigValue` | `query`, `value` | `title`, `format`, `currency`, `notation`, `compare_value`, `delta`, `delta_label`, `direction` | Value and optional comparison from the first query row. `format` is `number`, `currency`, or `percent`; `notation` is `compact` (default) or `standard`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
-| `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `marker`, `color_scheme`, `color_direction`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
-| `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `format`, `currency`, `stack`, `bar_width` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
+| `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
+| `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `details`, `format`, `currency`, `stack`, `bar_width` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
 | `Heatmap` | `query`, `x`, `y`, `value` | `title`, `format`, `color_scheme`, `color_direction`, `show_values` | Rectangular heatmap with a quantitative gradient. `format` is `number` (default) or `percent`; `show_values` defaults to `true`. |
 
 `query` must reference an existing `kind=query` SQL block. Referenced column
@@ -546,6 +546,11 @@ all rows at the hovered X value and shows every series with the same color used
 on the chart. For example, hovering one month can show retention for every
 cohort or GMV for every channel. The series directly under the cursor is
 highlighted without changing the list order.
+
+`details="field_a,field_b"` on `LineChart` or `BarChart` adds extra query
+columns below each tooltip row. Details do not affect grouping, color, stacking,
+axes, or SQL dependencies. Labels are generated from field names, e.g.
+`cohort_size` becomes `Cohort size`.
 
 #### Cohorts, retention, and heatmaps
 
