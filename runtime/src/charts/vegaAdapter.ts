@@ -69,7 +69,7 @@ function sharedTooltipBuckets(config: SharedTooltipConfig): Map<string, SharedTo
       buckets.set(key, bucket);
     }
     bucket.entries.push({
-      series: config.series ? row[config.series] : config.y,
+      series: config.series ? row[config.series] : row[config.y],
       value: row[config.y],
       details: config.details.map((field) => ({
         label: detailLabel(field),
@@ -82,6 +82,13 @@ function sharedTooltipBuckets(config: SharedTooltipConfig): Map<string, SharedTo
 
 function tooltipText(value: unknown): string {
   return value == null || String(value).trim() === "" ? "—" : String(value);
+}
+
+function text(tag: "td" | "th", value: string, className?: string): HTMLTableCellElement {
+  const element = document.createElement(tag);
+  element.textContent = value;
+  if (className) element.className = className;
+  return element;
 }
 
 function heatmapTextColor(valueField: string): { expr: string } {
@@ -127,7 +134,7 @@ function mountSharedTooltip(
     }
     const key = tooltipKey((datum as QueryRow)[config.x], config.xType);
     const hoveredSeriesKey = tooltipKey(
-      config.series ? (datum as QueryRow)[config.series] : config.y,
+      config.series ? (datum as QueryRow)[config.series] : (datum as QueryRow)[config.y],
       "nominal",
     );
     const renderKey = `${key}\u0000${hoveredSeriesKey}`;
@@ -141,48 +148,83 @@ function mountSharedTooltip(
       const heading = document.createElement("div");
       heading.className = "motor-chart-shared-tooltip-heading";
       heading.textContent = `${config.x}: ${tooltipText(bucket.x)}`;
-      const rows = document.createElement("div");
-      rows.className = "motor-chart-shared-tooltip-rows";
       const colorScale = view.scale("color") as ((value: unknown) => unknown) | undefined;
-      for (const entry of bucket.entries) {
-        const row = document.createElement("div");
-        row.className = "motor-chart-shared-tooltip-row";
-        row.classList.add(
-          tooltipKey(entry.series, "nominal") === hoveredSeriesKey
-            ? "is-hovered"
-            : "is-muted",
-        );
-        const swatch = document.createElement("span");
-        swatch.className = "motor-chart-shared-tooltip-swatch";
-        const color = colorScale?.(entry.series);
-        if (color != null) swatch.style.backgroundColor = String(color);
-        const label = document.createElement("span");
-        label.className = "motor-chart-shared-tooltip-label";
-        label.textContent = tooltipText(entry.series);
-        const value = document.createElement("span");
-        value.className = "motor-chart-shared-tooltip-value";
-        value.textContent = formatValue(entry.value, config.valueFormat);
-        row.append(swatch, label, value);
-        if (entry.details.length > 0) {
-          const details = document.createElement("div");
-          details.className = "motor-chart-shared-tooltip-details";
-          for (const detail of entry.details) {
-            const detailRow = document.createElement("div");
-            detailRow.className = "motor-chart-shared-tooltip-detail";
-            const detailLabelElement = document.createElement("span");
-            detailLabelElement.className = "motor-chart-shared-tooltip-detail-label";
-            detailLabelElement.textContent = detail.label;
-            const detailValueElement = document.createElement("span");
-            detailValueElement.className = "motor-chart-shared-tooltip-detail-value";
-            detailValueElement.textContent = formatValue(detail.value);
-            detailRow.append(detailLabelElement, detailValueElement);
-            details.append(detailRow);
-          }
-          row.append(details);
+      if (config.details.length > 0) {
+        const table = document.createElement("table");
+        table.className = "motor-chart-shared-tooltip-table";
+        const head = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        if (config.series) {
+          headRow.append(text("th", "", "motor-chart-shared-tooltip-swatch-heading"));
+          headRow.append(text("th", config.series, "motor-chart-shared-tooltip-series-heading"));
         }
-        rows.append(row);
+        headRow.append(text("th", config.y, "motor-chart-shared-tooltip-value-heading"));
+        for (const field of config.details) {
+          headRow.append(
+            text("th", detailLabel(field), "motor-chart-shared-tooltip-detail-heading"),
+          );
+        }
+        head.append(headRow);
+
+        const body = document.createElement("tbody");
+        for (const entry of bucket.entries) {
+          const row = document.createElement("tr");
+          row.className =
+            tooltipKey(entry.series, "nominal") === hoveredSeriesKey ? "is-hovered" : "is-muted";
+          if (config.series) {
+            const swatchCell = document.createElement("td");
+            const swatch = document.createElement("span");
+            swatch.className = "motor-chart-shared-tooltip-swatch";
+            const color = colorScale?.(entry.series);
+            if (color != null) swatch.style.backgroundColor = String(color);
+            swatchCell.append(swatch);
+            row.append(
+              swatchCell,
+              text("td", tooltipText(entry.series), "motor-chart-shared-tooltip-label"),
+            );
+          }
+          row.append(
+            text(
+              "td",
+              formatValue(entry.value, config.valueFormat),
+              "motor-chart-shared-tooltip-value",
+            ),
+          );
+          for (const detail of entry.details) {
+            row.append(
+              text("td", formatValue(detail.value), "motor-chart-shared-tooltip-detail-value"),
+            );
+          }
+          body.append(row);
+        }
+        table.append(head, body);
+        tooltip.replaceChildren(heading, table);
+      } else {
+        const rows = document.createElement("div");
+        rows.className = "motor-chart-shared-tooltip-rows";
+        for (const entry of bucket.entries) {
+          const row = document.createElement("div");
+          row.className = "motor-chart-shared-tooltip-row";
+          row.classList.add(
+            tooltipKey(entry.series, "nominal") === hoveredSeriesKey
+              ? "is-hovered"
+              : "is-muted",
+          );
+          const swatch = document.createElement("span");
+          swatch.className = "motor-chart-shared-tooltip-swatch";
+          const color = colorScale?.(entry.series);
+          if (color != null) swatch.style.backgroundColor = String(color);
+          const label = document.createElement("span");
+          label.className = "motor-chart-shared-tooltip-label";
+          label.textContent = tooltipText(entry.series);
+          const value = document.createElement("span");
+          value.className = "motor-chart-shared-tooltip-value";
+          value.textContent = formatValue(entry.value, config.valueFormat);
+          row.append(swatch, label, value);
+          rows.append(row);
+        }
+        tooltip.replaceChildren(heading, rows);
       }
-      tooltip.replaceChildren(heading, rows);
       activeKey = renderKey;
     }
     tooltip.hidden = false;

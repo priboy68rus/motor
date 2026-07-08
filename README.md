@@ -548,9 +548,11 @@ cohort or GMV for every channel. The series directly under the cursor is
 highlighted without changing the list order.
 
 `details="field_a,field_b"` on `LineChart` or `BarChart` adds extra query
-columns below each tooltip row. Details do not affect grouping, color, stacking,
-axes, or SQL dependencies. Labels are generated from field names, e.g.
-`cohort_size` becomes `Cohort size`.
+columns to the tooltip. When details are present, the tooltip uses a table so
+detail labels appear once as column headers instead of repeating on every row.
+Details do not affect grouping, color, stacking, axes, or SQL dependencies.
+Labels are generated from field names, e.g. `cohort_size` becomes
+`Cohort size`.
 
 #### Cohorts, retention, and heatmaps
 
