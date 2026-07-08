@@ -22,6 +22,11 @@
     .motor-big-value-delta-label { margin: 4px 0 0; color: #667085; font-size: .82rem; }
     .motor-empty { color: #667085; margin: 0; }
     .motor-filters { overflow: visible; }
+    .motor-filter-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 16px; }
+    .motor-filter-header h2 { margin: 0; }
+    .motor-filter-reset { appearance: none; border: 1px solid #cbd2dc; border-radius: 999px; padding: 4px 10px; background: white; color: #475467; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 650; line-height: 1.4; white-space: nowrap; }
+    .motor-filter-reset:hover:not(:disabled), .motor-filter-reset:focus-visible { border-color: #98a2b3; color: #344054; background: #f9fafb; }
+    .motor-filter-reset:disabled { opacity: .45; cursor: default; }
     .motor-filter-list { display: flex; flex-wrap: wrap; gap: 20px 28px; align-items: flex-start; }
     .motor-filter { min-width: 180px; margin: 0; padding: 0; border: 0; }
     .motor-filter legend { margin-bottom: 8px; color: #475467; font-size: .82rem; font-weight: 650; }
@@ -48,6 +53,7 @@
     .motor-sidebar-container { box-sizing: border-box; position: sticky; top: 16px; min-width: 0; max-width: 100%; max-height: calc(100vh - 32px); overflow-x: hidden; overflow-y: auto; }
     .motor-sidebar-container > summary { display: none; }
     .motor-sidebar { display: grid; width: 100%; min-width: 0; gap: 12px; }
+    .motor-sidebar-actions { display: flex; justify-content: flex-end; min-width: 0; }
     .motor-sidebar .motor-card { box-sizing: border-box; width: 100%; min-width: 0; margin: 0; }
     .motor-sidebar .motor-filter-list, .motor-sidebar .motor-filter, .motor-sidebar .motor-filter-controls { min-width: 0; max-width: 100%; }
     .motor-sidebar .motor-filter { width: 100%; }

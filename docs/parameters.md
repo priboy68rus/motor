@@ -64,7 +64,7 @@ Control modes:
 | `auto` | Inline radio buttons for at most 8 source options; dropdown for 9 or more. |
 
 Opening any select, multiselect, or dimension dropdown closes every other open
-filter dropdown in the report.
+filter dropdown in the report. Clicking outside the dropdown closes it.
 
 `All` is always offered and sets the runtime value to `all`, disabling an
 `in_filter` predicate. `select` never emits an array.
@@ -105,7 +105,7 @@ Control modes:
 | `dropdown` | Searchable checkbox overlay with `All`, `None`, one-value, or count summary. |
 
 Opening any select, multiselect, or dimension dropdown closes every other open
-filter dropdown in the report.
+filter dropdown in the report. Clicking outside the dropdown closes it.
 
 Selection behavior:
 
@@ -208,7 +208,7 @@ It does not accept `options`, `empty_behavior`, or `control`. The control is
 always a searchable radio-button dropdown.
 
 Opening a dimension dropdown closes every other open select, multiselect, or
-dimension dropdown in the report.
+dimension dropdown in the report. Clicking outside the dropdown closes it.
 
 Choice contract:
 
@@ -242,6 +242,11 @@ order. See the complete [`Filters` component contract](components.md#filters).
 
 A parameter may appear in multiple `Filters` components. All instances share
 one state and are synchronized after a change.
+
+Reset buttons restore parameters to the `default` values declared in
+frontmatter. Content `Filters` blocks reset only their own `params`; the sidebar
+has one shared reset button for all parameters shown by sidebar `Filters`
+blocks.
 
 ## Reactivity and scope
 

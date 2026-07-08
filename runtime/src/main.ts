@@ -19,6 +19,7 @@ async function start(): Promise<void> {
       spec,
       (name, value, sourceComponentId) =>
         controller?.updateParam(name, value, sourceComponentId),
+      (names) => controller?.resetParams(names),
       (queryNames) => controller?.activateQueries(queryNames),
     );
     controller = new ReportController(spec, runner, renderer, (message) => {

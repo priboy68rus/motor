@@ -6,6 +6,10 @@ function sameValue(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function cloneParamValue(value: unknown): unknown {
+  return value == null || typeof value !== "object" ? value : structuredClone(value);
+}
+
 function initialQueryNames(spec: ReportSpec): Set<string> {
   const componentIds = new Set<string>();
   const visit = (items: ReportSpec["layout"]): void => {
@@ -81,13 +85,31 @@ export class ReportController {
     this.values[name] = value;
     this.stateVersion += 1;
     void this.renderer.updateFilters(this.values, this.options, sourceComponentId);
+    this.scheduleAffectedQueries(new Set([name]));
+  }
+
+  resetParams(names: readonly string[]): void {
+    const changed = new Set<string>();
+    for (const name of new Set(names.map(String))) {
+      const param = this.spec.params[name];
+      if (!param || sameValue(this.values[name], param.default)) continue;
+      this.values[name] = cloneParamValue(param.default);
+      changed.add(name);
+    }
+    if (changed.size === 0) return;
+    this.stateVersion += 1;
+    void this.renderer.updateFilters(this.values, this.options);
+    this.scheduleAffectedQueries(changed);
+  }
+
+  private scheduleAffectedQueries(paramNames: ReadonlySet<string>): void {
     const activeQueryNames = this.renderer.activeQueryNames();
     const affected = new Set(
       Object.entries(this.spec.queries)
         .filter(
           ([queryName, query]) =>
             query.kind === "query" &&
-            query.depends_on.params.includes(name) &&
+            query.depends_on.params.some((paramName) => paramNames.has(paramName)) &&
             activeQueryNames.has(queryName),
         )
         .map(([queryName]) => queryName),

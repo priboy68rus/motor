@@ -63,6 +63,12 @@ An empty comma-separated list is accepted but renders no controls. Reusing a
 parameter in several `Filters` components creates synchronized controls over
 one shared state.
 
+Each content `Filters` component renders a compact reset button in its header.
+The button restores only the parameters listed by that component to their
+declared `default` values. Sidebar `Filters` components do not render individual
+reset buttons; if the sidebar contains filters, the sidebar renders one reset
+button for all sidebar filter parameters.
+
 `placement: sidebar` is valid only at the top level. See
 [Layout](layout.md#sticky-sidebar). Control types, defaults, dropdown behavior,
 and SQL semantics are documented in [Parameters](parameters.md).

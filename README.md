@@ -252,6 +252,7 @@ overlay above report content, so charts and other components do not move. If
 the panel does not fit below the control, it automatically opens upward within
 the viewport or sidebar scroll area. Opening any select, multiselect, or
 dimension dropdown closes every other open filter dropdown in the report.
+Clicking outside the dropdown closes it.
 
 Each entry in dimension `choices` supports:
 
@@ -335,7 +336,10 @@ Render controls in the given order:
 Reports may contain multiple `Filters` blocks. All controls read and write one
 shared parameter state, so repeated controls for the same parameter stay
 synchronized. Placement does not create SQL scope: a parameter affects exactly
-the queries that reference it directly or through a dependent view.
+the queries that reference it directly or through a dependent view. Each
+content `Filters` block renders a small reset button that restores that block's
+parameters to their declared defaults. Sidebar filters share one sidebar reset
+button that restores all parameters shown in sidebar `Filters` blocks.
 
 ### SQL blocks
 
@@ -714,7 +718,9 @@ Multiple sidebar `Filters` and `Text` components are collected into one `<aside>
 This lets text cards label, explain, or visually separate groups of controls. On
 desktop it stays visible while report content scrolls and receives its own
 vertical scrollbar when necessary. Below 900 px it moves above the content and
-becomes a collapsible `Report controls` section.
+becomes a collapsible `Report controls` section. If the sidebar contains any
+`Filters` components, it shows one reset button for all sidebar filter
+parameters.
 
 Sidebar components must be top-level. They cannot be placed inside a `Row` or
 `Tab`. Regular `placement="content"` filters and text may appear at top level,

@@ -9,7 +9,7 @@ from motor import __version__
 from motor.models import CheckResult, ParsedReport, SourcePassport
 
 
-RUNTIME_VERSION = "0.7.2-exclusive-filter-dropdowns"
+RUNTIME_VERSION = "0.7.3-filter-reset"
 
 
 def _content_identity(parsed: ParsedReport, sources: list[SourcePassport]) -> tuple[str, str]:

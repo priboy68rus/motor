@@ -21,6 +21,7 @@ import type {
 } from "./types";
 
 type ParamChangeHandler = (name: string, value: unknown, sourceComponentId?: string) => void;
+type ParamResetHandler = (names: readonly string[]) => void;
 const AUTO_DROPDOWN_THRESHOLD = 8;
 let radioGroupSequence = 0;
 
@@ -205,14 +206,29 @@ function radio(
   return { label, input };
 }
 
-function closeOtherFilterDropdowns(active: HTMLDetailsElement): void {
-  for (const dropdown of active.ownerDocument.querySelectorAll<HTMLDetailsElement>(
+const dropdownOutsideClickDocuments = new WeakSet<Document>();
+
+function closeFilterDropdowns(document: Document, exceptTarget?: Node): void {
+  for (const dropdown of document.querySelectorAll<HTMLDetailsElement>(
     ".motor-multiselect-dropdown[open]",
   )) {
-    if (dropdown === active) continue;
+    if (exceptTarget && dropdown.contains(exceptTarget)) continue;
     dropdown.open = false;
     dropdown.classList.remove("drop-up");
   }
+}
+
+function closeOtherFilterDropdowns(active: HTMLDetailsElement): void {
+  closeFilterDropdowns(active.ownerDocument, active);
+}
+
+function ensureFilterDropdownOutsideClickHandler(document: Document): void {
+  if (dropdownOutsideClickDocuments.has(document)) return;
+  dropdownOutsideClickDocuments.add(document);
+  document.addEventListener("click", (event) => {
+    if (!(event.target instanceof Node)) return;
+    closeFilterDropdowns(document, event.target);
+  });
 }
 
 function filterDropdown(
@@ -235,6 +251,7 @@ function filterDropdown(
   panel.append(search, optionList);
   details.append(summary, panel);
   controls.append(details);
+  ensureFilterDropdownOutsideClickHandler(details.ownerDocument);
   search.addEventListener("input", () => {
     const needle = search.value.trim().toLocaleLowerCase();
     for (const label of optionList.querySelectorAll<HTMLLabelElement>(
@@ -471,6 +488,40 @@ function renderDimension(
   return field;
 }
 
+function sameParamValue(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function filterParamNames(component: ComponentSpec): string[] {
+  return Array.isArray(component.props.params) ? component.props.params.map(String) : [];
+}
+
+function uniqueParamNames(names: readonly string[]): string[] {
+  return Array.from(new Set(names));
+}
+
+function hasChangedParams(
+  spec: ReportSpec,
+  names: readonly string[],
+  values: ParamValues,
+): boolean {
+  return names.some((name) => {
+    const param = spec.params[name];
+    return !!param && !sameParamValue(values[name], param.default);
+  });
+}
+
+function resetButton(label: string, disabled: boolean, onClick: () => void): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "motor-filter-reset";
+  button.textContent = label;
+  button.disabled = disabled;
+  button.title = "Reset filters to default values";
+  button.addEventListener("click", onClick);
+  return button;
+}
+
 function renderFilters(
   element: HTMLElement,
   spec: ReportSpec,
@@ -478,24 +529,45 @@ function renderFilters(
   values: ParamValues,
   options: ParamOptions,
   onChange: ParamChangeHandler,
+  onReset: ParamResetHandler,
 ): void {
   element.className = "motor-card motor-filters";
-  if (!component.props.title) element.append(text("h2", "Filters"));
+  const names = uniqueParamNames(filterParamNames(component));
+  const localValues: ParamValues = { ...values };
+  let localResetButton: HTMLButtonElement | undefined;
+  const handleChange: ParamChangeHandler = (name, value, sourceComponentId) => {
+    localValues[name] = value;
+    if (localResetButton) {
+      localResetButton.disabled = !hasChangedParams(spec, names, localValues);
+    }
+    onChange(name, value, sourceComponentId);
+  };
+  const header = document.createElement("div");
+  header.className = "motor-filter-header";
+  header.append(text("h2", component.props.title ? String(component.props.title) : "Filters"));
+  if (component.props.placement !== "sidebar" && names.length > 0) {
+    localResetButton = resetButton("Reset", !hasChangedParams(spec, names, localValues), () => {
+      closeFilterDropdowns(element.ownerDocument);
+      if (localResetButton) localResetButton.disabled = true;
+      onReset(names);
+    });
+    header.append(localResetButton);
+  }
+  element.append(header);
   const fields = document.createElement("div");
   fields.className = "motor-filter-list";
-  const names = Array.isArray(component.props.params) ? component.props.params : [];
   for (const rawName of names) {
     const name = String(rawName);
     const param = spec.params[name];
     if (!param) continue;
     if (param.type === "multiselect") {
-      fields.append(renderMultiselect(name, param, options[name] ?? [], values[name], onChange));
+      fields.append(renderMultiselect(name, param, options[name] ?? [], values[name], handleChange));
     } else if (param.type === "select") {
-      fields.append(renderSelect(name, param, options[name] ?? [], values[name], onChange));
+      fields.append(renderSelect(name, param, options[name] ?? [], values[name], handleChange));
     } else if (param.type === "date_range") {
-      fields.append(renderDateRange(name, param, values[name], onChange));
+      fields.append(renderDateRange(name, param, values[name], handleChange));
     } else {
-      fields.append(renderDimension(name, param, values[name], onChange));
+      fields.append(renderDimension(name, param, values[name], handleChange));
     }
   }
   element.append(fields);
@@ -510,12 +582,15 @@ export class ReportRenderer {
   private latestErrors: Record<string, string> = {};
   private latestValues: ParamValues = {};
   private latestOptions: ParamOptions = {};
+  private sidebarResetButton?: HTMLButtonElement;
+  private sidebarResetParamNames: string[] = [];
 
   constructor(
     private root: HTMLElement,
     private manifest: Manifest,
     private spec: ReportSpec,
     private onParamChange: ParamChangeHandler,
+    private onParamReset: ParamResetHandler,
     private onTabChange?: (queryNames: ReadonlySet<string>) => void,
   ) {}
 
@@ -532,10 +607,17 @@ export class ReportRenderer {
     this.elements.clear();
     this.componentTabs.clear();
     this.activeTabs.clear();
+    this.sidebarResetButton = undefined;
+    this.sidebarResetParamNames = [];
     this.root.replaceChildren(text("h1", this.manifest.report.title));
     const components = new Map(this.spec.components.map((component) => [component.id, component]));
     const sidebarComponents = this.spec.components.filter(
       (component) => component.props.placement === "sidebar",
+    );
+    this.sidebarResetParamNames = uniqueParamNames(
+      sidebarComponents
+        .filter((component) => component.type === "Filters")
+        .flatMap((component) => filterParamNames(component)),
     );
     let contentRoot = this.root;
     let sidebarRoot: HTMLElement | undefined;
@@ -548,6 +630,20 @@ export class ReportRenderer {
       sidebarContainer.append(text("summary", "Report controls"));
       sidebarRoot = document.createElement("aside");
       sidebarRoot.className = "motor-sidebar";
+      if (this.sidebarResetParamNames.length > 0) {
+        const sidebarActions = document.createElement("div");
+        sidebarActions.className = "motor-sidebar-actions";
+        this.sidebarResetButton = resetButton(
+          "Reset filters",
+          !hasChangedParams(this.spec, this.sidebarResetParamNames, values),
+          () => {
+            closeFilterDropdowns(this.root.ownerDocument);
+            this.onParamReset(this.sidebarResetParamNames);
+          },
+        );
+        sidebarActions.append(this.sidebarResetButton);
+        sidebarRoot.append(sidebarActions);
+      }
       sidebarContainer.append(sidebarRoot);
       contentRoot = document.createElement("div");
       contentRoot.className = "motor-report-content";
@@ -645,6 +741,15 @@ export class ReportRenderer {
     }
   }
 
+  private updateSidebarResetButton(values: ParamValues): void {
+    if (!this.sidebarResetButton) return;
+    this.sidebarResetButton.disabled = !hasChangedParams(
+      this.spec,
+      this.sidebarResetParamNames,
+      values,
+    );
+  }
+
   activeQueryNames(): Set<string> {
     return new Set(
       this.spec.components
@@ -718,6 +823,7 @@ export class ReportRenderer {
   ): Promise<void> {
     this.latestValues = values;
     this.latestOptions = options;
+    this.updateSidebarResetButton(values);
     for (const component of this.spec.components) {
       if (
         component.type !== "Filters" ||
@@ -742,6 +848,7 @@ export class ReportRenderer {
     this.latestErrors = errors;
     this.latestValues = values;
     this.latestOptions = options;
+    this.updateSidebarResetButton(values);
     for (const component of this.spec.components) {
       if (
         component.query &&
@@ -792,13 +899,21 @@ export class ReportRenderer {
     this.chartHandles.delete(component.id);
     element.replaceChildren();
     element.removeAttribute("aria-busy");
-    if (component.props.title) element.append(text("h2", String(component.props.title)));
+    if (component.props.title && component.type !== "Filters") {
+      element.append(text("h2", String(component.props.title)));
+    }
     if (component.type === "DataStatus") renderDataStatus(element, this.manifest);
     else if (component.type === "VersionBadge") renderVersionBadge(element, this.manifest);
     else if (component.type === "Text") renderText(element, component);
     else if (component.type === "Filters") {
-      renderFilters(element, this.spec, component, values, options, (name, value) =>
-        this.onParamChange(name, value, component.id),
+      renderFilters(
+        element,
+        this.spec,
+        component,
+        values,
+        options,
+        (name, value) => this.onParamChange(name, value, component.id),
+        (names) => this.onParamReset(names),
       );
     } else if (component.query && errors[component.query]) {
       element.className = "motor-card motor-component-error";
