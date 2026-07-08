@@ -46,26 +46,73 @@ function valueFormatOptions(component: ComponentSpec): ValueFormatOptions {
   };
 }
 
+type DisplayTimestamp = { text: string; dateTime?: string; title?: string };
+
+function formatManifestTimestamp(value: string | null, timeZone: string): DisplayTimestamp {
+  if (!value) return { text: "Not configured" };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return { text: value };
+  const options: Intl.DateTimeFormatOptions = {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone,
+    timeZoneName: "short",
+  };
+  try {
+    return {
+      text: new Intl.DateTimeFormat(undefined, options).format(date),
+      dateTime: value,
+      title: value,
+    };
+  } catch {
+    return {
+      text: new Intl.DateTimeFormat(undefined, { ...options, timeZone: undefined }).format(date),
+      dateTime: value,
+      title: value,
+    };
+  }
+}
+
+function dataStatusItem(label: string, value: DisplayTimestamp | string): HTMLElement {
+  const item = document.createElement("span");
+  item.className = "motor-data-status-item";
+  item.append(text("span", label, "motor-data-status-label"));
+  const display = typeof value === "string" ? { text: value } : value;
+  const valueElement = display.dateTime
+    ? document.createElement("time")
+    : document.createElement("span");
+  valueElement.className = "motor-data-status-value";
+  valueElement.textContent = display.text;
+  if (display.dateTime) valueElement.setAttribute("datetime", display.dateTime);
+  if (display.title) valueElement.title = display.title;
+  item.append(valueElement);
+  return item;
+}
+
 function renderDataStatus(element: HTMLElement, manifest: Manifest): void {
-  element.className = "motor-card motor-data-status";
-  element.append(text("h2", "Data status"));
+  const hasWarnings = manifest.checks.status === "warning";
+  const timeZone = manifest.report.timezone || "UTC";
+  element.className = "motor-data-status";
   element.append(
     text(
-      "p",
-      manifest.checks.status === "warning" ? "Checks completed with warnings" : "Checks passed",
-      manifest.checks.status === "warning" ? "status-line warning" : "status-line",
+      "span",
+      hasWarnings ? "Checks: warnings" : "Checks: passed",
+      hasWarnings ? "motor-data-status-state warning" : "motor-data-status-state",
     ),
+    dataStatusItem(
+      "Data through",
+      formatManifestTimestamp(manifest.freshness.data_through, timeZone),
+    ),
+    dataStatusItem(
+      "Processed",
+      formatManifestTimestamp(manifest.freshness.processed_at, timeZone),
+    ),
+    dataStatusItem("Built", formatManifestTimestamp(manifest.build.built_at, timeZone)),
+    dataStatusItem("Timezone", timeZone),
   );
-  const values = [
-    ["Data through", manifest.freshness.data_through ?? "Not configured"],
-    ["Data processed", manifest.freshness.processed_at ?? "Not configured"],
-    ["Report built", manifest.build.built_at],
-  ];
-  const list = document.createElement("dl");
-  for (const [label, value] of values) {
-    list.append(text("dt", label ?? ""), text("dd", value ?? ""));
-  }
-  element.append(list);
 }
 
 function renderVersionBadge(element: HTMLElement, manifest: Manifest): void {

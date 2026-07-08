@@ -196,7 +196,8 @@ Freshness fields are optional:
 Configured freshness columns must exist and contain at least one value. Invalid
 timestamps stop the build. Timestamps without an offset are interpreted as UTC
 and produce a warning; the report timezone does not currently change that
-interpretation.
+interpretation. The report timezone is used for displaying runtime metadata
+timestamps in `<DataStatus />`.
 
 ### Parameters and filters
 
@@ -454,7 +455,7 @@ should be quoted, and declarations may span multiple lines.
 | --- | --- | --- | --- |
 | `Filters` | `params` | `title`, `placement` | Interactive controls for comma-separated parameter names. `placement` is `content` (default) or `sidebar`. |
 | `Text` | `text` | `title`, `placement` | Plain text card. Line breaks are preserved; Markdown and HTML are not interpreted. `placement` is `content` (default) or `sidebar`. |
-| `DataStatus` | — | — | Check status, data-through time, processing time, and build time. |
+| `DataStatus` | — | — | Compact check status, data-through time, processing time, build time, and report timezone. |
 | `VersionBadge` | — | — | Tool version and artifact ID. |
 | `BigValue` | `query`, `value` | `title`, `format`, `currency`, `notation`, `compare_value`, `delta`, `delta_label`, `direction` | Value and optional comparison from the first query row. `format` is `number`, `currency`, or `percent`; `notation` is `compact` (default) or `standard`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |

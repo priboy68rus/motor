@@ -118,12 +118,15 @@ Timestamp behavior:
 - Values containing `Z` or an explicit offset retain their instant.
 - Offset-free values are interpreted as UTC and emit a warning.
 - The report `timezone` does not change CSV timestamp interpretation.
+- The report `timezone` is used when runtime metadata timestamps are displayed
+  by [`DataStatus`](components.md#datastatus).
 - Exceeding `max_lag_hours` emits a warning and sets freshness status to
   `warning`; it does not fail the build.
 - Report-level `data_through` and `processed_at` are the latest available
   values across all sources.
 
-[`DataStatus`](components.md#datastatus) displays the aggregated values.
+[`DataStatus`](components.md#datastatus) displays the aggregated values in the
+report timezone.
 
 ## Comments and disabling report fragments
 
