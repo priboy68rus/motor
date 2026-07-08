@@ -93,8 +93,8 @@ All `freshness` fields are optional. Unknown fields are rejected.
 
 | Field | Type | Required | Default | Contract |
 | --- | --- | --- | --- | --- |
-| `data_time_column` | string | no | — | Column whose ISO 8601 values determine source `data_min_at` and `data_max_at`. |
-| `processed_time_column` | string | no | — | Column whose maximum ISO 8601 value becomes source `processed_at`. |
+| `data_time_column` | string | no | — | Column whose ISO 8601 date or datetime values determine source `data_min_at` and `data_max_at`. |
+| `processed_time_column` | string | no | — | Column whose maximum ISO 8601 date or datetime value becomes source `processed_at`. |
 | `max_lag_hours` | positive number | no | — | Warn when build time minus `data_max_at` exceeds this many hours. Requires useful data only when `data_time_column` is present. |
 
 Example:
@@ -116,17 +116,19 @@ date or datetime. Invalid values stop the build.
 Timestamp behavior:
 
 - Values containing `Z` or an explicit offset retain their instant.
-- Offset-free values are interpreted as UTC and emit a warning.
+- Date-only values such as `2026-07-01` are accepted as date-granularity
+  freshness values and do not emit timezone warnings.
+- Offset-free datetime values are interpreted as UTC and emit a warning.
 - The report `timezone` does not change CSV timestamp interpretation.
 - The report `timezone` is used when runtime metadata timestamps are displayed
   by [`DataStatus`](components.md#datastatus).
 - Exceeding `max_lag_hours` emits a warning and sets freshness status to
   `warning`; it does not fail the build.
-- Report-level `data_through` and `processed_at` are the latest available
-  values across all sources.
+- Manifest-level `data_through` and `processed_at` are compatibility aggregate
+  fields using the latest available values across all sources.
 
-[`DataStatus`](components.md#datastatus) displays the aggregated values in the
-report timezone.
+[`DataStatus`](components.md#datastatus) displays one row per source, so reports
+with multiple sources expose each source's actual freshness separately.
 
 ## Comments and disabling report fragments
 

@@ -5,6 +5,7 @@ import csv
 import gzip
 import hashlib
 import io
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -13,10 +14,13 @@ from motor.models import CheckResult, CompiledSource, DataSourceConfig, SourcePa
 
 
 _NULL_VALUES = {"", "null", "none", "na"}
+_DATE_ONLY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
-def _parse_datetime(value: str, *, source: str, column: str) -> tuple[datetime, bool]:
-    normalized = value.strip().replace("Z", "+00:00")
+def _parse_datetime(value: str, *, source: str, column: str) -> tuple[datetime, bool, str]:
+    stripped = value.strip()
+    date_only = bool(_DATE_ONLY_RE.fullmatch(stripped))
+    normalized = stripped.replace("Z", "+00:00")
     try:
         parsed = datetime.fromisoformat(normalized)
     except ValueError as exc:
@@ -26,7 +30,13 @@ def _parse_datetime(value: str, *, source: str, column: str) -> tuple[datetime, 
     was_naive = parsed.tzinfo is None
     if was_naive:
         parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed, was_naive
+    return parsed, was_naive and not date_only, "date" if date_only else "datetime"
+
+
+def _merge_granularity(values: set[str]) -> str | None:
+    if not values:
+        return None
+    return "datetime" if "datetime" in values else "date"
 
 
 def _value_type(value: str) -> str:
@@ -110,6 +120,8 @@ def compile_source(
     inferred: dict[str, str | None] = {column: None for column in columns}
     data_times: list[datetime] = []
     processed_times: list[datetime] = []
+    data_granularities: set[str] = set()
+    processed_granularities: set[str] = set()
     naive_columns: set[str] = set()
     try:
         for row in reader:
@@ -120,19 +132,21 @@ def compile_source(
             if freshness and freshness.data_time_column:
                 value = row[freshness.data_time_column]
                 if value and value.strip():
-                    parsed, naive = _parse_datetime(
+                    parsed, naive, granularity = _parse_datetime(
                         value, source=name, column=freshness.data_time_column
                     )
                     data_times.append(parsed)
+                    data_granularities.add(granularity)
                     if naive:
                         naive_columns.add(freshness.data_time_column)
             if freshness and freshness.processed_time_column:
                 value = row[freshness.processed_time_column]
                 if value and value.strip():
-                    parsed, naive = _parse_datetime(
+                    parsed, naive, granularity = _parse_datetime(
                         value, source=name, column=freshness.processed_time_column
                     )
                     processed_times.append(parsed)
+                    processed_granularities.add(granularity)
                     if naive:
                         naive_columns.add(freshness.processed_time_column)
     except csv.Error as exc:
@@ -193,7 +207,9 @@ def compile_source(
         loaded_into_report_at=built_at,
         data_min_at=data_min,
         data_max_at=data_max,
+        data_time_granularity=_merge_granularity(data_granularities),
         processed_at=max(processed_times) if processed_times else None,
+        processed_time_granularity=_merge_granularity(processed_granularities),
         freshness_status=freshness_status,
     )
     encoded = base64.b64encode(gzip.compress(raw, mtime=0)).decode("ascii")

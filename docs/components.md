@@ -104,15 +104,17 @@ interpreted. Whitespace is preserved by the report stylesheet. Use separate
 Accepts only the common optional `id`. It shows:
 
 - overall check result (`Checks: passed` or warnings);
-- latest configured data time across sources, or `Not configured`;
-- latest configured processing time across sources, or `Not configured`;
 - report build timestamp;
-- effective report timezone.
+- effective report timezone;
+- one compact row per CSV source with source name, configured data-through
+  timestamp, configured processing timestamp, and row count.
 
 It renders as a compact status line, similar to `VersionBadge`. Timestamps are
 formatted in the report timezone for display; the original ISO 8601 value is
-kept in the underlying `<time datetime>` attribute and browser title. Freshness
-warnings do not prevent the report from rendering.
+kept in the underlying `<time datetime>` attribute and browser title. Date-only
+freshness values such as `2026-07-01` are displayed as dates, without timezone
+conversion or timezone warnings. Freshness warnings do not prevent the report
+from rendering.
 
 ## `VersionBadge`
 

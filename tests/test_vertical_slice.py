@@ -149,7 +149,9 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert ".motor-filter-header { display: flex;" in html
     assert ".motor-filter-reset" in html
     assert ".motor-sidebar-actions" in html
-    assert ".motor-data-status { display: flex;" in html
+    assert ".motor-data-status { display: grid;" in html
+    assert ".motor-data-status-sources" in html
+    assert ".motor-data-source-name" in html
     assert "motor-data-status-state" in html
     assert "Intl.DateTimeFormat" in html
     assert "width: 240px; max-width: 100%;" in html
@@ -320,6 +322,72 @@ data:
         check["name"] for check in manifest["checks"]["tests"] if check["status"] == "warning"
     }
     assert warning_names == {"report_timezone_defaulted", "timezone_assumed"}
+
+
+def test_date_only_freshness_does_not_warn_timezone(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,month_dt\n1,2026-06-01\n2,2026-07-01\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: Europe/Moscow
+data:
+  events:
+    path: data.csv
+    freshness:
+      data_time_column: month_dt
+---
+""",
+        encoding="utf-8",
+    )
+
+    manifest, _, _ = compile_report(
+        report, built_at=datetime(2026, 7, 2, tzinfo=timezone.utc)
+    )
+
+    warning_names = {
+        check["name"] for check in manifest["checks"]["tests"] if check["status"] == "warning"
+    }
+    assert "timezone_assumed" not in warning_names
+    assert manifest["sources"][0]["data_time_granularity"] == "date"
+    assert manifest["sources"][0]["data_max_at"] == "2026-07-01T00:00:00Z"
+
+
+def test_manifest_keeps_per_source_freshness(tmp_path: Path) -> None:
+    first = tmp_path / "first.csv"
+    second = tmp_path / "second.csv"
+    first.write_text("id,month_dt\n1,2026-06-01\n", encoding="utf-8")
+    second.write_text("id,month_dt\n1,2026-05-01\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  first:
+    path: first.csv
+    freshness:
+      data_time_column: month_dt
+  second:
+    path: second.csv
+    freshness:
+      data_time_column: month_dt
+---
+""",
+        encoding="utf-8",
+    )
+
+    manifest, _, _ = compile_report(
+        report, built_at=datetime(2026, 7, 2, tzinfo=timezone.utc)
+    )
+
+    sources = {source["name"]: source for source in manifest["sources"]}
+    assert manifest["freshness"]["data_through"] == "2026-06-01T00:00:00+00:00"
+    assert sources["first"]["data_max_at"] == "2026-06-01T00:00:00Z"
+    assert sources["second"]["data_max_at"] == "2026-05-01T00:00:00Z"
 
 
 def test_stale_data_is_warning_not_error(tmp_path: Path) -> None:

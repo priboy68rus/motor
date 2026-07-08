@@ -3,6 +3,15 @@ export type Manifest = {
   artifact: { id: string; content_sha256: string };
   build: { built_at: string; tool_name: string; tool_version: string; runtime_version: string };
   freshness: { status: "passed" | "warning"; data_through: string | null; processed_at: string | null };
+  sources: {
+    name: string;
+    rows: number;
+    data_max_at?: string | null;
+    data_time_granularity?: "date" | "datetime" | null;
+    processed_at?: string | null;
+    processed_time_granularity?: "date" | "datetime" | null;
+    freshness_status: "passed" | "warning";
+  }[];
   checks: { status: "passed" | "warning" };
 };
 

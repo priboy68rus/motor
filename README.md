@@ -189,15 +189,16 @@ Freshness fields are optional:
 
 | Field | Description |
 | --- | --- |
-| `data_time_column` | ISO 8601 timestamp used to calculate data minimum, maximum, and age. |
-| `processed_time_column` | ISO 8601 timestamp showing when rows were processed. The maximum value is displayed. |
+| `data_time_column` | ISO 8601 date or datetime used to calculate data minimum, maximum, and age. |
+| `processed_time_column` | ISO 8601 date or datetime showing when rows were processed. The maximum value is displayed. |
 | `max_lag_hours` | Positive freshness threshold. Exceeding it produces a warning but does not stop the build. It is meaningful when `data_time_column` is configured. |
 
 Configured freshness columns must exist and contain at least one value. Invalid
-timestamps stop the build. Timestamps without an offset are interpreted as UTC
-and produce a warning; the report timezone does not currently change that
+timestamps stop the build. Date-only values such as `2026-07-01` are accepted
+without timezone warnings. Datetime values without an offset are interpreted as
+UTC and produce a warning; the report timezone does not currently change that
 interpretation. The report timezone is used for displaying runtime metadata
-timestamps in `<DataStatus />`.
+timestamps in `<DataStatus />`, which renders one freshness row per source.
 
 ### Parameters and filters
 
@@ -455,7 +456,7 @@ should be quoted, and declarations may span multiple lines.
 | --- | --- | --- | --- |
 | `Filters` | `params` | `title`, `placement` | Interactive controls for comma-separated parameter names. `placement` is `content` (default) or `sidebar`. |
 | `Text` | `text` | `title`, `placement` | Plain text card. Line breaks are preserved; Markdown and HTML are not interpreted. `placement` is `content` (default) or `sidebar`. |
-| `DataStatus` | — | — | Compact check status, data-through time, processing time, build time, and report timezone. |
+| `DataStatus` | — | — | Compact check status, build time, report timezone, and one freshness row per source. |
 | `VersionBadge` | — | — | Tool version and artifact ID. |
 | `BigValue` | `query`, `value` | `title`, `format`, `currency`, `notation`, `compare_value`, `delta`, `delta_label`, `direction` | Value and optional comparison from the first query row. `format` is `number`, `currency`, or `percent`; `notation` is `compact` (default) or `standard`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |

@@ -138,7 +138,9 @@ class SourcePassport(StrictModel):
     loaded_into_report_at: datetime
     data_min_at: datetime | None = None
     data_max_at: datetime | None = None
+    data_time_granularity: Literal["date", "datetime"] | None = None
     processed_at: datetime | None = None
+    processed_time_granularity: Literal["date", "datetime"] | None = None
     freshness_status: Literal["passed", "warning"] = "passed"
 
 

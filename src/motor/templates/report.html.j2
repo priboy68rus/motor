@@ -14,9 +14,13 @@
     .motor-component { position: relative; transition: opacity .15s ease; }
     .motor-component-error, .motor-fatal-error { color: #a11b1b; background: #fff4f4; border: 1px solid #f2b8b8; border-radius: 12px; padding: 20px; }
     .motor-version { color: #667085; font-family: ui-monospace, monospace; font-size: .8rem; margin: 12px 0; overflow-wrap: anywhere; }
-    .motor-data-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; color: #667085; font-size: .82rem; margin: 12px 0; overflow-wrap: anywhere; }
+    .motor-data-status { display: grid; gap: 6px; color: #667085; font-size: .82rem; margin: 12px 0; overflow-wrap: anywhere; }
+    .motor-data-status-summary, .motor-data-source { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+    .motor-data-status-sources { display: grid; gap: 4px; }
     .motor-data-status-state { border: 1px solid #abefc6; border-radius: 999px; padding: 2px 8px; background: #ecfdf3; color: #067647; font-weight: 650; }
     .motor-data-status-state.warning { border-color: #f5d08a; background: #fff7e6; color: #8a5700; }
+    .motor-data-source.warning .motor-data-source-name { color: #8a5700; }
+    .motor-data-source-name { color: #344054; font-weight: 650; }
     .motor-data-status-item { display: inline-flex; align-items: baseline; gap: 4px; }
     .motor-data-status-label { color: #98a2b3; }
     .motor-data-status-value { color: #475467; font-variant-numeric: tabular-nums; }

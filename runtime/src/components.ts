@@ -48,8 +48,30 @@ function valueFormatOptions(component: ComponentSpec): ValueFormatOptions {
 
 type DisplayTimestamp = { text: string; dateTime?: string; title?: string };
 
-function formatManifestTimestamp(value: string | null, timeZone: string): DisplayTimestamp {
+function formatDateOnlyTimestamp(value: string): DisplayTimestamp {
+  const dateOnly = value.slice(0, 10);
+  const [year, month, day] = dateOnly.split("-").map(Number);
+  if (!year || !month || !day) return { text: dateOnly || value, dateTime: value, title: value };
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return {
+    text: new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      timeZone: "UTC",
+    }).format(date),
+    dateTime: value,
+    title: value,
+  };
+}
+
+function formatManifestTimestamp(
+  value: string | null | undefined,
+  timeZone: string,
+  granularity?: "date" | "datetime" | null,
+): DisplayTimestamp {
   if (!value) return { text: "Not configured" };
+  if (granularity === "date") return formatDateOnlyTimestamp(value);
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return { text: value };
   const options: Intl.DateTimeFormatOptions = {
@@ -92,27 +114,57 @@ function dataStatusItem(label: string, value: DisplayTimestamp | string): HTMLEl
   return item;
 }
 
+function formatCount(value: number): string {
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
+}
+
 function renderDataStatus(element: HTMLElement, manifest: Manifest): void {
   const hasWarnings = manifest.checks.status === "warning";
   const timeZone = manifest.report.timezone || "UTC";
   element.className = "motor-data-status";
-  element.append(
+  const summary = document.createElement("div");
+  summary.className = "motor-data-status-summary";
+  summary.append(
     text(
       "span",
       hasWarnings ? "Checks: warnings" : "Checks: passed",
       hasWarnings ? "motor-data-status-state warning" : "motor-data-status-state",
     ),
-    dataStatusItem(
-      "Data through",
-      formatManifestTimestamp(manifest.freshness.data_through, timeZone),
-    ),
-    dataStatusItem(
-      "Processed",
-      formatManifestTimestamp(manifest.freshness.processed_at, timeZone),
-    ),
     dataStatusItem("Built", formatManifestTimestamp(manifest.build.built_at, timeZone)),
     dataStatusItem("Timezone", timeZone),
   );
+  element.append(summary);
+
+  const sources = document.createElement("div");
+  sources.className = "motor-data-status-sources";
+  for (const source of manifest.sources) {
+    const row = document.createElement("div");
+    row.className = `motor-data-source${
+      source.freshness_status === "warning" ? " warning" : ""
+    }`;
+    row.append(
+      text("span", source.name, "motor-data-source-name"),
+      dataStatusItem(
+        "Through",
+        formatManifestTimestamp(
+          source.data_max_at,
+          timeZone,
+          source.data_time_granularity,
+        ),
+      ),
+      dataStatusItem(
+        "Processed",
+        formatManifestTimestamp(
+          source.processed_at,
+          timeZone,
+          source.processed_time_granularity,
+        ),
+      ),
+      dataStatusItem("Rows", formatCount(source.rows)),
+    );
+    sources.append(row);
+  }
+  element.append(sources);
 }
 
 function renderVersionBadge(element: HTMLElement, manifest: Manifest): void {
