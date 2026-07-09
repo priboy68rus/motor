@@ -9,7 +9,7 @@ below describe the complete supported contract.
 - [Getting started](getting-started.md) — install motor, validate and build a
   minimal report.
 - [Report file reference](report-file.md) — file structure, YAML frontmatter,
-  CSV sources, freshness checks, comments, naming rules, and validation.
+  CSV/Parquet sources, freshness checks, comments, naming rules, and validation.
 - [Parameters and filters](parameters.md) — every parameter type and field,
   defaults, controls, selection semantics, and reactivity.
 - [SQL reference](sql.md) — named SQL blocks, views, queries, dependencies,

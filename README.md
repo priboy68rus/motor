@@ -1,6 +1,6 @@
 # motor
 
-motor compiles Markdown/YAML/SQL report specifications and CSV data into one
+motor compiles Markdown/YAML/SQL report specifications and CSV/Parquet data into one
 self-contained HTML artifact. The compiler validates a report's parameters,
 named SQL dependency graph, components, source identity, and freshness before
 packaging the source data.
@@ -51,7 +51,7 @@ pipx install "git+https://github.com/priboy68rus/motor.git@master"
 ### Build a report
 
 Source paths in `report.md` are resolved relative to that file. Validate the
-specification and its CSV files before building:
+specification and its CSV/Parquet files before building:
 
 ```bash
 motor validate path/to/report.md
@@ -135,7 +135,7 @@ The following fields are supported. Unknown fields are rejected.
 | --- | --- | --- | --- |
 | `title` | yes | — | Non-empty report title shown in the HTML. |
 | `slug` | yes | — | Stable ID using lowercase letters, digits, and single hyphens, for example `revenue-overview`. |
-| `data` | yes | — | Mapping with at least one named CSV source. |
+| `data` | yes | — | Mapping with at least one named CSV or Parquet source. |
 | `spec_version` | no | `0.1.0` | Version of the authoring specification. |
 | `timezone` | no | `UTC` | Valid IANA timezone such as `UTC` or `Europe/Moscow`. Omitting it produces a warning. |
 | `params` | no | `{}` | Named interactive filter parameters. |
@@ -157,13 +157,13 @@ data:
 ---
 ```
 
-### CSV data sources
+### Data sources
 
 Each entry under `data` creates a DuckDB table with the same name.
 
 | Field | Required | Description |
 | --- | --- | --- |
-| `path` | yes | CSV path relative to `report.md`. |
+| `path` | yes | Source path relative to `report.md`; `.csv` and `.parquet` are supported. |
 | `freshness` | no | Freshness and processing-time configuration. |
 
 CSV requirements:
@@ -172,6 +172,14 @@ CSV requirements:
 - Comma delimiter and a header row.
 - Non-empty, unique column names.
 - At least one data row.
+
+Parquet requirements:
+
+- Valid Parquet magic bytes, footer metadata, row count, and schema.
+- At least one column and one data row.
+
+Source type is inferred from the file extension. CSV and Parquet sources can be
+mixed in one report and joined normally in SQL.
 
 Example with freshness metadata:
 
@@ -227,7 +235,7 @@ Parameter fields:
 | `choices` | `dimension` | yes | — | Static allowlist of selectable SQL fields. |
 | `allow_none` | `dimension` | no | `false` | Adds a `Nothing` option that produces one empty-string group. |
 
-For `select` and `multiselect`, `options.source` must name a configured CSV
+For `select` and `multiselect`, `options.source` must name a configured data
 source and `options.column` must exist in that source. The browser loads sorted
 distinct non-null values from that column. Filter options are currently static,
 not cascading.
@@ -864,11 +872,11 @@ motor inspect revenue.html
 - Query and component IDs must be unique.
 - Components must reference existing `kind=query` blocks.
 - Filter parameters, option sources, and option columns must exist.
-- Malformed CSV, missing files/columns, invalid freshness timestamps, malformed
+- Malformed source files, missing files/columns, invalid freshness timestamps, malformed
   templates, unknown SQL relations, and dependency cycles stop the build.
 - Stale data, an omitted report timezone, and timezone-naive CSV timestamps are
   warnings rather than build failures.
-- The generated HTML embeds the complete source CSV. Anyone who can open the
+- The generated HTML embeds the complete source files. Anyone who can open the
   report can extract its data; do not distribute data the recipient should not
   possess.
 - `artifact.content_sha256` identifies canonical report content using the

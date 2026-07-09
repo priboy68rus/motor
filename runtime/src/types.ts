@@ -5,6 +5,7 @@ export type Manifest = {
   freshness: { status: "passed" | "warning"; data_through: string | null; processed_at: string | null };
   sources: {
     name: string;
+    source_format?: "csv" | "parquet";
     rows: number;
     data_max_at?: string | null;
     data_time_granularity?: "date" | "datetime" | null;

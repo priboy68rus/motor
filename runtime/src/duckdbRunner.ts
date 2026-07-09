@@ -1,7 +1,7 @@
 import * as duckdb from "@duckdb/duckdb-wasm";
 import { DataType, DateUnit, type Field } from "apache-arrow";
 
-import { createEmbeddedDuckDBWorker } from "./dataLoader";
+import { createEmbeddedDuckDBWorker, type EmbeddedSource } from "./dataLoader";
 import { renderQueryTemplate } from "./queryTemplates";
 import type { RuntimeMetrics } from "./runtimeMetrics";
 import type { ParamOptions, ParamValues, QueryResults, QueryRow, ReportSpec } from "./types";
@@ -99,6 +99,10 @@ function quoteIdentifier(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
+function quoteString(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
+}
+
 function formatBytes(value: number): string {
   const unit = value >= 1024 * 1024 ? " MB" : " KB";
   const divisor = value >= 1024 * 1024 ? 1024 * 1024 : 1024;
@@ -129,7 +133,7 @@ export class DuckDBRunner {
   private queryCache = new Map<string, QueryRow[]>();
 
   async initialize(
-    sources: Record<string, string>,
+    sources: Record<string, EmbeddedSource>,
     snapshotKey: string,
     metrics?: RuntimeMetrics,
   ): Promise<void> {
@@ -144,17 +148,35 @@ export class DuckDBRunner {
     if (metrics) await metrics.measure("Instantiate DuckDB", undefined, instantiate);
     else await instantiate();
     if (!this.connection) throw new Error("DuckDB connection failed to initialize");
-    for (const [name, csv] of Object.entries(sources)) {
-      const fileName = `motor-${name}.csv`;
-      const metric = metrics?.start(`Import source ${name}`, formatBytes(csv.length));
+    for (const [name, source] of Object.entries(sources)) {
+      const fileName = `motor-${name}.${source.format}`;
+      const size =
+        typeof source.data === "string" ? source.data.length : source.data.byteLength;
+      const metric = metrics?.start(`Import source ${name}`, formatBytes(size));
       try {
-        await this.database.registerFileText(fileName, csv);
-        await this.connection.insertCSVFromPath(fileName, {
-          schema: "main",
-          name,
-          detect: true,
-          header: true,
-        });
+        if (source.format === "parquet") {
+          const bytes =
+            source.data instanceof Uint8Array
+              ? source.data
+              : new TextEncoder().encode(source.data);
+          await this.database.registerFileBuffer(fileName, bytes);
+          await this.connection.query(
+            `CREATE OR REPLACE TABLE ${quoteIdentifier(name)} AS ` +
+              `SELECT * FROM read_parquet(${quoteString(fileName)})`,
+          );
+        } else {
+          const csv =
+            typeof source.data === "string"
+              ? source.data
+              : new TextDecoder().decode(source.data);
+          await this.database.registerFileText(fileName, csv);
+          await this.connection.insertCSVFromPath(fileName, {
+            schema: "main",
+            name,
+            detect: true,
+            header: true,
+          });
+        }
         metric?.end();
       } catch (error) {
         metric?.fail(errorDetail(error));

@@ -11,7 +11,7 @@ The executable is `motor`. All commands return exit code `0` on success and
 motor validate path/to/report.md
 ```
 
-Reads the report and all configured CSV files, validates the full report
+Reads the report and all configured CSV/Parquet files, validates the full report
 contract, compiles source passports, and runs freshness checks without writing
 HTML. On success it prints:
 
@@ -59,7 +59,7 @@ manifest is rejected.
 The generated file embeds:
 
 - report manifest and compiled report specification;
-- every complete source CSV, gzip-compressed and base64-encoded;
+- every complete source file, gzip-compressed and base64-encoded;
 - DuckDB WebAssembly and its Web Worker;
 - Vega, Vega-Lite, and Vega Embed;
 - motor's browser JavaScript and CSS.
@@ -90,9 +90,10 @@ components when possible.
 
 When the page opens, motor:
 
-1. decodes and decompresses every embedded CSV;
+1. decodes and decompresses every embedded source file;
 2. creates the embedded DuckDB worker and database;
-3. loads CSVs into `main` tables with header and type detection enabled;
+3. loads CSVs with header/type detection and Parquet files with `read_parquet`
+   into `main` tables;
 4. reads distinct parameter options from source tables;
 5. runs initially visible query dependency closures;
 6. mounts layout and components;
@@ -139,7 +140,7 @@ Warnings currently include:
 - freshness lag exceeding `max_lag_hours`.
 
 Warnings appear in the manifest and CLI output but do not block building.
-Structural configuration, CSV, dependency, and syntax errors stop the command.
+Structural configuration, source file, dependency, and syntax errors stop the command.
 
 ## Development commands
 

@@ -21,7 +21,7 @@ Unknown fields are rejected.
 | --- | --- | --- | --- | --- |
 | `title` | string | yes | — | Non-empty title shown at the top of the report. |
 | `slug` | string | yes | — | Stable artifact prefix matching `^[a-z0-9]+(?:-[a-z0-9]+)*$`. |
-| `data` | mapping | yes | — | One or more named CSV sources. |
+| `data` | mapping | yes | — | One or more named CSV or Parquet sources. |
 | `spec_version` | string | no | `0.1.0` | Authoring specification version recorded as metadata. It does not currently select compiler behavior. |
 | `timezone` | string | no | `UTC` | Valid IANA timezone such as `UTC` or `Europe/Moscow`. Omission emits a warning. |
 | `params` | mapping | no | `{}` | Named interactive parameters. See [Parameters](parameters.md). |
@@ -60,7 +60,7 @@ Each entry under `data` creates a DuckDB table with the same name.
 
 | Field | Type | Required | Default | Contract |
 | --- | --- | --- | --- | --- |
-| `path` | string | yes | — | CSV path resolved relative to `report.md`. Absolute paths also resolve normally. |
+| `path` | string | yes | — | Data path resolved relative to `report.md`. Absolute paths also resolve normally. The source type is inferred from `.csv` or `.parquet`. |
 | `freshness` | mapping | no | — | Optional timestamp checks and manifest metadata. |
 
 Unknown source fields are rejected.
@@ -87,6 +87,23 @@ normally reference it by its configured source name:
 select * from orders
 ```
 
+### Parquet contract
+
+- The file must exist, be readable during the build, and use the `.parquet`
+  extension.
+- The build validates the Parquet magic bytes, footer metadata, row count, and
+  schema.
+- The file must contain at least one data row and at least one column.
+- The complete original Parquet bytes are compressed and embedded in the HTML.
+- The browser registers the bytes with DuckDB-WASM and creates a table from
+  `read_parquet(...)` using the configured source name.
+- CSV and Parquet sources can be mixed in one report and joined normally in SQL.
+
+Build-time inferred types come from Parquet schema metadata. Nested Parquet
+schemas are exposed in metadata as dot-joined leaf paths; the stable authoring
+contract is flat analytical Parquet files whose leaf column names match the
+columns used in SQL and filter `options`.
+
 ## Freshness
 
 All `freshness` fields are optional. Unknown fields are rejected.
@@ -109,9 +126,16 @@ data:
       max_lag_hours: 36
 ```
 
-Configured columns must exist. Each configured timestamp column must contain at
-least one non-empty value, and every non-empty value must parse as an ISO 8601
-date or datetime. Invalid values stop the build.
+Configured columns must exist.
+
+For CSV, each configured timestamp column must contain at least one non-empty
+value, and every non-empty value must parse as an ISO 8601 date or datetime.
+Invalid values stop the build.
+
+For Parquet, freshness uses column statistics from the Parquet footer. Date,
+timestamp, and ISO-8601 string statistics are supported. If a configured
+freshness column has missing or unsupported min/max statistics, the build fails
+with a source-specific error.
 
 Timestamp behavior:
 
@@ -119,7 +143,7 @@ Timestamp behavior:
 - Date-only values such as `2026-07-01` are accepted as date-granularity
   freshness values and do not emit timezone warnings.
 - Offset-free datetime values are interpreted as UTC and emit a warning.
-- The report `timezone` does not change CSV timestamp interpretation.
+- The report `timezone` does not change source timestamp interpretation.
 - The report `timezone` is used when runtime metadata timestamps are displayed
   by [`DataStatus`](components.md#datastatus).
 - Exceeding `max_lag_hours` emits a warning and sets freshness status to
@@ -162,7 +186,7 @@ These conditions stop validation and building:
 
 - malformed frontmatter or unknown configuration fields;
 - invalid names, enum values, or component attributes;
-- missing, unreadable, empty, or malformed CSV sources;
+- missing, unreadable, empty, or malformed data sources;
 - missing configured columns or invalid freshness timestamps;
 - invalid SQL metadata, dependencies, templates, or component references;
 - malformed, nested, or invalid layout blocks.

@@ -155,7 +155,7 @@
   <script type="application/json" id="motor-manifest">{{ manifest_json | safe }}</script>
   <script type="application/json" id="motor-report-spec">{{ report_spec_json | safe }}</script>
   {% for source in sources %}
-  <script type="application/octet-stream" id="motor-data-{{ source.passport.name }}" data-source-name="{{ source.passport.name }}" data-encoding="base64+gzip+csv">{{ source.encoded_data }}</script>
+  <script type="application/octet-stream" id="motor-data-{{ source.passport.name }}" data-source-name="{{ source.passport.name }}" data-source-format="{{ source.passport.source_format }}" data-encoding="base64+gzip+{{ source.passport.source_format }}">{{ source.encoded_data }}</script>
   {% endfor %}
   <script type="application/octet-stream" id="motor-duckdb-wasm" data-encoding="base64+gzip+wasm">{{ duckdb_wasm }}</script>
   <script type="application/octet-stream" id="motor-duckdb-worker">{{ duckdb_worker }}</script>

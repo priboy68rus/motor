@@ -128,6 +128,7 @@ class CheckResult(StrictModel):
 
 class SourcePassport(StrictModel):
     name: str
+    source_format: Literal["csv", "parquet"]
     file_name: str
     file_size_bytes: int
     rows: int

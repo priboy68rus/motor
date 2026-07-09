@@ -1,7 +1,7 @@
 # SQL reference
 
-motor executes DuckDB SQL in the browser through DuckDB-WASM. CSV sources are
-loaded as tables, named `view` blocks build reusable relations, and named
+motor executes DuckDB SQL in the browser through DuckDB-WASM. CSV and Parquet
+sources are loaded as tables, named `view` blocks build reusable relations, and named
 `query` blocks return rows to components.
 
 ## Named SQL blocks
@@ -70,7 +70,7 @@ order by revenue desc
 
 motor analyzes relation names following `FROM` and `JOIN`.
 
-- A relation must be a configured CSV source, another named SQL block, or a
+- A relation must be a configured data source, another named SQL block, or a
   CTE local to the current block.
 - Every SQL block must reach at least one configured data source directly or
   through named dependencies.
@@ -205,7 +205,7 @@ metrics. SQL must return their required columns and desired row order.
 
 At startup motor:
 
-1. loads source CSVs into DuckDB;
+1. loads source CSV/Parquet files into DuckDB;
 2. loads static select/multiselect options;
 3. determines queries required by top-level content and the first tab of each
    tab set;

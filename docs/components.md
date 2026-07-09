@@ -107,7 +107,7 @@ Accepts only the common optional `id`. It shows:
 - overall check result (`Checks: passed` or warnings);
 - report build timestamp;
 - effective report timezone;
-- one compact row per CSV source with source name, configured data-through
+- one compact row per data source with source name, configured data-through
   timestamp, configured processing timestamp, and row count.
 
 It renders as a compact status line, similar to `VersionBadge`. Timestamps are
@@ -149,7 +149,7 @@ The component shows:
   error message.
 
 Measured startup steps include manifest parsing, source decompression, DuckDB
-worker/WASM initialization, CSV import, filter option queries, initial SQL
+worker/WASM initialization, source import, filter option queries, initial SQL
 views/queries, and initial report rendering. The same snapshot is also exposed
 for debugging as `window.__motorLoadingMetrics`.
 

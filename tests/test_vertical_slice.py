@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import struct
 from base64 import b64decode
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +22,99 @@ DUCKDB_WORKER = (
     / "static"
     / "duckdb-browser-mvp.worker.js"
 )
+
+
+def _compact_varint(value: int) -> bytes:
+    output = bytearray()
+    while True:
+        byte = value & 0x7F
+        value >>= 7
+        if value:
+            output.append(byte | 0x80)
+        else:
+            output.append(byte)
+            return bytes(output)
+
+
+def _compact_i64(value: int) -> bytes:
+    return _compact_varint((value << 1) ^ (value >> 63))
+
+
+def _field(field_id: int, field_type: int, payload: bytes, previous_id: int) -> tuple[int, bytes]:
+    delta = field_id - previous_id
+    if 0 < delta <= 15:
+        return field_id, bytes([(delta << 4) | field_type]) + payload
+    return field_id, bytes([field_type]) + _compact_i64(field_id) + payload
+
+
+def _binary(value: bytes | str) -> bytes:
+    data = value.encode("utf-8") if isinstance(value, str) else value
+    return _compact_varint(len(data)) + data
+
+
+def _string_list(values: list[str]) -> bytes:
+    return bytes([(len(values) << 4) | 8]) + b"".join(_binary(value) for value in values)
+
+
+def _struct(fields: list[tuple[int, int, bytes]]) -> bytes:
+    previous = 0
+    output = bytearray()
+    for field_id, field_type, payload in fields:
+        previous, encoded = _field(field_id, field_type, payload, previous)
+        output.extend(encoded)
+    output.append(0)
+    return bytes(output)
+
+
+def _struct_list(values: list[bytes]) -> bytes:
+    return bytes([(len(values) << 4) | 12]) + b"".join(values)
+
+
+def _minimal_parquet_bytes() -> bytes:
+    root = _struct([(4, 8, _binary("schema")), (5, 5, _compact_i64(2))])
+    id_column = _struct([(1, 5, _compact_i64(2)), (4, 8, _binary("id"))])
+    month_column = _struct(
+        [
+            (1, 5, _compact_i64(6)),
+            (4, 8, _binary("month_dt")),
+            (6, 5, _compact_i64(0)),
+        ]
+    )
+    id_metadata = _struct([(3, 9, _string_list(["id"]))])
+    month_statistics = _struct(
+        [
+            (5, 8, _binary("2026-07-31")),
+            (6, 8, _binary("2026-07-01")),
+        ]
+    )
+    month_metadata = _struct(
+        [
+            (3, 9, _string_list(["month_dt"])),
+            (12, 12, month_statistics),
+        ]
+    )
+    row_group = _struct(
+        [
+            (
+                1,
+                9,
+                _struct_list(
+                    [
+                        _struct([(3, 12, id_metadata)]),
+                        _struct([(3, 12, month_metadata)]),
+                    ]
+                ),
+            )
+        ]
+    )
+    footer = _struct(
+        [
+            (2, 9, _struct_list([root, id_column, month_column])),
+            (3, 6, _compact_i64(2)),
+            (4, 9, _struct_list([row_group])),
+        ]
+    )
+    return b"PAR1" + footer + struct.pack("<I", len(footer)) + b"PAR1"
 
 
 def test_script_escaping_preserves_javascript_regexes() -> None:
@@ -266,6 +360,70 @@ data:
             "props": {"title": "Startup timing", "placement": "sidebar"},
         }
     ]
+
+
+def test_compiles_mixed_csv_and_parquet_sources(tmp_path: Path) -> None:
+    events = tmp_path / "events.csv"
+    events.write_text("id,value\n1,10\n2,20\n", encoding="utf-8")
+    cohorts = tmp_path / "cohorts.parquet"
+    cohorts.write_bytes(_minimal_parquet_bytes())
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: events.csv
+  cohorts:
+    path: cohorts.parquet
+    freshness:
+      data_time_column: month_dt
+      max_lag_hours: 240
+params:
+  cohort_month:
+    type: select
+    options:
+      source: cohorts
+      column: month_dt
+---
+<Filters params="cohort_month" />
+```sql name=joined kind=query
+select
+    e.id,
+    e.value,
+    c.month_dt
+from events e
+left join cohorts c on e.id = c.id
+where {{ in_filter("c.month_dt", cohort_month) }}
+```
+<Table query="joined" />
+""",
+        encoding="utf-8",
+    )
+
+    manifest, spec, sources = compile_report(
+        report, built_at=datetime(2026, 8, 1, tzinfo=timezone.utc)
+    )
+    output = tmp_path / "report.html"
+    build_report(report, output)
+    html = output.read_text(encoding="utf-8")
+
+    assert spec["queries"]["joined"]["depends_on"]["sources"] == ["cohorts", "events"]
+    assert spec["params"]["cohort_month"]["options"] == {
+        "source": "cohorts",
+        "column": "month_dt",
+    }
+    assert [source.passport.source_format for source in sources] == ["csv", "parquet"]
+    assert manifest["sources"][1]["source_format"] == "parquet"
+    assert manifest["sources"][1]["rows"] == 2
+    assert manifest["sources"][1]["column_names"] == ["id", "month_dt"]
+    assert manifest["sources"][1]["data_time_granularity"] == "date"
+    assert 'data-source-format="csv"' in html
+    assert 'data-encoding="base64+gzip+csv"' in html
+    assert 'data-source-format="parquet"' in html
+    assert 'data-encoding="base64+gzip+parquet"' in html
 
 
 def test_select_parameter_is_a_reactive_single_value_filter(tmp_path: Path) -> None:

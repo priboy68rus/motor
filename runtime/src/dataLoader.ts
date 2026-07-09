@@ -1,6 +1,11 @@
 import type { Manifest, ReportSpec } from "./types";
 import type { RuntimeMetrics } from "./runtimeMetrics";
 
+export type EmbeddedSource = {
+  format: "csv" | "parquet";
+  data: string | Uint8Array;
+};
+
 type LoadEmbeddedReportOptions = {
   metrics?: RuntimeMetrics;
 };
@@ -64,7 +69,7 @@ function estimatedBase64Bytes(value: string): number {
 export async function loadEmbeddedReport(options: LoadEmbeddedReportOptions = {}): Promise<{
   manifest: Manifest;
   spec: ReportSpec;
-  sources: Record<string, string>;
+  sources: Record<string, EmbeddedSource>;
 }> {
   const { metrics } = options;
   const manifestMetric = metrics?.start("Read report manifest");
@@ -78,20 +83,28 @@ export async function loadEmbeddedReport(options: LoadEmbeddedReportOptions = {}
     manifestMetric?.fail(error instanceof Error ? error.message : String(error));
     throw error;
   }
-  const sources: Record<string, string> = {};
+  const sources: Record<string, EmbeddedSource> = {};
   const elements = document.querySelectorAll<HTMLElement>("[data-source-name]");
   await Promise.all(
     Array.from(elements).map(async (element) => {
       const name = element.dataset.sourceName;
       if (!name) throw new Error("embedded source is missing data-source-name");
+      const format = element.dataset.sourceFormat === "parquet" ? "parquet" : "csv";
       const payload = element.textContent ?? "";
       const sourceMetric = metrics?.start(
         `Decompress source ${name}`,
         `${formatBytes(estimatedBase64Bytes(payload))} compressed`,
       );
       try {
-        sources[name] = await decompressGzip(payload);
-        sourceMetric?.end(`${formatBytes(sources[name]?.length ?? 0)} CSV`);
+        if (format === "parquet") {
+          const data = new Uint8Array(await decompressGzipBytes(payload));
+          sources[name] = { format, data };
+          sourceMetric?.end(`${formatBytes(data.byteLength)} Parquet`);
+        } else {
+          const data = await decompressGzip(payload);
+          sources[name] = { format, data };
+          sourceMetric?.end(`${formatBytes(data.length)} CSV`);
+        }
       } catch (error) {
         sourceMetric?.fail(error instanceof Error ? error.message : String(error));
         throw error;

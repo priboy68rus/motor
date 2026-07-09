@@ -19,7 +19,7 @@ def _parser() -> argparse.ArgumentParser:
     build.add_argument("report", type=Path)
     build.add_argument("--out", type=Path, required=True)
 
-    validate = subcommands.add_parser("validate", help="validate a report and its CSV sources")
+    validate = subcommands.add_parser("validate", help="validate a report and its data sources")
     validate.add_argument("report", type=Path)
 
     inspect = subcommands.add_parser("inspect", help="print an artifact's embedded manifest")
@@ -34,7 +34,11 @@ def _print_manifest_summary(manifest: dict) -> None:
     print(f"Built: {manifest['build']['built_at']}")
     print(f"Checks: {manifest['checks']['status']}")
     for source in manifest["sources"]:
-        print(f"Source {source['name']}: {source['rows']} rows, sha256 {source['sha256']}")
+        source_format = source.get("source_format", "csv")
+        print(
+            f"Source {source['name']} ({source_format}): "
+            f"{source['rows']} rows, sha256 {source['sha256']}"
+        )
 
 
 def run(argv: Sequence[str] | None = None) -> int:

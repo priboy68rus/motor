@@ -128,8 +128,8 @@ options:
 
 | Field | Required | Contract |
 | --- | --- | --- |
-| `source` | yes | Must name a configured CSV source. Named SQL views and queries cannot supply options. |
-| `column` | yes | Must exist in the source CSV header. |
+| `source` | yes | Must name a configured data source. Named SQL views and queries cannot supply options. |
+| `column` | yes | Must exist in the source schema/header. |
 
 At runtime motor runs the equivalent of:
 
