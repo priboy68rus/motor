@@ -35,6 +35,7 @@ values or chart errors rather than build-time validation errors.
 | [`Text`](#text) | `text` | `id`, `title`, `placement` |
 | [`DataStatus`](#datastatus) | — | `id` |
 | [`VersionBadge`](#versionbadge) | — | `id` |
+| [`LoadingMetrics`](#loadingmetrics) | — | `id`, `title`, `placement` |
 | [`BigValue`](#bigvalue) | `query`, `value` | `id`, `title`, `format`, `currency`, `notation`, `compare_value`, `delta`, `delta_label`, `direction` |
 | [`Table`](#table) | `query` | `id`, `title`, `columns` |
 | [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction` |
@@ -124,6 +125,36 @@ from rendering.
 
 Accepts only the common optional `id`. It displays the motor tool version and
 artifact ID from the embedded manifest.
+
+## `LoadingMetrics`
+
+```md
+<LoadingMetrics />
+```
+
+Renders runtime loading timings collected in the browser while the report opens.
+It is useful for diagnosing slow startup and comparing data/query changes.
+
+| Attribute | Type | Required | Default | Contract |
+| --- | --- | --- | --- | --- |
+| `title` | string | no | — | Optional heading. |
+| `placement` | enum | no | `content` | `content` or `sidebar`. |
+
+The component shows:
+
+- total startup time;
+- one row per measured step;
+- duration for completed steps;
+- detail text such as source size, result row count, option count, cache hit, or
+  error message.
+
+Measured startup steps include manifest parsing, source decompression, DuckDB
+worker/WASM initialization, CSV import, filter option queries, initial SQL
+views/queries, and initial report rendering. The same snapshot is also exposed
+for debugging as `window.__motorLoadingMetrics`.
+
+`placement: sidebar` is valid only at the top level. See
+[Layout](layout.md#sticky-sidebar).
 
 ## `BigValue`
 

@@ -52,6 +52,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
     "Text": ({"text"}, {"text", "title", "placement"}),
     "DataStatus": (set(), set()),
     "VersionBadge": (set(), set()),
+    "LoadingMetrics": (set(), {"title", "placement"}),
     "BigValue": (
         {"query", "value"},
         {
@@ -632,7 +633,7 @@ def _extract_components(
             attributes["params"] = params
         if component_type == "Text" and not str(attributes["text"]).strip():
             raise ReportValidationError("Text text must not be empty")
-        if component_type in {"Filters", "Text"}:
+        if component_type in {"Filters", "Text", "LoadingMetrics"}:
             placement = attributes.setdefault("placement", "content")
             if placement not in {"content", "sidebar"}:
                 raise ReportValidationError(

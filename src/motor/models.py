@@ -174,6 +174,7 @@ class ComponentSpec(StrictModel):
         "Text",
         "DataStatus",
         "VersionBadge",
+        "LoadingMetrics",
         "BigValue",
         "Table",
         "LineChart",

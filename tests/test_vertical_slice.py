@@ -153,6 +153,9 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert ".motor-data-status-sources" in html
     assert ".motor-data-source-name" in html
     assert "motor-data-status-state" in html
+    assert ".motor-loading-metrics { display: grid;" in html
+    assert "motor-loading-status-list" in html
+    assert "__motorLoadingMetrics" in html
     assert "Intl.DateTimeFormat" in html
     assert "width: 240px; max-width: 100%;" in html
     assert ".motor-multiselect-panel { box-sizing: border-box; position: absolute;" in html
@@ -233,6 +236,35 @@ def test_compiles_query_graph_and_components() -> None:
     assert row["components"] == ["component_006", "component_007", "component_008"]
     assert tabs["tabs"][1]["layout"] == [
         {"type": "component", "component": "component_009"}
+    ]
+
+
+def test_loading_metrics_component_supports_sidebar_placement(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+<LoadingMetrics title="Startup timing" placement="sidebar" />
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert spec["components"] == [
+        {
+            "id": "component_001",
+            "type": "LoadingMetrics",
+            "props": {"title": "Startup timing", "placement": "sidebar"},
+        }
     ]
 
 

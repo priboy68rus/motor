@@ -1,5 +1,6 @@
 import type { ReportRenderer } from "./components";
 import type { DuckDBRunner } from "./duckdbRunner";
+import type { RuntimeMetrics } from "./runtimeMetrics";
 import type { ParamOptions, ParamValues, QueryResults, ReportSpec } from "./types";
 
 function sameValue(left: unknown, right: unknown): boolean {
@@ -58,6 +59,7 @@ export class ReportController {
     private runner: DuckDBRunner,
     private renderer: ReportRenderer,
     private onProgress?: (message: string) => void,
+    private metrics?: RuntimeMetrics,
   ) {
     this.values = Object.fromEntries(
       Object.entries(spec.params).map(([name, param]) => [name, param.default]),
@@ -66,7 +68,7 @@ export class ReportController {
 
   async initialize(): Promise<void> {
     this.onProgress?.("Loading filter options…");
-    this.options = await this.runner.loadParamOptions(this.spec);
+    this.options = await this.runner.loadParamOptions(this.spec, this.metrics);
     this.onProgress?.("Running report queries…");
     const queryNames = initialQueryNames(this.spec);
     const executionNames = queryClosure(this.spec, queryNames);
@@ -75,9 +77,15 @@ export class ReportController {
       this.values,
       (queryName) => this.onProgress?.(`Running query ${queryName}…`),
       executionNames,
+      this.metrics,
     );
     this.mergeOutcome(executionNames, outcome.results, outcome.errors);
-    await this.renderer.mount(this.results, this.errors, this.values, this.options);
+    const renderReport = () =>
+      this.renderer.mount(this.results, this.errors, this.values, this.options);
+    if (this.metrics) await this.metrics.measure("Render report", undefined, renderReport);
+    else await renderReport();
+    this.metrics?.finish();
+    await this.renderer.updateRuntimeMetrics();
   }
 
   updateParam(name: string, value: unknown, sourceComponentId?: string): void {

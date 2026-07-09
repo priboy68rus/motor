@@ -1,5 +1,6 @@
 import { renderChart } from "./charts/vegaAdapter";
 import type { ChartHandle } from "./charts/vegaAdapter";
+import type { RuntimeMetrics, RuntimeMetricsSnapshot } from "./runtimeMetrics";
 import {
   formatSignedPercent,
   formatSignedValue,
@@ -170,6 +171,60 @@ function renderDataStatus(element: HTMLElement, manifest: Manifest): void {
 function renderVersionBadge(element: HTMLElement, manifest: Manifest): void {
   element.className = "motor-version";
   element.textContent = `${manifest.build.tool_name} v${manifest.build.tool_version} · ${manifest.artifact.id}`;
+}
+
+function formatDuration(value: number | undefined): string {
+  if (value == null) return "—";
+  if (value < 1000) return `${Math.round(value)} ms`;
+  return `${(value / 1000).toFixed(value < 10_000 ? 2 : 1)} s`;
+}
+
+function renderLoadingMetrics(
+  element: HTMLElement,
+  snapshot: RuntimeMetricsSnapshot | undefined,
+): void {
+  element.className = "motor-loading-metrics";
+  if (!snapshot) {
+    element.append(text("span", "Loading metrics are not available."));
+    return;
+  }
+  const summary = document.createElement("div");
+  summary.className = "motor-loading-metrics-summary";
+  const status = snapshot.finished_at ? "Loaded" : "Loading";
+  summary.append(
+    text("span", status, `motor-loading-metrics-state ${snapshot.finished_at ? "done" : "running"}`),
+    text("span", `Total: ${formatDuration(snapshot.total_ms)}`, "motor-loading-metrics-total"),
+  );
+  if (snapshot.current) {
+    summary.append(text("span", `Current: ${snapshot.current}`, "motor-loading-metrics-current"));
+  }
+  element.append(summary);
+
+  if (snapshot.items.length === 0) return;
+  const table = document.createElement("table");
+  table.className = "motor-loading-metrics-table";
+  const head = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  headRow.append(text("th", "Step"), text("th", "Duration"), text("th", "Detail"));
+  head.append(headRow);
+  table.append(head);
+  const body = document.createElement("tbody");
+  for (const item of snapshot.items) {
+    const row = document.createElement("tr");
+    row.className = `is-${item.status}`;
+    row.append(
+      text("td", item.label, "motor-loading-metrics-label"),
+      text(
+        "td",
+        item.status === "running" ? "running…" : formatDuration(item.duration_ms),
+        "motor-loading-metrics-duration",
+      ),
+      text("td", item.detail ?? "", "motor-loading-metrics-detail"),
+    );
+    body.append(row);
+  }
+  table.append(body);
+  element.append(table);
 }
 
 function renderText(element: HTMLElement, component: ComponentSpec): void {
@@ -691,6 +746,7 @@ export class ReportRenderer {
     private onParamChange: ParamChangeHandler,
     private onParamReset: ParamResetHandler,
     private onTabChange?: (queryNames: ReadonlySet<string>) => void,
+    private runtimeMetrics?: RuntimeMetrics,
   ) {}
 
   async mount(
@@ -963,6 +1019,20 @@ export class ReportRenderer {
     }
   }
 
+  async updateRuntimeMetrics(): Promise<void> {
+    for (const component of this.spec.components) {
+      if (component.type === "LoadingMetrics" && this.isComponentVisible(component.id)) {
+        await this.renderComponent(
+          component,
+          this.latestResults,
+          this.latestErrors,
+          this.latestValues,
+          this.latestOptions,
+        );
+      }
+    }
+  }
+
   private dimensionLegendTitle(
     component: ComponentSpec,
     values: ParamValues,
@@ -1003,7 +1073,9 @@ export class ReportRenderer {
     }
     if (component.type === "DataStatus") renderDataStatus(element, this.manifest);
     else if (component.type === "VersionBadge") renderVersionBadge(element, this.manifest);
-    else if (component.type === "Text") renderText(element, component);
+    else if (component.type === "LoadingMetrics") {
+      renderLoadingMetrics(element, this.runtimeMetrics?.snapshot());
+    } else if (component.type === "Text") renderText(element, component);
     else if (component.type === "Filters") {
       renderFilters(
         element,

@@ -458,6 +458,7 @@ should be quoted, and declarations may span multiple lines.
 | `Text` | `text` | `title`, `placement` | Plain text card. Line breaks are preserved; Markdown and HTML are not interpreted. `placement` is `content` (default) or `sidebar`. |
 | `DataStatus` | — | — | Compact check status, build time, report timezone, and one freshness row per source. |
 | `VersionBadge` | — | — | Tool version and artifact ID. |
+| `LoadingMetrics` | — | `title`, `placement` | Runtime startup timings collected in the browser. Also exposed as `window.__motorLoadingMetrics`. |
 | `BigValue` | `query`, `value` | `title`, `format`, `currency`, `notation`, `compare_value`, `delta`, `delta_label`, `direction` | Value and optional comparison from the first query row. `format` is `number`, `currency`, or `percent`; `notation` is `compact` (default) or `standard`. |
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
 | `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
@@ -804,6 +805,7 @@ params:
 <Filters params="country" title="Report filters" />
 <DataStatus />
 <VersionBadge />
+<LoadingMetrics />
 
 ```sql name=filtered_orders kind=view
 select *

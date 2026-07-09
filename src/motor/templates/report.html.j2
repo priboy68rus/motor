@@ -24,6 +24,17 @@
     .motor-data-status-item { display: inline-flex; align-items: baseline; gap: 4px; }
     .motor-data-status-label { color: #98a2b3; }
     .motor-data-status-value { color: #475467; font-variant-numeric: tabular-nums; }
+    .motor-loading-metrics { display: grid; gap: 6px; color: #667085; font-size: .82rem; margin: 12px 0; overflow-wrap: anywhere; }
+    .motor-loading-metrics-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+    .motor-loading-metrics-state { border: 1px solid #b2ccff; border-radius: 999px; padding: 2px 8px; background: #eff4ff; color: #3538cd; font-weight: 650; }
+    .motor-loading-metrics-state.done { border-color: #abefc6; background: #ecfdf3; color: #067647; }
+    .motor-loading-metrics-table { width: auto; max-width: 100%; border-collapse: collapse; }
+    .motor-loading-metrics-table th, .motor-loading-metrics-table td { border: 0; padding: 3px 12px 3px 0; color: #667085; font-size: .82rem; line-height: 1.35; text-align: left; text-transform: none; vertical-align: top; }
+    .motor-loading-metrics-table th { color: #98a2b3; font-weight: 650; }
+    .motor-loading-metrics-table .motor-loading-metrics-label { color: #475467; }
+    .motor-loading-metrics-table .motor-loading-metrics-duration { color: #344054; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .motor-loading-metrics-table .motor-loading-metrics-detail { color: #667085; }
+    .motor-loading-metrics-table tr.is-failed td { color: #b42318; }
     .motor-big-value { font-size: 2.25rem; font-weight: 700; }
     .motor-big-value-comparison { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; color: #667085; font-weight: 650; }
     .motor-big-value-comparison.good { color: #067647; }
@@ -112,6 +123,11 @@
     th { color: #667085; font-size: .8rem; text-transform: uppercase; }
     pre { white-space: pre-wrap; overflow-wrap: anywhere; }
     #motor-loading-status { background: white; border: 1px solid #dce1e8; border-radius: 12px; padding: 20px; }
+    .motor-loading-status-title { color: #344054; font-weight: 650; }
+    .motor-loading-status-summary { margin-top: 6px; color: #667085; font-size: .85rem; }
+    .motor-loading-status-list { display: grid; gap: 4px; margin: 12px 0 0; padding-left: 20px; color: #667085; font-size: .82rem; }
+    .motor-loading-status-step.is-running { color: #3538cd; }
+    .motor-loading-status-step.is-failed { color: #b42318; }
     @media (min-width: 901px) {
       .motor-sidebar-container:not([open]) > .motor-sidebar { display: block; }
     }
