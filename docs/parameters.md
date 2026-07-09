@@ -109,12 +109,17 @@ filter dropdown in the report. Clicking outside the dropdown closes it.
 
 Selection behavior:
 
-- Selecting `All` clears individual choices and stores `all`.
-- Selecting an individual choice clears `All`.
+- Selecting `All` checks every source option and stores `all`.
+- Clearing `All` clears every source option and stores an empty list.
+- Clearing one option while `All` is selected clears `All` and stores the
+  remaining checked values, which makes "all except this value" a one-click
+  action.
+- Selecting every individual option checks `All` and stores `all`.
 - With `empty_behavior: none`, clearing the last choice stores `[]` and
   `in_filter` renders `FALSE`.
-- With `empty_behavior: all`, clearing the last choice returns the control to
-  `All` and `in_filter` renders `TRUE`.
+- With `empty_behavior: all`, an empty list still makes `in_filter` render
+  `TRUE`; prefer the default `empty_behavior: none` when the UI should support
+  an explicit "select nothing" state.
 
 ## Options source
 

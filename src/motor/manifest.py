@@ -9,7 +9,7 @@ from motor import __version__
 from motor.models import CheckResult, ParsedReport, SourcePassport
 
 
-RUNTIME_VERSION = "0.7.11-wide-chart-tooltip"
+RUNTIME_VERSION = "0.7.12-tableau-multiselect-all"
 
 
 def _content_identity(parsed: ParsedReport, sources: list[SourcePassport]) -> tuple[str, str]:

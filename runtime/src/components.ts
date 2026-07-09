@@ -460,16 +460,22 @@ function renderMultiselect(
   const all = checkbox("All");
   optionList.append(all.label);
   const selected = new Set(Array.isArray(value) ? value.map(valueKey) : []);
+  const allSelected = value === "all";
   const optionInputs = options.map((option) => {
     const control = checkbox(String(option));
     control.label.dataset.filterValue = String(option);
-    control.input.checked = selected.has(valueKey(option));
+    control.input.checked = allSelected || selected.has(valueKey(option));
     optionList.append(control.label);
     return { input: control.input, label: control.label, value: option };
   });
-  const allSelected = value === "all" || (selected.size === 0 && param.empty_behavior === "all");
-  all.input.checked = allSelected;
-  if (allSelected) for (const option of optionInputs) option.input.checked = false;
+  const selectedOptions = (): typeof optionInputs =>
+    optionInputs.filter((option) => option.input.checked);
+  const setOptionInputs = (checked: boolean): void => {
+    for (const option of optionInputs) option.input.checked = checked;
+  };
+  const everyOptionChecked = (): boolean =>
+    optionInputs.length > 0 && optionInputs.every((option) => option.input.checked);
+  all.input.checked = allSelected || everyOptionChecked();
 
   const updateSummary = (): void => {
     if (!summary) return;
@@ -477,39 +483,43 @@ function renderMultiselect(
       summary.textContent = "All";
       return;
     }
-    const selectedOptions = optionInputs.filter((item) => item.input.checked);
+    const active = selectedOptions();
     summary.textContent =
-      selectedOptions.length === 0
+      active.length === 0
         ? "None"
-        : selectedOptions.length === 1
-          ? String(selectedOptions[0]?.value)
-          : `${selectedOptions.length} selected`;
+        : active.length === 1
+          ? String(active[0]?.value)
+          : `${active.length} selected`;
   };
   updateSummary();
 
-  all.input.addEventListener("change", () => {
-    if (all.input.checked) {
-      for (const option of optionInputs) option.input.checked = false;
-      onChange(name, "all");
-    } else if (param.empty_behavior === "all") {
+  const commitOptionSelection = (): void => {
+    if (everyOptionChecked()) {
       all.input.checked = true;
       onChange(name, "all");
     } else {
+      all.input.checked = false;
+      onChange(
+        name,
+        selectedOptions().map((option) => option.value),
+      );
+    }
+    updateSummary();
+  };
+
+  all.input.addEventListener("change", () => {
+    if (all.input.checked) {
+      setOptionInputs(true);
+      onChange(name, "all");
+    } else {
+      setOptionInputs(false);
       onChange(name, []);
     }
     updateSummary();
   });
   for (const option of optionInputs) {
     option.input.addEventListener("change", () => {
-      all.input.checked = false;
-      const values = optionInputs.filter((item) => item.input.checked).map((item) => item.value);
-      if (values.length === 0 && param.empty_behavior === "all") {
-        all.input.checked = true;
-        onChange(name, "all");
-      } else {
-        onChange(name, values);
-      }
-      updateSummary();
+      commitOptionSelection();
     });
   }
   return field;
