@@ -109,6 +109,10 @@ there is no time-based staleness rule. See
 [`docs/cli-and-runtime.md`](docs/cli-and-runtime.md#update-notification-server)
 for the complete contract.
 
+Server configuration details, including `--registry`, `MOTOR_UPDATE_REGISTRY`,
+`--host`, and `--port`, are documented in
+[`docs/cli-and-runtime.md`](docs/cli-and-runtime.md#motor-server).
+
 ## Development
 
 Python 3.11 or newer is required.
@@ -132,6 +136,10 @@ npm install
 npm run check
 npm run build
 ```
+
+The motor package version and browser runtime version are part of artifact
+identity. Updating motor can change the artifact ID even when report SQL and
+source data are unchanged.
 
 ## Writing `report.md`
 

@@ -80,6 +80,44 @@ the same directory used by `motor build --update-registry` and defaults to the
 `127.0.0.1`; use `0.0.0.0` when other machines on the network must reach the
 server. `--port` defaults to `8765`.
 
+Server configuration:
+
+| Setting | Required | Default | Description |
+| --- | --- | --- | --- |
+| `--registry` | yes, unless `MOTOR_UPDATE_REGISTRY` is set | `MOTOR_UPDATE_REGISTRY` | Local directory containing `reports/<slug>.json` files. Use the same value for `motor build --update-registry`. |
+| `MOTOR_UPDATE_REGISTRY` | no | — | Environment-variable fallback for both `motor build` and `motor server`. |
+| `--host` | no | `127.0.0.1` | Bind address. Use `127.0.0.1` for local-only checks, or `0.0.0.0` to listen on all interfaces so other machines can reach the server. |
+| `--port` | no | `8765` | TCP port used by the browser `update_check.endpoint`. |
+
+Typical LAN setup:
+
+```bash
+export MOTOR_UPDATE_REGISTRY="$HOME/.motor/update-registry"
+motor server --host 0.0.0.0 --port 8765
+```
+
+Then configure reports with the address that report viewers can reach:
+
+```yaml
+update_check:
+  endpoint: http://192.168.1.10:8765
+  channel_url: https://mattermost.example/team/channels/reports
+```
+
+Build each new artifact with the same registry:
+
+```bash
+export MOTOR_UPDATE_REGISTRY="$HOME/.motor/update-registry"
+motor build path/to/report.md --out path/to/report.html
+```
+
+Equivalent explicit build command:
+
+```bash
+motor build path/to/report.md --out path/to/report.html \
+  --update-registry "$HOME/.motor/update-registry"
+```
+
 The server exposes:
 
 | Route | Response |
@@ -99,28 +137,6 @@ Cache-Control: no-store
 
 The route only accepts slugs matching `^[a-z0-9]+(?:-[a-z0-9]+)*$`. Missing
 reports return `404`; invalid slugs return `400`.
-
-To run build and server from one shell configuration:
-
-```bash
-export MOTOR_UPDATE_REGISTRY="$HOME/.motor/update-registry"
-motor server --host 0.0.0.0 --port 8765
-```
-
-Then build reports in another shell with:
-
-```bash
-export MOTOR_UPDATE_REGISTRY="$HOME/.motor/update-registry"
-motor build path/to/report.md --out path/to/report.html
-```
-
-The report frontmatter must use an endpoint reachable by report viewers:
-
-```yaml
-update_check:
-  endpoint: http://192.168.1.10:8765
-  channel_url: https://mattermost.example/team/channels/reports
-```
 
 ## Self-contained HTML artifact
 
@@ -225,9 +241,12 @@ The embedded manifest records:
 - motor package version;
 - browser runtime version.
 
-The artifact ID is `<slug>__<first 12 digest characters>`. Build time is
-excluded, so rebuilding identical content with identical tool/runtime versions
-produces the same artifact ID and content identity.
+The artifact ID is `<slug>__<first 12 digest characters>`. The motor package
+version and browser runtime version intentionally affect the ID. Upgrading
+motor can therefore produce a different artifact ID even when `report.md` and
+the data files did not change. Build time is excluded, so rebuilding identical
+content with identical tool/runtime versions produces the same artifact ID and
+content identity.
 
 The finished HTML SHA-256 printed by `motor build` can differ between builds
 because the HTML manifest contains build timestamps. Use artifact identity for
