@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import gzip
+import json
 import struct
+import threading
 from base64 import b64decode
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 import pytest
 
@@ -12,6 +15,7 @@ from motor.compiler import build_report, compile_report
 from motor.errors import ReportValidationError
 from motor.html import _script_text
 from motor.inspect import inspect_artifact
+from motor.update_server import UpdateRegistryServer
 
 
 EXAMPLE = Path(__file__).parents[1] / "examples" / "revenue" / "report.md"
@@ -265,6 +269,8 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert ".motor-chart-shared-tooltip-table tr.is-muted" in html
     assert 'querySelectorAll(".motor-multiselect-dropdown[open]")' in html
     assert "Reset filters" in html
+    assert ".motor-update-badge { position: fixed;" in html
+    assert "New version available" in html
     encoded = html.split('data-encoding="base64+gzip+csv">', 1)[1].split("</script>", 1)[0]
     assert gzip.decompress(b64decode(encoded.strip())).startswith(b"order_id,country")
 
@@ -473,6 +479,117 @@ select * from events where {{ in_filter("country", country) }}
         "params": ["country"],
         "queries": [],
     }
+
+
+def test_update_check_frontmatter_and_registry_publish(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+update_check:
+  endpoint: http://127.0.0.1:8765
+  channel_url: https://mattermost.example/team/channels/reports
+data:
+  events:
+    path: data.csv
+---
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+    output = tmp_path / "report.html"
+    registry = tmp_path / "registry"
+    result = build_report(report, output, update_registry=registry)
+    latest = json.loads((registry / "reports" / "test.json").read_text(encoding="utf-8"))
+
+    assert spec["update_check"] == {
+        "endpoint": "http://127.0.0.1:8765",
+        "channel_url": "https://mattermost.example/team/channels/reports",
+    }
+    assert latest["schema_version"] == "0.1"
+    assert latest["slug"] == "test"
+    assert latest["title"] == "Test"
+    assert latest["artifact_id"] == result.artifact_id
+    assert latest["built_at"]
+
+
+def test_update_check_build_warns_without_registry(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+update_check:
+  endpoint: http://127.0.0.1:8765
+  channel_url: https://mattermost.example/team/channels/reports
+data:
+  events:
+    path: data.csv
+---
+""",
+        encoding="utf-8",
+    )
+
+    result = build_report(report, tmp_path / "report.html")
+
+    assert any("no update registry was provided" in warning for warning in result.warnings)
+
+
+def test_update_check_rejects_non_http_urls(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+update_check:
+  endpoint: javascript:alert(1)
+  channel_url: https://mattermost.example/team/channels/reports
+data:
+  events:
+    path: data.csv
+---
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="absolute http"):
+        compile_report(report)
+
+
+def test_update_registry_server_serves_json_with_cors(tmp_path: Path) -> None:
+    registry = tmp_path / "registry"
+    report_dir = registry / "reports"
+    report_dir.mkdir(parents=True)
+    (report_dir / "test.json").write_text(
+        '{"slug":"test","artifact_id":"test__new"}\n',
+        encoding="utf-8",
+    )
+    server = UpdateRegistryServer(("127.0.0.1", 0), registry)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        host, port = server.server_address
+        request = Request(f"http://{host}:{port}/reports/test.json")
+        with urlopen(request, timeout=2) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+            cors = response.headers["Access-Control-Allow-Origin"]
+        assert payload["artifact_id"] == "test__new"
+        assert cors == "*"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
 
 
 def test_content_identity_excludes_build_time() -> None:

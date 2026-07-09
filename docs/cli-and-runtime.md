@@ -28,11 +28,14 @@ non-zero exit code.
 
 ```bash
 motor build path/to/report.md --out path/to/report.html
+motor build path/to/report.md --out path/to/report.html --update-registry ~/.motor/update-registry
 ```
 
-`report` and `--out` are required. Parent output directories are created. The
-HTML is written atomically through a temporary file and replacement, so a
-failed write does not intentionally leave a partial target.
+`report` and `--out` are required. `--update-registry` is optional and defaults
+to the `MOTOR_UPDATE_REGISTRY` environment variable when it is set. Parent
+output directories are created. The HTML is written atomically through a
+temporary file and replacement, so a failed write does not intentionally leave a
+partial target.
 
 Success output includes:
 
@@ -41,6 +44,17 @@ Success output includes:
 - SHA-256 of the finished HTML.
 
 Validation/freshness warning messages are also printed to standard error.
+
+If an update registry is configured, build also writes:
+
+```text
+<registry>/reports/<slug>.json
+```
+
+That JSON is the source of truth served by `motor server`. A report only reads
+it when the report frontmatter contains `update_check`. If `update_check` is
+configured but no registry is provided through `--update-registry` or
+`MOTOR_UPDATE_REGISTRY`, the HTML still builds and a warning is printed.
 
 ### `motor inspect`
 
@@ -53,6 +67,60 @@ Reads the embedded manifest without starting the browser runtime. The default
 output is the same concise report/source summary used by validation. `--json`
 prints the complete manifest as formatted JSON. A file without a valid motor
 manifest is rejected.
+
+### `motor server`
+
+```bash
+motor server --registry ~/.motor/update-registry --host 0.0.0.0 --port 8765
+```
+
+Serves latest-version metadata for report update badges. `--registry` points to
+the same directory used by `motor build --update-registry` and defaults to the
+`MOTOR_UPDATE_REGISTRY` environment variable when set. `--host` defaults to
+`127.0.0.1`; use `0.0.0.0` when other machines on the network must reach the
+server. `--port` defaults to `8765`.
+
+The server exposes:
+
+| Route | Response |
+| --- | --- |
+| `GET /health` | `{"status":"ok"}` |
+| `GET /reports/{slug}.json` | Contents of `<registry>/reports/{slug}.json`. |
+| `OPTIONS *` | Empty CORS preflight response. |
+
+Every response includes:
+
+```http
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, OPTIONS
+Access-Control-Allow-Headers: *
+Cache-Control: no-store
+```
+
+The route only accepts slugs matching `^[a-z0-9]+(?:-[a-z0-9]+)*$`. Missing
+reports return `404`; invalid slugs return `400`.
+
+To run build and server from one shell configuration:
+
+```bash
+export MOTOR_UPDATE_REGISTRY="$HOME/.motor/update-registry"
+motor server --host 0.0.0.0 --port 8765
+```
+
+Then build reports in another shell with:
+
+```bash
+export MOTOR_UPDATE_REGISTRY="$HOME/.motor/update-registry"
+motor build path/to/report.md --out path/to/report.html
+```
+
+The report frontmatter must use an endpoint reachable by report viewers:
+
+```yaml
+update_check:
+  endpoint: http://192.168.1.10:8765
+  channel_url: https://mattermost.example/team/channels/reports
+```
 
 ## Self-contained HTML artifact
 
@@ -97,10 +165,44 @@ When the page opens, motor:
 4. reads distinct parameter options from source tables;
 5. runs initially visible query dependency closures;
 6. mounts layout and components;
-7. reacts to parameter and tab changes until the page closes.
+7. starts the optional update check if `update_check` is configured;
+8. reacts to parameter and tab changes until the page closes.
 
 Closing or navigating away terminates the DuckDB connection and worker and
 revokes temporary object URLs.
+
+## Update notification server
+
+Reports with `update_check` configured ask the update server for:
+
+```text
+{endpoint}/reports/{slug}.json
+```
+
+Expected JSON:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `schema_version` | string | no | Metadata schema version written by motor. The runtime currently ignores unknown schema versions. |
+| `slug` | string | yes | Must match the current report slug, otherwise the response is ignored. |
+| `title` | string | no | Human-readable report title. |
+| `artifact_id` | string | yes | Latest known artifact ID for the slug. A different value shows the update badge. |
+| `built_at` | string | no | Build timestamp for display/debugging. |
+| `tool_version` | string | no | motor package version that wrote the metadata. |
+| `runtime_version` | string | no | Browser runtime version that contributed to artifact identity. |
+
+The browser check is intentionally fail-soft:
+
+- network errors, timeouts, CORS failures, `404`, invalid JSON, and invalid
+  payloads do not show an error;
+- the report remains fully usable offline;
+- no time-based staleness rule is applied;
+- only a different `artifact_id` for the same `slug` shows the fixed top-right
+  link to `channel_url`.
+
+The update server does not upload files to Mattermost and does not know where
+the latest HTML artifact is stored. For the current contract, `channel_url` is
+the user-facing distribution location.
 
 ## Manifest
 
@@ -137,10 +239,13 @@ Warnings currently include:
 
 - report timezone omitted, with UTC used;
 - naive freshness timestamps interpreted as UTC;
-- freshness lag exceeding `max_lag_hours`.
+- freshness lag exceeding `max_lag_hours`;
+- `update_check` configured during build without an update registry.
 
-Warnings appear in the manifest and CLI output but do not block building.
-Structural configuration, source file, dependency, and syntax errors stop the command.
+Freshness and timezone warnings appear in the manifest and CLI output. The
+missing update-registry warning is build-output-only because the HTML artifact
+is still valid and self-contained. Warnings do not block building. Structural
+configuration, source file, dependency, and syntax errors stop the command.
 
 ## Development commands
 

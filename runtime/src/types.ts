@@ -1,5 +1,5 @@
 export type Manifest = {
-  report: { title: string; timezone: string };
+  report: { slug: string; title: string; timezone: string };
   artifact: { id: string; content_sha256: string };
   build: { built_at: string; tool_name: string; tool_version: string; runtime_version: string };
   freshness: { status: "passed" | "warning"; data_through: string | null; processed_at: string | null };
@@ -14,6 +14,11 @@ export type Manifest = {
     freshness_status: "passed" | "warning";
   }[];
   checks: { status: "passed" | "warning" };
+};
+
+export type UpdateCheckSpec = {
+  endpoint: string;
+  channel_url: string;
 };
 
 export type ParamSpec = {
@@ -60,6 +65,7 @@ export type LayoutItem =
 
 export type ReportSpec = {
   report: { title: string; slug: string; timezone: string };
+  update_check?: UpdateCheckSpec | null;
   data: Record<string, { path: string }>;
   params: Record<string, ParamSpec>;
   queries: Record<string, QuerySpec>;

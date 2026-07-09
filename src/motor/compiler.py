@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import tempfile
 from datetime import datetime, timezone
@@ -8,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from motor.data_sources import compile_source
-from motor.errors import ReportValidationError
+from motor.errors import MotorError, ReportValidationError
 from motor.html import render_report_html
 from motor.manifest import build_manifest
 from motor.models import BuildResult, CheckResult, CompiledSource
@@ -67,6 +68,11 @@ def compile_report(
             "spec_version": parsed.config.spec_version,
             "timezone": report_timezone,
         },
+        "update_check": (
+            parsed.config.update_check.model_dump(mode="json", exclude_none=True)
+            if parsed.config.update_check
+            else None
+        ),
         "data": {
             name: config.model_dump(mode="json", exclude_none=True)
             for name, config in parsed.config.data.items()
@@ -99,7 +105,42 @@ def compile_report(
     return manifest, report_spec, compiled_sources
 
 
-def build_report(report_path: Path, output_path: Path) -> BuildResult:
+def _latest_version_payload(manifest: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": "0.1",
+        "slug": manifest["report"]["slug"],
+        "title": manifest["report"]["title"],
+        "artifact_id": manifest["artifact"]["id"],
+        "built_at": manifest["build"]["built_at"],
+        "tool_version": manifest["build"]["tool_version"],
+        "runtime_version": manifest["build"]["runtime_version"],
+    }
+
+
+def publish_latest_version(manifest: dict[str, Any], registry: Path) -> Path:
+    registry = registry.expanduser().resolve()
+    slug = manifest["report"]["slug"]
+    output_path = registry / "reports" / f"{slug}.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = _latest_version_payload(manifest)
+    encoded = (json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode(
+        "utf-8"
+    )
+    fd, temporary_name = tempfile.mkstemp(prefix=f".{output_path.name}.", dir=output_path.parent)
+    try:
+        with os.fdopen(fd, "wb") as temporary:
+            temporary.write(encoded)
+        os.replace(temporary_name, output_path)
+    except BaseException:
+        try:
+            os.unlink(temporary_name)
+        except FileNotFoundError:
+            pass
+        raise
+    return output_path
+
+
+def build_report(report_path: Path, output_path: Path, *, update_registry: Path | None = None) -> BuildResult:
     manifest, report_spec, sources = compile_report(report_path)
     html = render_report_html(manifest, report_spec, sources)
     encoded = html.encode("utf-8")
@@ -117,11 +158,22 @@ def build_report(report_path: Path, output_path: Path) -> BuildResult:
             pass
         raise
 
+    if update_registry is not None:
+        try:
+            publish_latest_version(manifest, update_registry)
+        except OSError as exc:
+            raise MotorError(f"failed to publish latest version registry: {exc}") from exc
+
     warnings = [
         check["message"]
         for check in manifest["checks"]["tests"]
         if check["status"] == "warning" and check.get("message")
     ]
+    if report_spec.get("update_check") and update_registry is None:
+        warnings.append(
+            "update_check is configured but no update registry was provided; "
+            "latest version metadata was not published"
+        )
     return BuildResult(
         output_path=str(output_path),
         artifact_id=manifest["artifact"]["id"],

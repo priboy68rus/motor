@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Literal
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -20,6 +21,19 @@ class FreshnessConfig(StrictModel):
 class DataSourceConfig(StrictModel):
     path: str
     freshness: FreshnessConfig | None = None
+
+
+class UpdateCheckConfig(StrictModel):
+    endpoint: str = Field(min_length=1)
+    channel_url: str = Field(min_length=1)
+
+    @field_validator("endpoint", "channel_url")
+    @classmethod
+    def url_must_be_http_or_https(cls, value: str) -> str:
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("must be an absolute http(s) URL")
+        return value
 
 
 class ParamOptions(StrictModel):
@@ -96,6 +110,7 @@ class ReportConfig(StrictModel):
     slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     spec_version: str = "0.1.0"
     timezone: str | None = None
+    update_check: UpdateCheckConfig | None = None
     data: dict[str, DataSourceConfig] = Field(min_length=1)
     params: dict[str, ParamConfig] = Field(default_factory=dict)
 

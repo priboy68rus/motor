@@ -24,6 +24,7 @@ Unknown fields are rejected.
 | `data` | mapping | yes | — | One or more named CSV or Parquet sources. |
 | `spec_version` | string | no | `0.1.0` | Authoring specification version recorded as metadata. It does not currently select compiler behavior. |
 | `timezone` | string | no | `UTC` | Valid IANA timezone such as `UTC` or `Europe/Moscow`. Omission emits a warning. |
+| `update_check` | mapping | no | — | Optional latest-version check shown as a fixed top-right link when a newer artifact exists. See [Update checks](#update-checks). |
 | `params` | mapping | no | `{}` | Named interactive parameters. See [Parameters](parameters.md). |
 
 Minimal frontmatter:
@@ -153,6 +154,56 @@ Timestamp behavior:
 
 [`DataStatus`](components.md#datastatus) displays one row per source, so reports
 with multiple sources expose each source's actual freshness separately.
+
+## Update checks
+
+`update_check` is optional. Unknown fields are rejected.
+
+| Field | Type | Required | Default | Contract |
+| --- | --- | --- | --- | --- |
+| `endpoint` | string | yes | — | Absolute `http` or `https` base URL for a motor update server. The browser requests `{endpoint}/reports/{slug}.json`. |
+| `channel_url` | string | yes | — | Absolute `http` or `https` URL opened by the update badge. This is typically a Mattermost channel containing the latest report files. |
+
+Example:
+
+```yaml
+update_check:
+  endpoint: http://192.168.1.10:8765
+  channel_url: https://mattermost.example/team/channels/reports
+```
+
+Runtime behavior:
+
+- The check is non-blocking and fail-soft. Offline servers, CORS failures,
+  timeouts, `404`, and invalid JSON hide the badge and do not affect the report.
+- The request times out after roughly two seconds.
+- The response must describe the same `slug`; mismatched slugs are ignored.
+- If the response `artifact_id` equals the current artifact ID, nothing is
+  shown.
+- If the response `artifact_id` differs, motor shows a fixed top-right link to
+  `channel_url`.
+- There is no age-based expiration rule. A report is treated as outdated only
+  when the update server reports a different artifact ID for the same slug.
+- If the HTML artifact is served from an `https` page rather than opened as a
+  local file, browsers may block an `http` endpoint as mixed content. Use an
+  `https` endpoint in that deployment mode.
+
+The expected server JSON is written by `motor build --update-registry`:
+
+```json
+{
+  "schema_version": "0.1",
+  "slug": "orders",
+  "title": "Orders",
+  "artifact_id": "orders__abc123def456",
+  "built_at": "2026-07-09T12:34:00+00:00",
+  "tool_version": "0.1.0",
+  "runtime_version": "0.7.13-update-check"
+}
+```
+
+See [CLI, artifacts, and runtime](cli-and-runtime.md#update-notification-server)
+for server startup and registry configuration.
 
 ## Comments and disabling report fragments
 

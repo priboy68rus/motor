@@ -18,8 +18,9 @@ below describe the complete supported contract.
   required fields, defaults, allowed values, formatting, and chart behavior.
 - [Layout reference](layout.md) — source order, rows, tabs, sticky sidebar,
   responsive behavior, and parameter scope.
-- [CLI, artifacts, and runtime](cli-and-runtime.md) — all CLI commands, output
-  artifact contents, browser requirements, manifest identity, and security.
+- [CLI, artifacts, and runtime](cli-and-runtime.md) — all CLI commands, update
+  notification server, output artifact contents, browser requirements,
+  manifest identity, and security.
 
 ## Contract conventions
 

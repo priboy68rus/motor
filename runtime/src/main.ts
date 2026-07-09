@@ -4,6 +4,7 @@ import { DuckDBRunner } from "./duckdbRunner";
 import { RuntimeMetrics } from "./runtimeMetrics";
 import type { RuntimeMetricsSnapshot } from "./runtimeMetrics";
 import { ReportController } from "./state";
+import { startUpdateCheck } from "./updateCheck";
 
 function formatDuration(value: number | undefined): string {
   if (value == null) return "—";
@@ -62,6 +63,7 @@ async function start(): Promise<void> {
       metrics.setCurrent(message);
     }, metrics);
     await controller.initialize();
+    startUpdateCheck(manifest, spec);
     window.addEventListener("pagehide", () => void runner.close(), { once: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

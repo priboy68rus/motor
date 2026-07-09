@@ -69,6 +69,46 @@ python -m pip install --force-reinstall \
   "git+https://github.com/priboy68rus/motor.git@master"
 ```
 
+### Optional update notifications
+
+Reports can show a fixed top-right badge when a newer artifact exists for the
+same `slug`. Add `update_check` to frontmatter:
+
+```yaml
+update_check:
+  endpoint: http://192.168.1.10:8765
+  channel_url: https://mattermost.example/team/channels/reports
+```
+
+Use one registry directory for both build and server:
+
+```bash
+export MOTOR_UPDATE_REGISTRY="$HOME/.motor/update-registry"
+motor server --host 0.0.0.0 --port 8765
+```
+
+In another shell, build the report:
+
+```bash
+export MOTOR_UPDATE_REGISTRY="$HOME/.motor/update-registry"
+motor build path/to/report.md --out report.html
+```
+
+Equivalent explicit commands:
+
+```bash
+motor build path/to/report.md --out report.html \
+  --update-registry "$HOME/.motor/update-registry"
+motor server --registry "$HOME/.motor/update-registry" --host 0.0.0.0 --port 8765
+```
+
+The browser requests `{endpoint}/reports/{slug}.json`. If the returned
+`artifact_id` differs from the current artifact ID, the badge links to
+`channel_url`. Server failures, CORS failures, and offline usage are ignored;
+there is no time-based staleness rule. See
+[`docs/cli-and-runtime.md`](docs/cli-and-runtime.md#update-notification-server)
+for the complete contract.
+
 ## Development
 
 Python 3.11 or newer is required.
@@ -138,6 +178,7 @@ The following fields are supported. Unknown fields are rejected.
 | `data` | yes | — | Mapping with at least one named CSV or Parquet source. |
 | `spec_version` | no | `0.1.0` | Version of the authoring specification. |
 | `timezone` | no | `UTC` | Valid IANA timezone such as `UTC` or `Europe/Moscow`. Omitting it produces a warning. |
+| `update_check` | no | — | Optional latest-version check endpoint and channel link. |
 | `params` | no | `{}` | Named interactive filter parameters. |
 
 Data-source and parameter names must be valid identifiers. ASCII names such as
