@@ -257,6 +257,8 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert "max-height: calc(100vh - 32px); overflow-x: hidden; overflow-y: auto;" in html
     assert ".motor-sidebar .motor-multiselect-dropdown { width: 100%; max-width: 100%; }" in html
     assert ".motor-chart-shared-tooltip { position: fixed;" in html
+    assert "max-width: min(960px, calc(100vw - 16px));" in html
+    assert ".motor-chart-shared-tooltip-table .motor-chart-shared-tooltip-label { max-width: 640px; }" in html
     assert "motor-chart-shared-tooltip-swatch" in html
     assert ".motor-chart-shared-tooltip-table" in html
     assert ".motor-chart-shared-tooltip-table tr.is-hovered" in html
