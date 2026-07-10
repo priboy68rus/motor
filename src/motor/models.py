@@ -25,15 +25,31 @@ class DataSourceConfig(StrictModel):
 
 class UpdateCheckConfig(StrictModel):
     endpoint: str = Field(min_length=1)
-    channel_url: str = Field(min_length=1)
+    distribution_url: str | None = Field(default=None, min_length=1)
+    channel_url: str | None = Field(default=None, min_length=1)
 
-    @field_validator("endpoint", "channel_url")
+    @field_validator("endpoint", "distribution_url", "channel_url")
     @classmethod
-    def url_must_be_http_or_https(cls, value: str) -> str:
+    def url_must_be_http_or_https(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
         parsed = urlparse(value)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
             raise ValueError("must be an absolute http(s) URL")
         return value
+
+    @model_validator(mode="after")
+    def normalize_distribution_url(self) -> "UpdateCheckConfig":
+        if self.distribution_url is None and self.channel_url is None:
+            raise ValueError("update_check must declare distribution_url")
+        if self.distribution_url is not None and self.channel_url is not None:
+            raise ValueError(
+                "update_check must declare distribution_url or channel_url, not both"
+            )
+        if self.distribution_url is None:
+            self.distribution_url = self.channel_url
+            self.channel_url = None
+        return self
 
 
 class ParamOptions(StrictModel):

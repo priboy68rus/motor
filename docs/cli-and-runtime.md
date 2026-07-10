@@ -101,7 +101,7 @@ Then configure reports with the address that report viewers can reach:
 ```yaml
 update_check:
   endpoint: http://192.168.1.10:8765
-  channel_url: https://mattermost.example/team/channels/reports
+  distribution_url: https://nextcloud.example/s/reports
 ```
 
 Build each new artifact with the same registry:
@@ -214,11 +214,12 @@ The browser check is intentionally fail-soft:
 - the report remains fully usable offline;
 - no time-based staleness rule is applied;
 - only a different `artifact_id` for the same `slug` shows the fixed top-right
-  link to `channel_url`.
+  link to `distribution_url`.
 
-The update server does not upload files to Mattermost and does not know where
-the latest HTML artifact is stored. For the current contract, `channel_url` is
-the user-facing distribution location.
+The update server does not upload files to Mattermost, Nextcloud, or any other
+external storage and does not know where the latest HTML artifact is stored.
+For the current contract, `distribution_url` is the user-facing distribution
+location.
 
 ## Manifest
 

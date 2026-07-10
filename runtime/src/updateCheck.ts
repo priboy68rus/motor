@@ -22,14 +22,14 @@ function latestUrl(endpoint: string, slug: string): string {
   return `${endpoint.replace(/\/+$/, "")}/reports/${encodeURIComponent(slug)}.json`;
 }
 
-function renderUpdateBadge(channelUrl: string, latest: LatestVersionResponse): void {
+function renderUpdateBadge(distributionUrl: string, latest: LatestVersionResponse): void {
   if (document.querySelector(".motor-update-badge")) return;
   const badge = document.createElement("a");
   badge.className = "motor-update-badge";
-  badge.href = channelUrl;
+  badge.href = distributionUrl;
   badge.target = "_blank";
   badge.rel = "noopener noreferrer";
-  badge.textContent = "New version available · Open channel";
+  badge.textContent = "New version available · Open latest";
   if (typeof latest.built_at === "string") {
     badge.title = `Latest version built at ${latest.built_at}`;
   }
@@ -39,7 +39,9 @@ function renderUpdateBadge(channelUrl: string, latest: LatestVersionResponse): v
 export function startUpdateCheck(manifest: Manifest, spec: ReportSpec): void {
   const config = spec.update_check;
   if (!config) return;
-  if (!isHttpUrl(config.endpoint) || !isHttpUrl(config.channel_url)) return;
+  const distributionUrl = config.distribution_url ?? config.channel_url;
+  if (!distributionUrl) return;
+  if (!isHttpUrl(config.endpoint) || !isHttpUrl(distributionUrl)) return;
 
   const slug = manifest.report.slug || spec.report.slug;
   const controller = new AbortController();
@@ -58,7 +60,7 @@ export function startUpdateCheck(manifest: Manifest, spec: ReportSpec): void {
       if (latest.slug !== slug) return;
       if (typeof latest.artifact_id !== "string") return;
       if (latest.artifact_id === manifest.artifact.id) return;
-      renderUpdateBadge(config.channel_url, latest);
+      renderUpdateBadge(distributionUrl, latest);
     })
     .catch(() => {
       // Update checks are fail-soft by design. Offline files and unreachable

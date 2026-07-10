@@ -18,7 +18,8 @@ export type Manifest = {
 
 export type UpdateCheckSpec = {
   endpoint: string;
-  channel_url: string;
+  distribution_url?: string;
+  channel_url?: string;
 };
 
 export type ParamSpec = {

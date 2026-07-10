@@ -271,6 +271,7 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert "Reset filters" in html
     assert ".motor-update-badge { position: fixed;" in html
     assert "New version available" in html
+    assert "Open latest" in html
     encoded = html.split('data-encoding="base64+gzip+csv">', 1)[1].split("</script>", 1)[0]
     assert gzip.decompress(b64decode(encoded.strip())).startswith(b"order_id,country")
 
@@ -492,7 +493,7 @@ slug: test
 timezone: UTC
 update_check:
   endpoint: http://127.0.0.1:8765
-  channel_url: https://mattermost.example/team/channels/reports
+  distribution_url: https://nextcloud.example/s/reports
 data:
   events:
     path: data.csv
@@ -509,13 +510,41 @@ data:
 
     assert spec["update_check"] == {
         "endpoint": "http://127.0.0.1:8765",
-        "channel_url": "https://mattermost.example/team/channels/reports",
+        "distribution_url": "https://nextcloud.example/s/reports",
     }
     assert latest["schema_version"] == "0.1"
     assert latest["slug"] == "test"
     assert latest["title"] == "Test"
     assert latest["artifact_id"] == result.artifact_id
     assert latest["built_at"]
+
+
+def test_update_check_accepts_legacy_channel_url_alias(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+update_check:
+  endpoint: http://127.0.0.1:8765
+  channel_url: https://mattermost.example/team/channels/reports
+data:
+  events:
+    path: data.csv
+---
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert spec["update_check"] == {
+        "endpoint": "http://127.0.0.1:8765",
+        "distribution_url": "https://mattermost.example/team/channels/reports",
+    }
 
 
 def test_update_check_build_warns_without_registry(tmp_path: Path) -> None:
@@ -529,7 +558,7 @@ slug: test
 timezone: UTC
 update_check:
   endpoint: http://127.0.0.1:8765
-  channel_url: https://mattermost.example/team/channels/reports
+  distribution_url: https://nextcloud.example/s/reports
 data:
   events:
     path: data.csv
@@ -554,7 +583,7 @@ slug: test
 timezone: UTC
 update_check:
   endpoint: javascript:alert(1)
-  channel_url: https://mattermost.example/team/channels/reports
+  distribution_url: https://nextcloud.example/s/reports
 data:
   events:
     path: data.csv

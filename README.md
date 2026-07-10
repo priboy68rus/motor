@@ -77,7 +77,7 @@ same `slug`. Add `update_check` to frontmatter:
 ```yaml
 update_check:
   endpoint: http://192.168.1.10:8765
-  channel_url: https://mattermost.example/team/channels/reports
+  distribution_url: https://nextcloud.example/s/reports
 ```
 
 Use one registry directory for both build and server:
@@ -104,8 +104,9 @@ motor server --registry "$HOME/.motor/update-registry" --host 0.0.0.0 --port 876
 
 The browser requests `{endpoint}/reports/{slug}.json`. If the returned
 `artifact_id` differs from the current artifact ID, the badge links to
-`channel_url`. Server failures, CORS failures, and offline usage are ignored;
-there is no time-based staleness rule. See
+`distribution_url`. This URL can point to a Mattermost channel, a Nextcloud
+folder or file, or any other distribution location. Server failures, CORS
+failures, and offline usage are ignored; there is no time-based staleness rule. See
 [`docs/cli-and-runtime.md`](docs/cli-and-runtime.md#update-notification-server)
 for the complete contract.
 

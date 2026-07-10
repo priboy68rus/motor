@@ -162,14 +162,15 @@ with multiple sources expose each source's actual freshness separately.
 | Field | Type | Required | Default | Contract |
 | --- | --- | --- | --- | --- |
 | `endpoint` | string | yes | — | Absolute `http` or `https` base URL for a motor update server. The browser requests `{endpoint}/reports/{slug}.json`. |
-| `channel_url` | string | yes | — | Absolute `http` or `https` URL opened by the update badge. This is typically a Mattermost channel containing the latest report files. |
+| `distribution_url` | string | yes, unless `channel_url` is used | — | Absolute `http` or `https` URL opened by the update badge. This can be a Mattermost channel, Nextcloud folder/file, or any other distribution location containing the latest report files. |
+| `channel_url` | string | no | — | Legacy alias for `distribution_url`. Accepted for compatibility and normalized to `distribution_url` in the compiled report spec. New reports should use `distribution_url`. |
 
 Example:
 
 ```yaml
 update_check:
   endpoint: http://192.168.1.10:8765
-  channel_url: https://mattermost.example/team/channels/reports
+  distribution_url: https://nextcloud.example/s/reports
 ```
 
 Runtime behavior:
@@ -181,7 +182,7 @@ Runtime behavior:
 - If the response `artifact_id` equals the current artifact ID, nothing is
   shown.
 - If the response `artifact_id` differs, motor shows a fixed top-right link to
-  `channel_url`.
+  `distribution_url`.
 - There is no age-based expiration rule. A report is treated as outdated only
   when the update server reports a different artifact ID for the same slug.
 - If the HTML artifact is served from an `https` page rather than opened as a
@@ -198,7 +199,7 @@ The expected server JSON is written by `motor build --update-registry`:
   "artifact_id": "orders__abc123def456",
   "built_at": "2026-07-09T12:34:00+00:00",
   "tool_version": "0.1.0",
-  "runtime_version": "0.7.13-update-check"
+  "runtime_version": "0.7.14-distribution-url"
 }
 ```
 
