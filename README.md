@@ -1,6 +1,6 @@
 # motor
 
-<img src="src/motor/static/motor-logo.jpg" alt="motor logo" width="160">
+<img src="src/motor/static/motor-logo.png" alt="motor logo" width="160">
 
 motor compiles Markdown/YAML/SQL report specifications and CSV/Parquet data into one
 self-contained HTML artifact. The compiler validates a report's parameters,
