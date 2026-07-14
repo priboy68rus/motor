@@ -34,6 +34,9 @@ def render_report_html(
     return template.render(
         manifest=manifest,
         manifest_json=_script_json(manifest),
+        favicon_jpeg=b64encode(static_dir.joinpath("motor-logo.jpg").read_bytes()).decode(
+            "ascii"
+        ),
         theme_accent=report_spec["theme"]["accent"],
         report_spec_json=_script_json(report_spec),
         sources=sources,

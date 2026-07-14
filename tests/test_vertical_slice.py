@@ -241,6 +241,10 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert 'data-encoding="base64+gzip+csv"' in html
     assert 'id="motor-duckdb-wasm"' in html
     assert 'id="motor-duckdb-worker"' in html
+    favicon = html.split('href="data:image/jpeg;base64,', 1)[1].split('"', 1)[0]
+    assert b64decode(favicon) == (
+        Path(__file__).parents[1] / "src" / "motor" / "static" / "motor-logo.jpg"
+    ).read_bytes()
     assert "Starting query engine" in html
     assert "<script src=" not in html
     assert ".motor-filters { overflow: visible; }" in html

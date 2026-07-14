@@ -146,6 +146,7 @@ The generated file embeds:
 - every complete source file, gzip-compressed and base64-encoded;
 - DuckDB WebAssembly and its Web Worker;
 - Vega, Vega-Lite, and Vega Embed;
+- motor's JPEG favicon as an inline data URL;
 - motor's browser JavaScript and CSS.
 
 No CDN or application server is required. The report can be opened with a
