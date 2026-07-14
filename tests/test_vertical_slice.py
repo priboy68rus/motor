@@ -276,6 +276,81 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert gzip.decompress(b64decode(encoded.strip())).startswith(b"order_id,country")
 
 
+def test_theme_frontmatter_compiles_and_styles_report(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Themed report
+slug: themed-report
+timezone: UTC
+theme:
+  accent: samokat
+data:
+  events:
+    path: data.csv
+---
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+    output = tmp_path / "report.html"
+    build_report(report, output)
+    html = output.read_text(encoding="utf-8")
+
+    assert spec["theme"] == {"accent": "samokat"}
+    assert 'body data-motor-accent="samokat"' in html
+    assert 'body[data-motor-accent="samokat"] { --motor-accent: #ff3b65;' in html
+    assert 'body[data-motor-accent="kuper"] { --motor-accent: #61f67a;' in html
+
+
+def test_theme_defaults_to_blue(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Default theme
+slug: default-theme
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert spec["theme"] == {"accent": "blue"}
+
+
+def test_theme_rejects_unknown_accent(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,value\n1,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Invalid theme
+slug: invalid-theme
+timezone: UTC
+theme:
+  accent: ultraviolet
+data:
+  events:
+    path: data.csv
+---
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="accent"):
+        compile_report(report)
+
+
 def test_compiles_query_graph_and_components() -> None:
     _, spec, _ = compile_report(EXAMPLE)
 

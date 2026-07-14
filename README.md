@@ -187,7 +187,8 @@ The following fields are supported. Unknown fields are rejected.
 | `data` | yes | — | Mapping with at least one named CSV or Parquet source. |
 | `spec_version` | no | `0.1.0` | Version of the authoring specification. |
 | `timezone` | no | `UTC` | Valid IANA timezone such as `UTC` or `Europe/Moscow`. Omitting it produces a warning. |
-| `update_check` | no | — | Optional latest-version check endpoint and channel link. |
+| `theme` | no | `{accent: blue}` | Interface accent preset; chart palettes are unchanged. |
+| `update_check` | no | — | Optional latest-version check endpoint and distribution link. |
 | `params` | no | `{}` | Named interactive filter parameters. |
 
 Data-source and parameter names must be valid identifiers. ASCII names such as
@@ -206,6 +207,17 @@ data:
     path: ./data/orders.csv
 ---
 ```
+
+Choose an optional interface accent without changing chart palettes:
+
+```yaml
+theme:
+  accent: kuper
+```
+
+Supported accents are `blue` (default), `violet`, `teal`, `green`, `amber`,
+`coral`, `rose`, `graphite`, `samokat` (`#ff3b65`), and `kuper` (`#61f67a`).
+See the complete [theme contract](docs/report-file.md#theme).
 
 ### Data sources
 

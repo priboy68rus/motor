@@ -52,6 +52,24 @@ class UpdateCheckConfig(StrictModel):
         return self
 
 
+ThemeAccent = Literal[
+    "blue",
+    "violet",
+    "teal",
+    "green",
+    "amber",
+    "coral",
+    "rose",
+    "graphite",
+    "samokat",
+    "kuper",
+]
+
+
+class ThemeConfig(StrictModel):
+    accent: ThemeAccent = "blue"
+
+
 class ParamOptions(StrictModel):
     source: str
     column: str
@@ -126,6 +144,7 @@ class ReportConfig(StrictModel):
     slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     spec_version: str = "0.1.0"
     timezone: str | None = None
+    theme: ThemeConfig = Field(default_factory=ThemeConfig)
     update_check: UpdateCheckConfig | None = None
     data: dict[str, DataSourceConfig] = Field(min_length=1)
     params: dict[str, ParamConfig] = Field(default_factory=dict)

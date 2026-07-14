@@ -68,6 +68,7 @@ def compile_report(
             "spec_version": parsed.config.spec_version,
             "timezone": report_timezone,
         },
+        "theme": parsed.config.theme.model_dump(mode="json"),
         "update_check": (
             parsed.config.update_check.model_dump(mode="json", exclude_none=True)
             if parsed.config.update_check

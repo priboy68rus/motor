@@ -24,6 +24,7 @@ Unknown fields are rejected.
 | `data` | mapping | yes | — | One or more named CSV or Parquet sources. |
 | `spec_version` | string | no | `0.1.0` | Authoring specification version recorded as metadata. It does not currently select compiler behavior. |
 | `timezone` | string | no | `UTC` | Valid IANA timezone such as `UTC` or `Europe/Moscow`. Omission emits a warning. |
+| `theme` | mapping | no | `{accent: blue}` | Report interface theme. It changes motor's UI chrome but does not change chart palettes. See [Theme](#theme). |
 | `update_check` | mapping | no | — | Optional latest-version check shown as a fixed top-right link when a newer artifact exists. See [Update checks](#update-checks). |
 | `params` | mapping | no | `{}` | Named interactive parameters. See [Parameters](parameters.md). |
 
@@ -155,6 +156,46 @@ Timestamp behavior:
 [`DataStatus`](components.md#datastatus) displays one row per source, so reports
 with multiple sources expose each source's actual freshness separately.
 
+## Theme
+
+`theme` is optional. Unknown fields and unsupported accent names are rejected.
+
+| Field | Type | Required | Default | Supported values | Contract |
+| --- | --- | --- | --- | --- | --- |
+| `accent` | string | no | `blue` | `blue`, `violet`, `teal`, `green`, `amber`, `coral`, `rose`, `graphite`, `samokat`, `kuper` | Selects the accent preset used by motor's report interface. |
+
+Example:
+
+```yaml
+theme:
+  accent: samokat
+```
+
+Preset primary colors:
+
+| Preset | Primary color |
+| --- | --- |
+| `blue` | `#3b6eea` |
+| `violet` | `#7c3aed` |
+| `teal` | `#0d9488` |
+| `green` | `#22c55e` |
+| `amber` | `#f59e0b` |
+| `coral` | `#f06449` |
+| `rose` | `#e11d48` |
+| `graphite` | `#475467` |
+| `samokat` | `#ff3b65` |
+| `kuper` | `#61f67a` |
+
+The preset colors the top accent rail, active tabs, filter selection controls,
+focus states, runtime loading state, `VersionBadge`, and the optional update
+badge. Neutral backgrounds, cards, and text remain white/gray. Semantic success,
+warning, and error colors remain stable so their meaning does not depend on the
+chosen theme.
+
+Chart category palettes, heatmap gradients, cohort palettes, and tooltip group
+swatches are independent of `theme`. Changing `theme.accent` therefore does not
+change data encoding. Custom HEX colors are not currently accepted.
+
 ## Update checks
 
 `update_check` is optional. Unknown fields are rejected.
@@ -199,7 +240,7 @@ The expected server JSON is written by `motor build --update-registry`:
   "artifact_id": "orders__abc123def456",
   "built_at": "2026-07-09T12:34:00+00:00",
   "tool_version": "0.1.0",
-  "runtime_version": "0.7.14-distribution-url"
+  "runtime_version": "0.7.15-ui-themes"
 }
 ```
 

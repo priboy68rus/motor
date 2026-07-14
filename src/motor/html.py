@@ -34,6 +34,7 @@ def render_report_html(
     return template.render(
         manifest=manifest,
         manifest_json=_script_json(manifest),
+        theme_accent=report_spec["theme"]["accent"],
         report_spec_json=_script_json(report_spec),
         sources=sources,
         duckdb_wasm=b64encode(static_dir.joinpath("duckdb-mvp.wasm.gz").read_bytes()).decode(

@@ -22,6 +22,22 @@ export type UpdateCheckSpec = {
   channel_url?: string;
 };
 
+export type ThemeAccent =
+  | "blue"
+  | "violet"
+  | "teal"
+  | "green"
+  | "amber"
+  | "coral"
+  | "rose"
+  | "graphite"
+  | "samokat"
+  | "kuper";
+
+export type ThemeSpec = {
+  accent: ThemeAccent;
+};
+
 export type ParamSpec = {
   type: "select" | "multiselect" | "date_range" | "dimension";
   label?: string;
@@ -66,6 +82,7 @@ export type LayoutItem =
 
 export type ReportSpec = {
   report: { title: string; slug: string; timezone: string };
+  theme: ThemeSpec;
   update_check?: UpdateCheckSpec | null;
   data: Record<string, { path: string }>;
   params: Record<string, ParamSpec>;

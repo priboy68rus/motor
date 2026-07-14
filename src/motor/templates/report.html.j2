@@ -5,15 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ manifest.report.title }}</title>
   <style>
-    :root { color-scheme: light; font-family: Inter, system-ui, sans-serif; color: #172033; background: #f6f7f9; }
+    :root {
+      color-scheme: light;
+      font-family: Inter, system-ui, sans-serif;
+      color: #172033;
+      background: #f6f7f9;
+      --motor-accent: #3b6eea;
+      --motor-accent-hover: #315dcc;
+      --motor-accent-strong: #274ca8;
+      --motor-accent-subtle: #eef3ff;
+      --motor-accent-border: #b7c7f7;
+      --motor-on-accent: #ffffff;
+    }
+    body[data-motor-accent="violet"] { --motor-accent: #7c3aed; --motor-accent-hover: #6d28d9; --motor-accent-strong: #5b21b6; --motor-accent-subtle: #f5f3ff; --motor-accent-border: #c4b5fd; --motor-on-accent: #ffffff; }
+    body[data-motor-accent="teal"] { --motor-accent: #0d9488; --motor-accent-hover: #0f766e; --motor-accent-strong: #0f766e; --motor-accent-subtle: #f0fdfa; --motor-accent-border: #99f6e4; --motor-on-accent: #ffffff; }
+    body[data-motor-accent="green"] { --motor-accent: #22c55e; --motor-accent-hover: #16a34a; --motor-accent-strong: #15803d; --motor-accent-subtle: #f0fdf4; --motor-accent-border: #bbf7d0; --motor-on-accent: #ffffff; }
+    body[data-motor-accent="amber"] { --motor-accent: #f59e0b; --motor-accent-hover: #d97706; --motor-accent-strong: #92400e; --motor-accent-subtle: #fffbeb; --motor-accent-border: #fde68a; --motor-on-accent: #1f2937; }
+    body[data-motor-accent="coral"] { --motor-accent: #f06449; --motor-accent-hover: #d94f38; --motor-accent-strong: #b93825; --motor-accent-subtle: #fff3f0; --motor-accent-border: #ffc2b6; --motor-on-accent: #ffffff; }
+    body[data-motor-accent="rose"] { --motor-accent: #e11d48; --motor-accent-hover: #be123c; --motor-accent-strong: #be123c; --motor-accent-subtle: #fff1f2; --motor-accent-border: #fecdd3; --motor-on-accent: #ffffff; }
+    body[data-motor-accent="graphite"] { --motor-accent: #475467; --motor-accent-hover: #344054; --motor-accent-strong: #344054; --motor-accent-subtle: #f2f4f7; --motor-accent-border: #cbd5e1; --motor-on-accent: #ffffff; }
+    body[data-motor-accent="samokat"] { --motor-accent: #ff3b65; --motor-accent-hover: #e62f56; --motor-accent-strong: #b8143b; --motor-accent-subtle: #fff0f3; --motor-accent-border: #ffadc0; --motor-on-accent: #ffffff; }
+    body[data-motor-accent="kuper"] { --motor-accent: #61f67a; --motor-accent-hover: #4bd966; --motor-accent-strong: #166534; --motor-accent-subtle: #effef2; --motor-accent-border: #a7f7b5; --motor-on-accent: #103c19; }
     body { margin: 0; }
-    main { max-width: 1120px; margin: 0 auto; padding: 48px 24px; }
+    body::before { content: ""; display: block; height: 4px; background: var(--motor-accent); }
+    ::selection { color: var(--motor-on-accent); background: var(--motor-accent); }
+    main { max-width: 1120px; margin: 0 auto; padding: 44px 24px 48px; }
     h1 { font-size: 2rem; margin: 0 0 24px; }
     h2 { font-size: 1rem; margin: 0 0 16px; }
     .motor-card { background: white; border: 1px solid #dce1e8; border-radius: 12px; padding: 20px; margin: 16px 0; box-shadow: 0 2px 8px #1720330a; overflow-x: auto; }
     .motor-component { position: relative; transition: opacity .15s ease; }
     .motor-component-error, .motor-fatal-error { color: #a11b1b; background: #fff4f4; border: 1px solid #f2b8b8; border-radius: 12px; padding: 20px; }
-    .motor-version { color: #667085; font-family: ui-monospace, monospace; font-size: .8rem; margin: 12px 0; overflow-wrap: anywhere; }
+    .motor-version { color: var(--motor-accent-strong); font-family: ui-monospace, monospace; font-size: .8rem; margin: 12px 0; overflow-wrap: anywhere; }
     .motor-data-status { display: grid; gap: 6px; color: #667085; font-size: .82rem; margin: 12px 0; overflow-wrap: anywhere; }
     .motor-data-status-summary, .motor-data-source { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
     .motor-data-status-sources { display: grid; gap: 4px; }
@@ -26,7 +48,7 @@
     .motor-data-status-value { color: #475467; font-variant-numeric: tabular-nums; }
     .motor-loading-metrics { display: grid; gap: 6px; color: #667085; font-size: .82rem; margin: 12px 0; overflow-wrap: anywhere; }
     .motor-loading-metrics-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
-    .motor-loading-metrics-state { border: 1px solid #b2ccff; border-radius: 999px; padding: 2px 8px; background: #eff4ff; color: #3538cd; font-weight: 650; }
+    .motor-loading-metrics-state { border: 1px solid var(--motor-accent-border); border-radius: 999px; padding: 2px 8px; background: var(--motor-accent-subtle); color: var(--motor-accent-strong); font-weight: 650; }
     .motor-loading-metrics-state.done { border-color: #abefc6; background: #ecfdf3; color: #067647; }
     .motor-loading-metrics-table { width: auto; max-width: 100%; border-collapse: collapse; }
     .motor-loading-metrics-table th, .motor-loading-metrics-table td { border: 0; padding: 3px 12px 3px 0; color: #667085; font-size: .82rem; line-height: 1.35; text-align: left; text-transform: none; vertical-align: top; }
@@ -35,8 +57,8 @@
     .motor-loading-metrics-table .motor-loading-metrics-duration { color: #344054; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .motor-loading-metrics-table .motor-loading-metrics-detail { color: #667085; }
     .motor-loading-metrics-table tr.is-failed td { color: #b42318; }
-    .motor-update-badge { position: fixed; z-index: 1200; top: 16px; right: 16px; box-sizing: border-box; max-width: min(360px, calc(100vw - 32px)); border: 1px solid #b2ccff; border-radius: 999px; padding: 8px 12px; color: #3538cd; background: #eff4ff; box-shadow: 0 8px 24px #10182824; font-size: .82rem; font-weight: 700; line-height: 1.2; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .motor-update-badge:hover, .motor-update-badge:focus-visible { border-color: #84adff; color: #2d31a6; background: #dbe7ff; outline: none; }
+    .motor-update-badge { position: fixed; z-index: 1200; top: 16px; right: 16px; box-sizing: border-box; max-width: min(360px, calc(100vw - 32px)); border: 1px solid var(--motor-accent-border); border-radius: 999px; padding: 8px 12px; color: var(--motor-accent-strong); background: var(--motor-accent-subtle); box-shadow: 0 8px 24px #10182824; font-size: .82rem; font-weight: 700; line-height: 1.2; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .motor-update-badge:hover, .motor-update-badge:focus-visible { border-color: var(--motor-accent); color: var(--motor-accent-strong); background: var(--motor-accent-subtle); outline: 2px solid var(--motor-accent); outline-offset: 2px; }
     .motor-big-value { font-size: 2.25rem; font-weight: 700; }
     .motor-big-value-comparison { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; color: #667085; font-weight: 650; }
     .motor-big-value-comparison.good { color: #067647; }
@@ -48,14 +70,14 @@
     .motor-filter-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 16px; }
     .motor-filter-header h2 { margin: 0; }
     .motor-filter-reset { appearance: none; border: 1px solid #cbd2dc; border-radius: 999px; padding: 4px 10px; background: white; color: #475467; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 650; line-height: 1.4; white-space: nowrap; }
-    .motor-filter-reset:hover:not(:disabled), .motor-filter-reset:focus-visible { border-color: #98a2b3; color: #344054; background: #f9fafb; }
+    .motor-filter-reset:hover:not(:disabled), .motor-filter-reset:focus-visible { border-color: var(--motor-accent-border); color: var(--motor-accent-strong); background: var(--motor-accent-subtle); outline: none; }
     .motor-filter-reset:disabled { opacity: .45; cursor: default; }
     .motor-filter-list { display: flex; flex-wrap: wrap; gap: 20px 28px; align-items: flex-start; }
     .motor-filter { min-width: 180px; margin: 0; padding: 0; border: 0; }
     .motor-filter legend { margin-bottom: 8px; color: #475467; font-size: .82rem; font-weight: 650; }
     .motor-filter-controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
     .motor-filter-option { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
-    .motor-filter-option input { margin: 0; }
+    .motor-filter-option input { margin: 0; accent-color: var(--motor-accent); }
     .motor-select, .motor-date-range input { min-height: 36px; border: 1px solid #cbd2dc; border-radius: 7px; padding: 6px 9px; background: white; color: inherit; }
     .motor-multiselect-dropdown-controls { display: block; }
     .motor-multiselect-dropdown { box-sizing: border-box; position: relative; width: 240px; max-width: 100%; }
@@ -64,6 +86,7 @@
     .motor-multiselect-dropdown summary::after { content: "▾"; position: absolute; right: 10px; color: #667085; }
     .motor-multiselect-dropdown[open] summary { border-radius: 7px 7px 0 0; }
     .motor-multiselect-dropdown[open] summary::after { content: "▴"; }
+    .motor-multiselect-dropdown summary:focus-visible, .motor-multiselect-search:focus-visible, .motor-date-range input:focus-visible { border-color: var(--motor-accent); outline: 2px solid var(--motor-accent); outline-offset: 1px; }
     .motor-multiselect-panel { box-sizing: border-box; position: absolute; z-index: 100; top: 100%; left: 0; width: 100%; border: 1px solid #cbd2dc; border-top: 0; border-radius: 0 0 7px 7px; padding: 8px; background: white; box-shadow: 0 10px 24px #17203324; }
     .motor-multiselect-dropdown.drop-up[open] summary { border-radius: 0 0 7px 7px; }
     .motor-multiselect-dropdown.drop-up .motor-multiselect-panel { top: auto; bottom: 100%; border-top: 1px solid #cbd2dc; border-bottom: 0; border-radius: 7px 7px 0 0; box-shadow: 0 -10px 24px #17203324; }
@@ -86,9 +109,9 @@
     .motor-tabs { min-width: 0; margin: 16px 0; }
     .motor-tab-list { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid #dce1e8; }
     .motor-tab-button { appearance: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 14px; background: transparent; color: #667085; cursor: pointer; font: inherit; font-weight: 650; white-space: nowrap; }
-    .motor-tab-button:hover { color: #344054; background: #f2f4f7; }
-    .motor-tab-button[aria-selected="true"] { color: #172033; border-bottom-color: #3b6eea; }
-    .motor-tab-button:focus-visible { outline: 2px solid #3b6eea; outline-offset: -2px; }
+    .motor-tab-button:hover { color: var(--motor-accent-strong); background: var(--motor-accent-subtle); }
+    .motor-tab-button[aria-selected="true"] { color: var(--motor-accent-strong); border-bottom-color: var(--motor-accent); }
+    .motor-tab-button:focus-visible { outline: 2px solid var(--motor-accent); outline-offset: -2px; }
     .motor-tab-panel { min-width: 0; padding-top: 4px; }
     .motor-tab-panel[hidden] { display: none; }
     .motor-stale > * { opacity: .42; }
@@ -128,7 +151,7 @@
     .motor-loading-status-title { color: #344054; font-weight: 650; }
     .motor-loading-status-summary { margin-top: 6px; color: #667085; font-size: .85rem; }
     .motor-loading-status-list { display: grid; gap: 4px; margin: 12px 0 0; padding-left: 20px; color: #667085; font-size: .82rem; }
-    .motor-loading-status-step.is-running { color: #3538cd; }
+    .motor-loading-status-step.is-running { color: var(--motor-accent-strong); }
     .motor-loading-status-step.is-failed { color: #b42318; }
     @media (min-width: 901px) {
       .motor-sidebar-container:not([open]) > .motor-sidebar { display: block; }
@@ -150,7 +173,7 @@
     }
   </style>
 </head>
-<body>
+<body data-motor-accent="{{ theme_accent }}">
   <main id="motor-app">
     <h1>{{ manifest.report.title }}</h1>
     <section id="motor-loading-status" aria-live="polite">Loading embedded data…</section>
