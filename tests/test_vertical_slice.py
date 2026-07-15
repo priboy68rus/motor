@@ -271,6 +271,10 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert "max-width: min(960px, calc(100vw - 16px));" in html
     assert ".motor-chart-shared-tooltip-table .motor-chart-shared-tooltip-label { max-width: 640px; }" in html
     assert "motor-chart-shared-tooltip-swatch" in html
+    assert "normalize_gross" in html
+    assert "normalize_net" in html
+    assert "Gross share" in html
+    assert "Net contribution" in html
     assert ".motor-chart-shared-tooltip-table" in html
     assert ".motor-chart-shared-tooltip-table tr.is-hovered" in html
     assert ".motor-chart-shared-tooltip-table tr.is-muted" in html
@@ -1115,6 +1119,8 @@ select cohort_month, period_number, retention, cohort_size, retained_users from 
     [
         ("center", ' group="country"', "stack must be one of"),
         ("normalize", "", "requires a group or color attribute"),
+        ("normalize_gross", "", "requires a group or color attribute"),
+        ("normalize_net", "", "requires a group or color attribute"),
     ],
 )
 def test_bar_chart_stack_is_validated(
@@ -1170,6 +1176,34 @@ select country, value from events
     chart = next(item for item in spec["components"] if item["type"] == "BarChart")
     assert chart["props"]["stack"] == "zero"
     assert chart["props"]["bar_width"] == 24.5
+
+
+@pytest.mark.parametrize("stack", ["normalize_gross", "normalize_net"])
+def test_bar_chart_signed_normalization_modes_compile(tmp_path: Path, stack: str) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("period,kind,value\n1,sales,120\n1,returns,-20\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        f"""---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+```sql name=summary kind=query
+select period, kind, value from events
+```
+<BarChart query="summary" x="period" y="value" group="kind" stack="{stack}" />
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    chart = next(item for item in spec["components"] if item["type"] == "BarChart")
+    assert chart["props"]["stack"] == stack
 
 
 def test_cohort_gradient_and_heatmap_contract(tmp_path: Path) -> None:

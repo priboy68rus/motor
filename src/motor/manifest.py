@@ -9,7 +9,7 @@ from motor import __version__
 from motor.models import CheckResult, ParsedReport, SourcePassport
 
 
-RUNTIME_VERSION = "0.7.18-samokat-logo"
+RUNTIME_VERSION = "0.7.19-signed-stack-normalization"
 
 
 def _content_identity(parsed: ParsedReport, sources: list[SourcePassport]) -> tuple[str, str]:

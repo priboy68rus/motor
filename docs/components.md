@@ -371,7 +371,7 @@ scheme becomes an in-report chart rendering error.
 | `group` | result column | no | — | Series color; also controls side-by-side offset for `stack="none"`. |
 | `color` | result column | no | — | Series color without grouped-bar offset; ignored when `group` is set. |
 | `details` | comma-separated result columns | no | — | Extra fields displayed below each tooltip series row. |
-| `stack` | enum | no | `zero` | `zero`, `none`, or `normalize`. |
+| `stack` | enum | no | `zero` | `zero`, `none`, `normalize`, `normalize_gross`, or `normalize_net`. |
 | `bar_width` | positive finite number | no | axis-specific | Explicit bar width in pixels. |
 | `format` | string | no | — | Only `percent` currently changes rendering. |
 | `currency` | string | no | — | Reserved; currently no chart effect. |
@@ -382,7 +382,22 @@ Stack modes:
 | --- | --- |
 | `zero` | Ordinary stacking from zero. Series values accumulate and total bar height is their sum. Default. |
 | `none` | No stacking. With `group`, series bars are placed side by side using a discrete X axis. With only `color`, same-X bars can overlap. |
-| `normalize` | Stacks series and normalizes each X category to 100%. Requires `group` or `color`. |
+| `normalize` | Standard non-negative composition. Stacks series and normalizes each X category to 100%. Negative Y values produce a chart error. Requires `group` or `color`. |
+| `normalize_gross` | Signed gross share: `value / sum(abs(value))` within each X. Positive series stack above zero and negative series below it; the total absolute span is 100%. Requires `group` or `color`. |
+| `normalize_net` | Signed contribution to the net result: `value / abs(sum(value))` within each X. Positive series stack above zero and negative series below it. Contributions can exceed 100%; a zero net sum produces a chart error. Requires `group` or `color`. |
+
+All normalization modes automatically format the Y axis as percentages. For
+`normalize_gross` and `normalize_net`, the shared tooltip keeps the original Y
+column and adds `Gross share` or `Net contribution` as a separate percentage
+column. Null and non-numeric Y values do not contribute to denominators and
+remain empty. An all-zero gross stack renders at zero height; a net-normalized
+stack whose signed sum is zero cannot be defined and reports an error suggesting
+`normalize_gross` or `zero`.
+
+`normalize_net` answers how each series contributes to the signed net result.
+For example, `+120` and `-20` become `+120%` and `-20%`. If the net is close to
+zero, percentages can become very large; the axis expands rather than clipping
+them to ±100%.
 
 Without a series field, `zero` behaves as a normal single-series bar chart.
 Temporal X axes use a default width of 18 px. Nominal axes let Vega-Lite choose

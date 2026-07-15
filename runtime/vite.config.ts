@@ -2,7 +2,9 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   build: {
-    emptyOutDir: true,
+    // This directory also contains packaged branding and vendor assets.
+    // Vite owns runtime.js only; the copy script refreshes the other runtime files.
+    emptyOutDir: false,
     lib: {
       entry: "src/main.ts",
       formats: ["iife"],

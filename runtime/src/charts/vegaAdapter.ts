@@ -3,6 +3,11 @@ import type { ColorScheme, EventListenerHandler, View } from "vega";
 
 import type { ComponentSpec, QueryRow } from "../types";
 import { formatValue, type ValueFormat, type ValueFormatOptions } from "../valueFormatting";
+import {
+  normalizeSignedRows,
+  validateStandardNormalize,
+  type SignedNormalization,
+} from "./stackNormalization";
 
 declare const vegaEmbed: (
   element: HTMLElement,
@@ -17,6 +22,7 @@ type XType = "temporal" | "nominal";
 type SharedTooltipEntry = {
   series: unknown;
   value: unknown;
+  normalizedValue?: unknown;
   details: { label: string; value: unknown }[];
 };
 
@@ -33,6 +39,8 @@ type SharedTooltipConfig = {
   rows: QueryRow[];
   valueFormat: ValueFormatOptions;
   details: string[];
+  normalizedField?: string;
+  normalizedLabel?: string;
 };
 
 function parseDetails(value: unknown): string[] {
@@ -71,6 +79,9 @@ function sharedTooltipBuckets(config: SharedTooltipConfig): Map<string, SharedTo
     bucket.entries.push({
       series: config.series ? row[config.series] : row[config.y],
       value: row[config.y],
+      ...(config.normalizedField
+        ? { normalizedValue: row[config.normalizedField] }
+        : {}),
       details: config.details.map((field) => ({
         label: detailLabel(field),
         value: row[field],
@@ -158,6 +169,15 @@ function mountSharedTooltip(
         headRow.append(text("th", config.series, "motor-chart-shared-tooltip-series-heading"));
       }
       headRow.append(text("th", config.y, "motor-chart-shared-tooltip-value-heading"));
+      if (config.normalizedLabel) {
+        headRow.append(
+          text(
+            "th",
+            config.normalizedLabel,
+            "motor-chart-shared-tooltip-normalized-heading",
+          ),
+        );
+      }
       for (const field of config.details) {
         headRow.append(
           text("th", detailLabel(field), "motor-chart-shared-tooltip-detail-heading"),
@@ -190,6 +210,15 @@ function mountSharedTooltip(
             "motor-chart-shared-tooltip-value",
           ),
         );
+        if (config.normalizedLabel) {
+          row.append(
+            text(
+              "td",
+              formatValue(entry.normalizedValue, { format: "percent" }),
+              "motor-chart-shared-tooltip-value motor-chart-shared-tooltip-normalized-value",
+            ),
+          );
+        }
         for (const detail of entry.details) {
           row.append(
             text("td", formatValue(detail.value), "motor-chart-shared-tooltip-detail-value"),
@@ -369,6 +398,14 @@ export async function renderChart(
     !Number.isNaN(Date.parse(sampleX))
       ? "temporal"
       : "nominal";
+  if (stack === "normalize") validateStandardNormalize(rows, x, y);
+  const signedNormalization =
+    stack === "normalize_gross" || stack === "normalize_net"
+      ? normalizeSignedRows(rows, x, y, xType === "temporal", stack)
+      : undefined;
+  const chartRows = signedNormalization?.rows ?? rows;
+  const yField = signedNormalization?.field ?? y;
+  const normalizedStack = stack === "normalize" || signedNormalization != null;
   const configuredBarWidth = component.props.bar_width;
   const barWidth =
     configuredBarWidth == null
@@ -377,14 +414,18 @@ export async function renderChart(
         : undefined
       : Number(configuredBarWidth);
   const yEncoding = {
-    field: y,
+    field: yField,
     type: "quantitative" as const,
     title: y,
-    ...(percent ? { format: ".1%", axis: { format: ".0%" } } : {}),
+    ...(percent || normalizedStack ? { format: ".1%", axis: { format: ".0%" } } : {}),
     ...(component.type === "BarChart"
       ? {
-          stack: stack === "none" ? null : (stack as "zero" | "normalize"),
-          ...(stack === "normalize" ? { axis: { format: ".0%" } } : {}),
+          stack:
+            stack === "none"
+              ? null
+              : stack === "normalize"
+                ? ("normalize" as const)
+                : ("zero" as const),
         }
       : {}),
   };
@@ -420,7 +461,7 @@ export async function renderChart(
     width: "container" as const,
     height: 300,
     autosize: { type: "fit" as const, contains: "padding" as const, resize: true },
-    data: { values: rows },
+    data: { values: chartRows },
     encoding,
   };
   const sharedTooltip = color || details.length > 0
@@ -429,8 +470,14 @@ export async function renderChart(
         y,
         ...(color ? { series: color } : {}),
         xType,
-        rows,
+        rows: chartRows,
         details,
+        ...(signedNormalization
+          ? {
+              normalizedField: signedNormalization.field,
+              normalizedLabel: signedNormalization.label,
+            }
+          : {}),
         valueFormat: {
           format: component.props.format as ValueFormat | undefined,
           currency:

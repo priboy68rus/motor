@@ -519,13 +519,15 @@ def _extract_components(
             )
         if component_type == "BarChart":
             stack = attributes.setdefault("stack", "zero")
-            if stack not in {"none", "zero", "normalize"}:
+            normalized_stacks = {"normalize", "normalize_gross", "normalize_net"}
+            if stack not in {"none", "zero", *normalized_stacks}:
                 raise ReportValidationError(
-                    "BarChart stack must be one of: none, zero, normalize"
+                    "BarChart stack must be one of: none, zero, normalize, "
+                    "normalize_gross, normalize_net"
                 )
-            if stack == "normalize" and not ({"group", "color"} & set(attributes)):
+            if stack in normalized_stacks and not ({"group", "color"} & set(attributes)):
                 raise ReportValidationError(
-                    "BarChart stack='normalize' requires a group or color attribute"
+                    f"BarChart stack={stack!r} requires a group or color attribute"
                 )
             if "bar_width" in attributes:
                 try:

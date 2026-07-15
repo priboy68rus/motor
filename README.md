@@ -699,7 +699,9 @@ chart-rendering error in the report.
 | --- | --- |
 | `zero` | Default. Group values are stacked from zero; bar height is the total. |
 | `none` | Bars from each `group` are displayed side by side on a discrete X scale. |
-| `normalize` | Group values are stacked and normalized to 100%. |
+| `normalize` | Non-negative group values are stacked and normalized to 100%; negative values produce a chart error. |
+| `normalize_gross` | Signed values use `value / sum(abs(value))` per X and diverge around zero. |
+| `normalize_net` | Signed values use `value / abs(sum(value))` per X and diverge around zero; a zero net sum is an error. |
 
 Vega-Lite calls the ordinary accumulated mode `zero` because every stack starts
 from the zero baseline.
@@ -720,8 +722,12 @@ positive custom width when the time series is especially dense or sparse:
 On a discrete X axis, Vega-Lite calculates the band width automatically unless
 `bar_width` is explicitly configured.
 
-`normalize` requires `group` or `color`. Without either series field, `zero`
-produces a normal single-series bar chart. `LineChart` does not accept `stack`.
+Every normalization mode requires `group` or `color`. `normalize_gross` and
+`normalize_net` automatically use a percentage axis and add the calculated
+`Gross share` or `Net contribution` beside the original Y value in the shared
+tooltip. Net contributions may exceed ±100%; the axis expands to include them.
+Without a series field, `zero` produces a normal single-series bar chart.
+`LineChart` does not accept `stack`.
 With a dimension parameter set to `none`, all rows use the empty-string group,
 so the chart has one series and may show a blank legend item. Its dynamic
 legend title ends in `Nothing`.
