@@ -547,9 +547,11 @@ function renderSelect(
     optionList = dropdown.optionList;
   }
   const groupName = `motor-select-${name}-${radioGroupSequence++}`;
-  const all = radio("All", groupName);
-  all.input.checked = value === "all";
-  optionList.append(all.label);
+  const all = param.allow_all === false ? undefined : radio("All", groupName);
+  if (all) {
+    all.input.checked = value === "all";
+    optionList.append(all.label);
+  }
   const optionInputs = options.map((option) => {
     const control = radio(String(option), groupName);
     control.label.dataset.filterValue = String(option);
@@ -559,14 +561,16 @@ function renderSelect(
   });
   const selected = optionInputs.find((option) => option.input.checked);
   if (summary) {
-    summary.textContent = all.input.checked ? "All" : selected ? String(selected.value) : "None";
+    summary.textContent = all?.input.checked ? "All" : selected ? String(selected.value) : "None";
   }
-  all.input.addEventListener("change", () => {
-    if (!all.input.checked) return;
-    if (summary) summary.textContent = "All";
-    if (details) details.open = false;
-    onChange(name, "all");
-  });
+  if (all) {
+    all.input.addEventListener("change", () => {
+      if (!all.input.checked) return;
+      if (summary) summary.textContent = "All";
+      if (details) details.open = false;
+      onChange(name, "all");
+    });
+  }
   for (const option of optionInputs) {
     option.input.addEventListener("change", () => {
       if (!option.input.checked) return;

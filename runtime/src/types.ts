@@ -47,6 +47,7 @@ export type ParamSpec = {
   options?: { source: string; column: string };
   choices?: Record<string, { label?: string; field: string }>;
   allow_none?: boolean;
+  allow_all?: boolean;
 };
 
 export type QuerySpec = {

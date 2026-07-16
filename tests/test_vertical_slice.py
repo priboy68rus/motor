@@ -559,6 +559,7 @@ select * from events where {{ in_filter("country", country) }}
         "default": "all",
         "empty_behavior": "none",
         "control": "radio",
+        "allow_all": True,
         "options": {"source": "events", "column": "country"},
     }
     assert spec["queries"]["filtered"]["depends_on"] == {
@@ -1003,8 +1004,67 @@ params:
     assert spec["params"]["country"]["empty_behavior"] == "none"
     assert spec["params"]["country"]["control"] == "auto"
     assert spec["params"]["single_country"]["control"] == "dropdown"
+    assert spec["params"]["single_country"]["allow_all"] is True
     assert spec["params"]["period"]["default"] == "all"
     assert "empty_behavior" not in spec["params"]["period"]
+
+
+def test_select_can_disable_all_option(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,country\n1,DE\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+params:
+  country:
+    type: select
+    default: DE
+    allow_all: false
+    options:
+      source: events
+      column: country
+---
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert spec["params"]["country"]["allow_all"] is False
+
+
+def test_select_without_all_requires_concrete_default(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,country\n1,DE\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+params:
+  country:
+    type: select
+    allow_all: false
+    options:
+      source: events
+      column: country
+---
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="must declare a non-all default"):
+        compile_report(report)
 
 
 def test_dimension_none_default_requires_allow_none(tmp_path: Path) -> None:

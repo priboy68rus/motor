@@ -89,6 +89,7 @@ class ParamConfig(StrictModel):
     options: ParamOptions | None = None
     choices: dict[str, DimensionChoice] | None = None
     allow_none: bool | None = None
+    allow_all: bool | None = None
 
     @model_validator(mode="after")
     def validate_options(self) -> "ParamConfig":
@@ -106,6 +107,8 @@ class ParamConfig(StrictModel):
             raise ValueError("only dimension parameters can declare choices")
         if self.type != "dimension" and self.allow_none is not None:
             raise ValueError("only dimension parameters can declare allow_none")
+        if self.type != "select" and self.allow_all is not None:
+            raise ValueError("only select parameters can declare allow_all")
         if self.type in {"select", "multiselect"} and self.options is None:
             raise ValueError(f"{self.type} parameters must declare options")
         if self.type in {"select", "multiselect"} and self.empty_behavior is None:
@@ -114,6 +117,10 @@ class ParamConfig(StrictModel):
             self.control = "auto"
         if self.type == "select" and self.control is None:
             self.control = "dropdown"
+        if self.type == "select":
+            self.allow_all = True if self.allow_all is None else bool(self.allow_all)
+            if not self.allow_all and self.default == "all":
+                raise ValueError("select with allow_all: false must declare a non-all default")
         if self.type == "dimension":
             if not self.choices:
                 raise ValueError("dimension parameters must declare choices")

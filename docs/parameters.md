@@ -18,10 +18,12 @@ Unknown fields are rejected.
 | `control` | enum | select, multiselect | no | type-specific | Visual control mode. |
 | `choices` | mapping | dimension | yes | — | Static allowlist mapping choice names to SQL fields. |
 | `allow_none` | boolean | dimension | no | `false` | Adds a `Nothing` choice that substitutes an empty SQL string. |
+| `allow_all` | boolean | select | no | `true` | Whether the single-select control offers the special `All` value. |
 
 Fields accepted by only one group of parameter types cannot be declared on
 other types. For example, `date_range` rejects `options`, `empty_behavior`, and
-`control`; non-dimension parameters reject `choices` and `allow_none`.
+`control`; non-dimension parameters reject `choices` and `allow_none`, and
+non-select parameters reject `allow_all`.
 
 The compiler validates dimension defaults completely. It does not currently
 check a select/multiselect default against loaded source options or validate
@@ -38,9 +40,10 @@ params:
   region:
     type: select
     label: Region
-    default: all
+    default: Europe
     empty_behavior: none
     control: dropdown
+    allow_all: false
     options:
       source: orders
       column: region
@@ -54,6 +57,7 @@ params:
 | `options` | yes | — | `{source: <data name>, column: <column name>}` |
 | `empty_behavior` | no | `none` | `none` or `all` |
 | `control` | no | `dropdown` | `dropdown`, `radio`, or `auto` |
+| `allow_all` | no | `true` | Boolean. When `false`, `default` must be a concrete source value. |
 
 Control modes:
 
@@ -66,8 +70,11 @@ Control modes:
 Opening any select, multiselect, or dimension dropdown closes every other open
 filter dropdown in the report. Clicking outside the dropdown closes it.
 
-`All` is always offered and sets the runtime value to `all`, disabling an
-`in_filter` predicate. `select` never emits an array.
+With the default `allow_all: true`, `All` is offered and sets the runtime value
+to `all`, disabling an `in_filter` predicate. Set `allow_all: false` to hide
+that option in both dropdown and inline-radio controls. A select without `All`
+must explicitly declare a non-`all` default so its initial and reset states are
+visible in the control. `select` never emits an array.
 
 ## `multiselect`
 
