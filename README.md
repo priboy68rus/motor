@@ -693,6 +693,8 @@ variant of the cell color, without an outline.
 The chart keeps at least 34 pixels per distinct Y value, growing beyond its
 300-pixel minimum when needed so cohort rows and value labels remain readable.
 `row_metric` adds one neutral numeric column to the left of the heatmap cells.
+The column is approximately 82 px wide; compact notation is available for
+larger values.
 Its value may repeat across all X rows or appear on only one row per Y; multiple
 different non-null values for one Y are rejected. `row_metric_format` supports
 `number`, `percent`, and `currency`; `row_metric_notation` is `standard`

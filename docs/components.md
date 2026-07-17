@@ -486,9 +486,10 @@ longer fit.
 `row_metric` displays a numeric value that belongs to the entire heatmap row,
 such as cohort size, sample size, or row total. It is rendered in a neutral
 column between the Y-axis labels and the first colored cell and never affects
-the heatmap color domain or legend. Its row order is exactly the Heatmap Y
-order. The same full, non-compact value is also included in cell and row-metric
-tooltips.
+the heatmap color domain or legend. The column is approximately 82 px wide;
+use compact notation when a full formatted value does not fit comfortably. Its
+row order is exactly the Heatmap Y order. The same full, non-compact value is
+also included in cell and row-metric tooltips.
 
 The query remains at the normal one-row-per-Y-and-X grain:
 

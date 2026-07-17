@@ -357,7 +357,7 @@ export function heatmapSpec(
         ]
       : []),
   ];
-  const rowMetricWidth = 116;
+  const rowMetricWidth = 82;
   return {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
     width: "container",
