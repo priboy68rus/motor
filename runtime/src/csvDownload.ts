@@ -4,6 +4,7 @@ import {
   type SignedNormalization,
 } from "./charts/stackNormalization";
 import type { ComponentSpec, QueryRow } from "./types";
+import { utils, writeFileXLSX, type WorkBook } from "xlsx";
 
 export type ComponentCsvData = {
   columns: string[];
@@ -189,10 +190,64 @@ export function componentCsvFilename(
   componentId: string,
   now = new Date(),
 ): string {
+  return componentDownloadFilename(reportSlug, componentId, "csv", now);
+}
+
+export type ComponentDownloadFormat = "csv" | "xlsx";
+
+export function componentDownloadFilename(
+  reportSlug: string,
+  componentId: string,
+  format: ComponentDownloadFormat,
+  now = new Date(),
+): string {
   const safe = (value: string): string =>
     value.replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "") || "report";
   const timestamp = now.toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
-  return `${safe(reportSlug)}-${safe(componentId)}-${timestamp}.csv`;
+  return `${safe(reportSlug)}-${safe(componentId)}-${timestamp}.${format}`;
+}
+
+function xlsxCell(value: unknown): string | number | boolean | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+export function componentXlsxSheetName(value: string): string {
+  const sanitized = value
+    .replace(/[\\/?*[\]:]/g, " ")
+    .replace(/[\u0000-\u001f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^'+|'+$/g, "")
+    .trim()
+    .slice(0, 31)
+    .trim();
+  return sanitized || "Data";
+}
+
+export function componentXlsxWorkbook(
+  data: ComponentCsvData,
+  sheetName = "Data",
+): WorkBook {
+  const values = [
+    data.columns,
+    ...data.rows.map((row) => data.columns.map((column) => xlsxCell(row[column]))),
+  ];
+  const worksheet = utils.aoa_to_sheet(values);
+  const workbook = utils.book_new();
+  utils.book_append_sheet(workbook, worksheet, componentXlsxSheetName(sheetName));
+  return workbook;
 }
 
 export function downloadComponentCsv(
@@ -213,4 +268,20 @@ export function downloadComponentCsv(
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+export function downloadComponentXlsx(
+  reportSlug: string,
+  component: ComponentSpec,
+  rows: QueryRow[],
+): void {
+  const workbook = componentXlsxWorkbook(
+    componentCsvData(component, rows),
+    String(component.props.title ?? component.id),
+  );
+  writeFileXLSX(
+    workbook,
+    componentDownloadFilename(reportSlug, component.id, "xlsx"),
+    { compression: true },
+  );
 }

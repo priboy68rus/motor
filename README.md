@@ -540,13 +540,13 @@ should be quoted, and declarations may span multiple lines.
 | `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `details`, `format`, `currency`, `stack`, `bar_width`, `download` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
 | `Heatmap` | `query`, `x`, `y`, `value` | `title`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency`, `download` | Rectangular heatmap with a quantitative gradient and an optional neutral per-row metric column. `format` is `number` (default) or `percent`; `show_values`, `show_percent_sign`, and `download` default to `true`. |
 
-Tables and charts show a subtle CSV download button by default; use
-`download="false"` to hide it. The file contains the component's visible fields
-from the latest successfully rendered, filter-reactive query result. Values are
-raw and reusable (`0.425`, not formatted `42.5%`). Normalized bar charts also
-include a derived `<y>_normalized` column. See the complete projection,
-encoding, filename, and safety rules in
-[CSV downloads](docs/components.md#csv-downloads).
+Tables and charts show a subtle data-download button by default; it offers CSV
+and Excel (`.xlsx`). Use `download="false"` to hide it. Both formats contain the
+component's visible fields from the latest successfully rendered,
+filter-reactive query result. Values are raw and reusable (`0.425`, not
+formatted `42.5%`). Normalized bar charts also include a derived
+`<y>_normalized` column. See the complete projection, encoding, filename, and
+safety rules in [data downloads](docs/components.md#data-downloads).
 
 `query` must reference an existing `kind=query` SQL block. Referenced column
 names such as `value`, `x`, and `y` must exist in its result.

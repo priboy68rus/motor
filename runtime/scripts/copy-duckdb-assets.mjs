@@ -93,4 +93,8 @@ await Promise.all([
     new URL("../node_modules/vega-embed/LICENSE", import.meta.url),
     new URL("vega-embed-LICENSE", destination),
   ),
+  copyFile(
+    new URL("../node_modules/xlsx/LICENSE", import.meta.url),
+    new URL("xlsx-LICENSE", destination),
+  ),
 ]);

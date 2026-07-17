@@ -4,6 +4,9 @@ import test from "node:test";
 import {
   componentCsvData,
   componentCsvFilename,
+  componentDownloadFilename,
+  componentXlsxSheetName,
+  componentXlsxWorkbook,
   serializeComponentCsv,
 } from "./csvDownload";
 
@@ -113,4 +116,54 @@ test("CSV filename uses stable safe identifiers and a UTC timestamp", () => {
     componentCsvFilename("sales report", "gmv/chart", new Date("2026-07-17T12:34:56Z")),
     "sales-report-gmv-chart-20260717-123456.csv",
   );
+});
+
+test("XLSX filename uses the same stable identifiers and timestamp", () => {
+  assert.equal(
+    componentDownloadFilename(
+      "sales report",
+      "gmv/chart",
+      "xlsx",
+      new Date("2026-07-17T12:34:56Z"),
+    ),
+    "sales-report-gmv-chart-20260717-123456.xlsx",
+  );
+});
+
+test("XLSX preserves scalar cell types and keeps formula-like text inert", () => {
+  const workbook = componentXlsxWorkbook(
+    {
+      columns: ["text", "number", "boolean", "missing", "date", "object"],
+      rows: [
+        {
+          text: "=2+2",
+          number: 42.5,
+          boolean: true,
+          missing: null,
+          date: new Date("2026-07-17T12:34:56Z"),
+          object: { nested: 1 },
+        },
+      ],
+    },
+    "GMV / channel",
+  );
+  const worksheet = workbook.Sheets["GMV channel"];
+
+  assert.ok(worksheet);
+  assert.deepEqual(workbook.SheetNames, ["GMV channel"]);
+  assert.deepEqual(worksheet.A2, { t: "s", v: "=2+2" });
+  assert.deepEqual(worksheet.B2, { t: "n", v: 42.5 });
+  assert.deepEqual(worksheet.C2, { t: "b", v: true });
+  assert.equal(worksheet.D2, undefined);
+  assert.deepEqual(worksheet.E2, { t: "s", v: "2026-07-17T12:34:56.000Z" });
+  assert.deepEqual(worksheet.F2, { t: "s", v: '{"nested":1}' });
+  assert.equal(Object.hasOwn(worksheet.A2 ?? {}, "f"), false);
+});
+
+test("XLSX sheet names are valid, bounded, and have a fallback", () => {
+  assert.equal(
+    componentXlsxSheetName("  'Revenue: [daily] / very long report title'  "),
+    "Revenue daily very long report",
+  );
+  assert.equal(componentXlsxSheetName("///"), "Data");
 });

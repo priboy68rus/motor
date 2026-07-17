@@ -38,11 +38,16 @@
     .motor-component-header { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 16px; }
     .motor-component-header.actions-only { min-height: 24px; margin-bottom: 4px; justify-content: flex-end; }
     .motor-component-header h2 { min-width: 0; margin: 0; }
+    .motor-download-control { position: relative; display: inline-flex; flex: 0 0 auto; }
     .motor-download-data { appearance: none; display: inline-flex; flex: 0 0 auto; width: 26px; height: 26px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 6px; padding: 4px; color: #667085; background: transparent; cursor: pointer; opacity: .42; transition: opacity .12s ease, color .12s ease, background .12s ease, border-color .12s ease; }
     .motor-download-data svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
     .motor-download-data:hover:not(:disabled), .motor-download-data:focus-visible { border-color: var(--motor-accent-border); color: var(--motor-accent-strong); background: var(--motor-accent-subtle); opacity: 1; outline: none; }
     .motor-download-data:focus-visible { outline: 2px solid var(--motor-accent); outline-offset: 1px; }
     .motor-download-data:disabled { cursor: default; opacity: .22; }
+    .motor-download-menu { position: absolute; z-index: 40; top: calc(100% + 4px); right: 0; box-sizing: border-box; min-width: 144px; padding: 4px; border: 1px solid #d7dde5; border-radius: 8px; background: white; box-shadow: 0 10px 24px #17203324; }
+    .motor-download-menu[hidden] { display: none; }
+    .motor-download-menu button { appearance: none; display: block; width: 100%; border: 0; border-radius: 5px; padding: 7px 9px; color: #344054; background: transparent; cursor: pointer; font: inherit; font-size: .82rem; text-align: left; white-space: nowrap; }
+    .motor-download-menu button:hover, .motor-download-menu button:focus-visible { color: var(--motor-accent-strong); background: var(--motor-accent-subtle); outline: none; }
     .motor-component-error, .motor-fatal-error { color: #a11b1b; background: #fff4f4; border: 1px solid #f2b8b8; border-radius: 12px; padding: 20px; }
     .motor-version { color: var(--motor-accent-strong); font-family: ui-monospace, monospace; font-size: .8rem; margin: 12px 0; overflow-wrap: anywhere; }
     .motor-data-status { display: grid; gap: 6px; color: #667085; font-size: .82rem; margin: 12px 0; overflow-wrap: anywhere; }

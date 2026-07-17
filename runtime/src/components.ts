@@ -1,6 +1,6 @@
 import { renderChart } from "./charts/vegaAdapter";
 import type { ChartHandle } from "./charts/vegaAdapter";
-import { downloadComponentCsv } from "./csvDownload";
+import { downloadComponentCsv, downloadComponentXlsx } from "./csvDownload";
 import type { RuntimeMetrics, RuntimeMetricsSnapshot } from "./runtimeMetrics";
 import {
   formatSignedPercent,
@@ -233,12 +233,42 @@ function renderText(element: HTMLElement, component: ComponentSpec): void {
   element.append(text("p", String(component.props.text), "motor-text-body"));
 }
 
-function downloadButton(
+const downloadMenuOutsideClickDocuments = new WeakSet<Document>();
+
+function closeDownloadMenus(document: Document, except?: HTMLElement): void {
+  for (const control of document.querySelectorAll<HTMLElement>(
+    ".motor-download-control.is-open",
+  )) {
+    if (control === except) continue;
+    control.classList.remove("is-open");
+    const button = control.querySelector<HTMLButtonElement>(".motor-download-data");
+    const menu = control.querySelector<HTMLElement>(".motor-download-menu");
+    button?.setAttribute("aria-expanded", "false");
+    if (menu) menu.hidden = true;
+  }
+}
+
+function ensureDownloadMenuOutsideClickHandler(document: Document): void {
+  if (downloadMenuOutsideClickDocuments.has(document)) return;
+  downloadMenuOutsideClickDocuments.add(document);
+  document.addEventListener("click", (event) => {
+    if (!(event.target instanceof Node)) return;
+    for (const control of document.querySelectorAll<HTMLElement>(
+      ".motor-download-control.is-open",
+    )) {
+      if (!control.contains(event.target)) closeDownloadMenus(document);
+    }
+  });
+}
+
+function downloadControl(
   reportSlug: string,
   component: ComponentSpec,
   rows: QueryRow[],
   pending: boolean,
-): HTMLButtonElement {
+): HTMLElement {
+  const control = document.createElement("div");
+  control.className = "motor-download-control";
   const button = document.createElement("button");
   button.type = "button";
   button.className = "motor-download-data";
@@ -247,17 +277,63 @@ function downloadButton(
     ? "Updating data…"
     : button.disabled
       ? "No rows to download"
-      : "Download CSV";
-  button.setAttribute("aria-label", `Download ${component.id} data as CSV`);
+      : "Download data";
+  button.setAttribute("aria-label", `Download ${component.id} data`);
+  button.setAttribute("aria-haspopup", "menu");
+  button.setAttribute("aria-expanded", "false");
   button.innerHTML =
     '<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">' +
     '<path d="M10 2.75v9.5m0 0 3.5-3.5m-3.5 3.5-3.5-3.5M4 15.25h12" />' +
     "</svg>";
+
+  const menu = document.createElement("div");
+  menu.className = "motor-download-menu";
+  menu.setAttribute("role", "menu");
+  menu.hidden = true;
+  const csv = document.createElement("button");
+  csv.type = "button";
+  csv.setAttribute("role", "menuitem");
+  csv.textContent = "CSV";
+  const xlsx = document.createElement("button");
+  xlsx.type = "button";
+  xlsx.setAttribute("role", "menuitem");
+  xlsx.textContent = "Excel (.xlsx)";
+  menu.append(csv, xlsx);
+
+  const setOpen = (open: boolean): void => {
+    if (open) closeDownloadMenus(control.ownerDocument, control);
+    control.classList.toggle("is-open", open);
+    button.setAttribute("aria-expanded", String(open));
+    menu.hidden = !open;
+  };
+
   button.addEventListener("click", () => {
     if (button.disabled) return;
+    setOpen(!control.classList.contains("is-open"));
+  });
+  button.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowDown" || button.disabled) return;
+    event.preventDefault();
+    setOpen(true);
+    csv.focus();
+  });
+  csv.addEventListener("click", () => {
+    setOpen(false);
     downloadComponentCsv(reportSlug, component, rows);
   });
-  return button;
+  xlsx.addEventListener("click", () => {
+    setOpen(false);
+    downloadComponentXlsx(reportSlug, component, rows);
+  });
+  control.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !control.classList.contains("is-open")) return;
+    event.preventDefault();
+    setOpen(false);
+    button.focus();
+  });
+  control.append(button, menu);
+  ensureDownloadMenuOutsideClickHandler(control.ownerDocument);
+  return control;
 }
 
 function attachDownloadControl(
@@ -274,7 +350,7 @@ function attachDownloadControl(
   const heading = Array.from(element.children).find((child) => child.tagName === "H2");
   if (heading) header.append(heading);
   else header.classList.add("actions-only");
-  header.append(downloadButton(reportSlug, component, rows, pending));
+  header.append(downloadControl(reportSlug, component, rows, pending));
   element.prepend(header);
 }
 
@@ -1033,6 +1109,7 @@ export class ReportRenderer {
       if (download) {
         download.disabled = true;
         download.title = "Updating data…";
+        closeDownloadMenus(download.ownerDocument);
       }
     }
   }

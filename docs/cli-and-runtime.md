@@ -148,7 +148,8 @@ The generated file embeds:
 - Vega, Vega-Lite, and Vega Embed;
 - motor's transparent PNG favicon, using the `samokat` accent color
   `#ff3b65`, as an inline data URL;
-- motor's browser JavaScript and CSS.
+- motor's browser JavaScript and CSS, including SheetJS for local XLSX
+  generation.
 
 No CDN or application server is required. The report can be opened with a
 `file://` URL and queried interactively offline.
@@ -157,9 +158,9 @@ Because source files are embedded in full, anyone who receives the HTML can
 extract all source rows, including columns not selected by visible queries.
 Do not distribute an artifact to someone who should not possess its complete
 input data. SQL filtering is a presentation rule, not access control.
-Component CSV downloads expose only the current visible result fields, but do
-not change this security model: the complete embedded sources remain available
-to anyone who has the HTML artifact.
+Component CSV/XLSX downloads expose only the current visible result fields,
+but do not change this security model: the complete embedded sources remain
+available to anyone who has the HTML artifact.
 
 ## Browser requirements
 
