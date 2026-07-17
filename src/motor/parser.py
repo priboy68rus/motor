@@ -114,6 +114,11 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "color_scheme",
             "color_direction",
             "show_values",
+            "row_metric",
+            "row_metric_title",
+            "row_metric_format",
+            "row_metric_notation",
+            "row_metric_currency",
         },
     ),
 }
@@ -582,6 +587,59 @@ def _extract_components(
                 raise ReportValidationError(
                     "Heatmap format must be one of: number, percent"
                 )
+            row_metric = attributes.get("row_metric")
+            row_metric_attributes = {
+                "row_metric_title",
+                "row_metric_format",
+                "row_metric_notation",
+                "row_metric_currency",
+            }
+            if row_metric is None:
+                invalid = row_metric_attributes & set(attributes)
+                if invalid:
+                    raise ReportValidationError(
+                        "Heatmap row metric attributes require row_metric: "
+                        + ", ".join(sorted(invalid))
+                    )
+            else:
+                if not str(row_metric).strip():
+                    raise ReportValidationError("Heatmap row_metric must not be empty")
+                row_metric_title = attributes.setdefault(
+                    "row_metric_title", str(row_metric)
+                )
+                if not str(row_metric_title).strip():
+                    raise ReportValidationError(
+                        "Heatmap row_metric_title must not be empty"
+                    )
+                row_metric_format = attributes.setdefault("row_metric_format", "number")
+                if row_metric_format not in {"number", "currency", "percent"}:
+                    raise ReportValidationError(
+                        "Heatmap row_metric_format must be one of: "
+                        "number, currency, percent"
+                    )
+                row_metric_notation = attributes.setdefault(
+                    "row_metric_notation", "standard"
+                )
+                if row_metric_notation not in {"standard", "compact"}:
+                    raise ReportValidationError(
+                        "Heatmap row_metric_notation must be one of: "
+                        "standard, compact"
+                    )
+                if row_metric_format == "currency":
+                    row_metric_currency = str(
+                        attributes.setdefault("row_metric_currency", "USD")
+                    ).upper()
+                    if not re.fullmatch(r"[A-Z]{3}", row_metric_currency):
+                        raise ReportValidationError(
+                            "Heatmap row_metric_currency must be a three-letter "
+                            "ISO 4217 code"
+                        )
+                    attributes["row_metric_currency"] = row_metric_currency
+                elif "row_metric_currency" in attributes:
+                    raise ReportValidationError(
+                        "Heatmap row_metric_currency requires "
+                        "row_metric_format='currency'"
+                    )
         if component_type == "BigValue":
             value_format = attributes.get("format")
             if value_format is not None and value_format not in {

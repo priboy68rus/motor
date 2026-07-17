@@ -8,6 +8,12 @@ import {
   validateStandardNormalize,
   type SignedNormalization,
 } from "./stackNormalization";
+import {
+  buildHeatmapRowMetric,
+  heatmapRowMetricKey,
+  ROW_METRIC_DISPLAY_FIELD,
+  ROW_METRIC_TOOLTIP_FIELD,
+} from "./heatmapRowMetric";
 
 declare const vegaEmbed: (
   element: HTMLElement,
@@ -273,11 +279,10 @@ async function embedChart(
   };
 }
 
-async function renderHeatmap(
-  element: HTMLElement,
+export function heatmapSpec(
   component: ComponentSpec,
   rows: QueryRow[],
-): Promise<ChartHandle> {
+): TopLevelSpec {
   const x = String(component.props.x);
   const y = String(component.props.y);
   const value = String(component.props.value);
@@ -285,6 +290,31 @@ async function renderHeatmap(
   const reverse = component.props.color_direction === "lower_is_darker";
   const percent = component.props.format === "percent";
   const showValues = component.props.show_values !== false;
+  const rowMetric = component.props.row_metric
+    ? String(component.props.row_metric)
+    : undefined;
+  const rowMetricTitle = rowMetric
+    ? String(component.props.row_metric_title ?? rowMetric)
+    : undefined;
+  const rowMetricFormat: ValueFormatOptions = {
+    format: String(component.props.row_metric_format ?? "number") as ValueFormat,
+    notation: String(component.props.row_metric_notation ?? "standard") as
+      | "standard"
+      | "compact",
+    ...(component.props.row_metric_currency
+      ? { currency: String(component.props.row_metric_currency) }
+      : {}),
+  };
+  const rowMetricResult = rowMetric
+    ? buildHeatmapRowMetric(rows, y, rowMetric, rowMetricFormat)
+    : undefined;
+  const chartRows = rowMetricResult
+    ? rows.map((row) => ({
+        ...row,
+        [ROW_METRIC_TOOLTIP_FIELD]:
+          rowMetricResult.tooltipByRow.get(heatmapRowMetricKey(row[y])) ?? "—",
+      }))
+    : rows;
   let minimum = 0;
   let maximum = 0;
   for (const row of rows) {
@@ -307,7 +337,7 @@ async function renderHeatmap(
         reverse,
       };
   const yCount = new Set(rows.map((row) => tooltipKey(row[y], "nominal"))).size;
-  const height = Math.max(300, yCount * 34);
+  const height = Math.max(300, yCount * 34) + (rowMetricResult ? 26 : 0);
   const tooltip = [
     { field: y, type: "ordinal" as const, title: y },
     { field: x, type: "ordinal" as const, title: x },
@@ -317,18 +347,103 @@ async function renderHeatmap(
       title: value,
       ...(percent ? { format: ".1%" } : {}),
     },
+    ...(rowMetricResult && rowMetricTitle
+      ? [
+          {
+            field: ROW_METRIC_TOOLTIP_FIELD,
+            type: "nominal" as const,
+            title: rowMetricTitle,
+          },
+        ]
+      : []),
   ];
-  const spec: TopLevelSpec = {
+  const rowMetricWidth = 116;
+  return {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
     width: "container",
     height,
     autosize: { type: "fit", contains: "padding", resize: true },
-    data: { values: rows },
+    ...(rowMetricResult
+      ? { padding: { top: 26, right: 5, bottom: 5, left: 5 } }
+      : {}),
+    data: { values: chartRows },
     encoding: {
       x: { field: x, type: "ordinal", title: x, sort: "ascending" },
-      y: { field: y, type: "ordinal", title: y, sort: "ascending" },
+      y: {
+        field: y,
+        type: "ordinal",
+        title: y,
+        sort: "ascending",
+        ...(rowMetricResult ? { axis: { labelPadding: rowMetricWidth + 12 } } : {}),
+      },
     },
     layer: [
+      ...(rowMetricResult && rowMetricTitle
+        ? [
+            {
+              data: { values: rowMetricResult.rows },
+              mark: {
+                type: "rect" as const,
+                color: "#f6f7f9",
+                stroke: "white",
+                strokeWidth: 1,
+                tooltip: true,
+              },
+              encoding: {
+                x: { value: -rowMetricWidth },
+                x2: { value: -2 },
+                tooltip: [
+                  { field: y, type: "ordinal" as const, title: y },
+                  {
+                    field: ROW_METRIC_TOOLTIP_FIELD,
+                    type: "nominal" as const,
+                    title: rowMetricTitle,
+                  },
+                ],
+              },
+            },
+            {
+              data: { values: rowMetricResult.rows },
+              mark: {
+                type: "text" as const,
+                align: "right" as const,
+                baseline: "middle" as const,
+                color: "#344054",
+                fontSize: 12,
+                fontWeight: "bold" as const,
+                tooltip: true,
+              },
+              encoding: {
+                x: { value: -10 },
+                text: { field: ROW_METRIC_DISPLAY_FIELD, type: "nominal" as const },
+                tooltip: [
+                  { field: y, type: "ordinal" as const, title: y },
+                  {
+                    field: ROW_METRIC_TOOLTIP_FIELD,
+                    type: "nominal" as const,
+                    title: rowMetricTitle,
+                  },
+                ],
+              },
+            },
+            {
+              data: { values: [{}] },
+              mark: {
+                type: "text" as const,
+                align: "right" as const,
+                baseline: "bottom" as const,
+                color: "#667085",
+                fontSize: 11,
+                fontWeight: "bold" as const,
+              },
+              encoding: {
+                x: { value: -10 },
+                y: { value: -7 },
+                text: { value: rowMetricTitle },
+              },
+            },
+          ]
+        : []),
       {
         mark: { type: "rect", tooltip: true, stroke: "white", strokeWidth: 1 },
         encoding: {
@@ -365,7 +480,14 @@ async function renderHeatmap(
         : []),
     ],
   };
-  return embedChart(element, spec);
+}
+
+async function renderHeatmap(
+  element: HTMLElement,
+  component: ComponentSpec,
+  rows: QueryRow[],
+): Promise<ChartHandle> {
+  return embedChart(element, heatmapSpec(component, rows));
 }
 
 export async function renderChart(

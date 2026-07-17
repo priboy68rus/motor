@@ -538,7 +538,7 @@ should be quoted, and declarations may span multiple lines.
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
 | `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
 | `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `details`, `format`, `currency`, `stack`, `bar_width` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
-| `Heatmap` | `query`, `x`, `y`, `value` | `title`, `format`, `color_scheme`, `color_direction`, `show_values` | Rectangular heatmap with a quantitative gradient. `format` is `number` (default) or `percent`; `show_values` defaults to `true`. |
+| `Heatmap` | `query`, `x`, `y`, `value` | `title`, `format`, `color_scheme`, `color_direction`, `show_values`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency` | Rectangular heatmap with a quantitative gradient and an optional neutral per-row metric column. `format` is `number` (default) or `percent`; `show_values` defaults to `true`. |
 
 `query` must reference an existing `kind=query` SQL block. Referenced column
 names such as `value`, `x`, and `y` must exist in its result.
@@ -672,6 +672,9 @@ heatmap's numeric `value` scale:
   color_scheme="blues"
   color_direction="higher_is_darker"
   show_values="true"
+  row_metric="cohort_size"
+  row_metric_title="Cohort size"
+  row_metric_notation="standard"
   title="Retention heatmap"
 />
 ```
@@ -689,6 +692,12 @@ Their text automatically switches between a contrasting darker or lighter
 variant of the cell color, without an outline.
 The chart keeps at least 34 pixels per distinct Y value, growing beyond its
 300-pixel minimum when needed so cohort rows and value labels remain readable.
+`row_metric` adds one neutral numeric column to the left of the heatmap cells.
+Its value may repeat across all X rows or appear on only one row per Y; multiple
+different non-null values for one Y are rejected. `row_metric_format` supports
+`number`, `percent`, and `currency`; `row_metric_notation` is `standard`
+(default) or `compact`. See the complete field and formatting contract in
+[Heatmap](docs/components.md#heatmap).
 Any Vega sequential scheme name may be used, for example `blues`, `greens`,
 `viridis`, `magma`, `inferno`, or `cividis`. An unknown scheme is reported as a
 chart-rendering error in the report.

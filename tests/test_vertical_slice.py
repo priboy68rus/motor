@@ -1269,7 +1269,8 @@ select period, kind, value from events
 def test_cohort_gradient_and_heatmap_contract(tmp_path: Path) -> None:
     data = tmp_path / "data.csv"
     data.write_text(
-        "cohort_month,period_number,retention\n2026-01-01,0,1.0\n2026-01-01,1,0.5\n",
+        "cohort_month,period_number,cohort_size,retention\n"
+        "2026-01-01,0,15240,1.0\n2026-01-01,1,15240,0.5\n",
         encoding="utf-8",
     )
     report = tmp_path / "report.md"
@@ -1283,7 +1284,7 @@ data:
     path: data.csv
 ---
 ```sql name=retention kind=query
-select cohort_month, period_number, retention from cohorts
+select cohort_month, period_number, cohort_size, retention from cohorts
 ```
 <LineChart
   query="retention"
@@ -1299,6 +1300,9 @@ select cohort_month, period_number, retention from cohorts
   y="cohort_month"
   value="retention"
   format="percent"
+  row_metric="cohort_size"
+  row_metric_title="Cohort size"
+  row_metric_notation="compact"
 />
 """,
         encoding="utf-8",
@@ -1318,6 +1322,10 @@ select cohort_month, period_number, retention from cohorts
         "color_scheme": "blues",
         "color_direction": "higher_is_darker",
         "show_values": True,
+        "row_metric": "cohort_size",
+        "row_metric_title": "Cohort size",
+        "row_metric_format": "number",
+        "row_metric_notation": "compact",
     }
 
 
@@ -1375,6 +1383,23 @@ select x, y, value from values
             '<Heatmap query="retention" x="period_number" y="cohort_month" '
             'value="retention" show_values="sometimes" />',
             "show_values must be true or false",
+        ),
+        (
+            '<Heatmap query="retention" x="period_number" y="cohort_month" '
+            'value="retention" row_metric_format="number" />',
+            "row metric attributes require row_metric",
+        ),
+        (
+            '<Heatmap query="retention" x="period_number" y="cohort_month" '
+            'value="retention" row_metric="cohort_size" '
+            'row_metric_notation="scientific" />',
+            "row_metric_notation must be one of",
+        ),
+        (
+            '<Heatmap query="retention" x="period_number" y="cohort_month" '
+            'value="retention" row_metric="cohort_size" '
+            'row_metric_currency="RUB" />',
+            "row_metric_currency requires row_metric_format='currency'",
         ),
     ],
 )
