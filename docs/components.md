@@ -257,6 +257,10 @@ default. Set `download="false"` on an individual component to remove it:
 <LineChart query="revenue" x="month" y="gmv" download="false" />
 ```
 
+The neutral button highlights only when the pointer is directly over the
+button, or when it receives keyboard focus; hovering the card or title does not
+activate it.
+
 The button exports the last successfully rendered rows for that component. All
 reactive SQL filters and dimension selections have therefore already been
 applied. While an affected query is updating, the button is disabled so the
