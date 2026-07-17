@@ -1322,6 +1322,7 @@ select cohort_month, period_number, cohort_size, retention from cohorts
         "color_scheme": "blues",
         "color_direction": "higher_is_darker",
         "show_values": True,
+        "show_percent_sign": True,
         "row_metric": "cohort_size",
         "row_metric_title": "Cohort size",
         "row_metric_format": "number",
@@ -1383,6 +1384,16 @@ select x, y, value from values
             '<Heatmap query="retention" x="period_number" y="cohort_month" '
             'value="retention" show_values="sometimes" />',
             "show_values must be true or false",
+        ),
+        (
+            '<Heatmap query="retention" x="period_number" y="cohort_month" '
+            'value="retention" format="percent" show_percent_sign="sometimes" />',
+            "show_percent_sign must be true or false",
+        ),
+        (
+            '<Heatmap query="retention" x="period_number" y="cohort_month" '
+            'value="retention" show_percent_sign="false" />',
+            "show_percent_sign requires format='percent'",
         ),
         (
             '<Heatmap query="retention" x="period_number" y="cohort_month" '

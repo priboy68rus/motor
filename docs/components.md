@@ -40,7 +40,7 @@ values or chart errors rather than build-time validation errors.
 | [`Table`](#table) | `query` | `id`, `title`, `columns` |
 | [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction` |
 | [`BarChart`](#barchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `stack`, `bar_width` |
-| [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `format`, `color_scheme`, `color_direction`, `show_values`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency` |
+| [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency` |
 
 ## `Filters`
 
@@ -417,6 +417,7 @@ Renders one rectangular cell per query row.
   color_scheme="blues"
   color_direction="higher_is_darker"
   show_values="true"
+  show_percent_sign="false"
   row_metric="cohort_size"
   row_metric_title="Cohort size"
   row_metric_format="number"
@@ -436,6 +437,7 @@ Renders one rectangular cell per query row.
 | `color_scheme` | non-empty string | no | `blues` | Vega sequential scheme used when all values are non-negative. |
 | `color_direction` | enum | no | `higher_is_darker` | Sequential-scale direction: `higher_is_darker` or `lower_is_darker`. |
 | `show_values` | boolean | no | `true` | `true` draws the formatted value inside every non-null cell; `false` leaves cells unlabelled. |
+| `show_percent_sign` | boolean | no | `true` | With `format="percent"`, controls only the `%` suffix inside cells. `false` still scales fractions by 100: `0.425` renders as `42.5`. Tooltips and the legend keep `%`. Explicit use requires `format="percent"`. |
 | `row_metric` | result column | no | — | Adds one neutral numeric column to the left of the colored cells, with one value per distinct `y`. |
 | `row_metric_title` | non-empty string | no | exact `row_metric` | Header and tooltip label for the additional column. Requires `row_metric`. |
 | `row_metric_format` | enum | no | `number` | `number`, `percent`, or `currency`. Requires `row_metric`. Percent expects a fraction. |
@@ -467,14 +469,16 @@ An entirely negative result still reserves the equally sized positive half of
 the scale even though no positive cells use it. Null, empty, and non-finite
 values are excluded when deciding the color domain.
 
-Value labels are enabled by default. Percent labels use one decimal place;
-number labels use thousands separators and at most two decimal
-places. Their text color is derived from the actual cell color: a darker shade
-of the same hue is used on light cells and a lighter shade on dark cells. motor
-checks the contrast ratio and falls back to black or white when the tinted
-variant would be insufficient; labels have no outline. Set
-`show_values="false"` when cells are too narrow or the heatmap is intended to
-show only the color pattern.
+Value labels are enabled by default and use a 10 px normal-weight font. Percent
+labels use one decimal place; number labels use thousands separators and at
+most two decimal places. `show_percent_sign="false"` removes only the `%`
+character from percent cell labels while retaining percent scaling. The legend
+and tooltips remain explicitly formatted as percentages. Label text color is
+derived from the actual cell color: a darker shade of the same hue is used on
+light cells and a lighter shade on dark cells. motor checks the contrast ratio
+and falls back to black or white when the tinted variant would be insufficient;
+labels have no outline. Set `show_values="false"` when cells are too narrow or
+the heatmap is intended to show only the color pattern.
 
 Heatmap height remains at least 300 px and grows when necessary to reserve
 approximately 34 px for every distinct Y value. A large cohort matrix therefore

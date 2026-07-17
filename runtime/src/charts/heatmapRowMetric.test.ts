@@ -86,6 +86,7 @@ test("Vega renders a heatmap with the row metric layers", async () => {
         y: "cohort",
         value: "retention",
         format: "percent",
+        show_percent_sign: false,
         row_metric: "size",
         row_metric_title: "Cohort size",
         row_metric_format: "number",
@@ -104,4 +105,17 @@ test("Vega renders a heatmap with the row metric layers", async () => {
   const svg = await new View(parse(compiled), { renderer: "none" }).toSVG();
   assert.match(svg, /Cohort size/);
   assert.match(svg, />100</);
+  assert.match(svg, />50\.0</);
+  assert.doesNotMatch(svg, />50\.0%</);
+  if (!("layer" in spec)) assert.fail("expected a layered heatmap spec");
+  const valueLabelLayer = spec.layer.at(-1);
+  const valueLabelMark = valueLabelLayer && "mark" in valueLabelLayer
+    ? valueLabelLayer.mark
+    : undefined;
+  const markProperties =
+    typeof valueLabelMark === "object"
+      ? (valueLabelMark as unknown as Record<string, unknown>)
+      : {};
+  assert.equal(markProperties.fontSize, 10);
+  assert.equal(markProperties.fontWeight, "normal");
 });

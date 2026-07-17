@@ -15,6 +15,8 @@ import {
   ROW_METRIC_TOOLTIP_FIELD,
 } from "./heatmapRowMetric";
 
+const HEATMAP_LABEL_FIELD = "__motor_heatmap_label";
+
 declare const vegaEmbed: (
   element: HTMLElement,
   spec: TopLevelSpec,
@@ -290,6 +292,7 @@ export function heatmapSpec(
   const reverse = component.props.color_direction === "lower_is_darker";
   const percent = component.props.format === "percent";
   const showValues = component.props.show_values !== false;
+  const showPercentSign = component.props.show_percent_sign !== false;
   const rowMetric = component.props.row_metric
     ? String(component.props.row_metric)
     : undefined;
@@ -308,12 +311,31 @@ export function heatmapSpec(
   const rowMetricResult = rowMetric
     ? buildHeatmapRowMetric(rows, y, rowMetric, rowMetricFormat)
     : undefined;
-  const chartRows = rowMetricResult
-    ? rows.map((row) => ({
-        ...row,
-        [ROW_METRIC_TOOLTIP_FIELD]:
-          rowMetricResult.tooltipByRow.get(heatmapRowMetricKey(row[y])) ?? "—",
-      }))
+  const deriveCellLabel = percent && !showPercentSign;
+  const chartRows = rowMetricResult || deriveCellLabel
+    ? rows.map((row) => {
+        const rawValue = row[value];
+        const numericValue = Number(rawValue);
+        return {
+          ...row,
+          ...(rowMetricResult
+            ? {
+                [ROW_METRIC_TOOLTIP_FIELD]:
+                  rowMetricResult.tooltipByRow.get(heatmapRowMetricKey(row[y])) ?? "—",
+              }
+            : {}),
+          ...(deriveCellLabel
+            ? {
+                [HEATMAP_LABEL_FIELD]:
+                  rawValue == null ||
+                  String(rawValue).trim() === "" ||
+                  !Number.isFinite(numericValue)
+                    ? null
+                    : numericValue * 100,
+              }
+            : {}),
+        };
+      })
     : rows;
   let minimum = 0;
   let maximum = 0;
@@ -463,15 +485,15 @@ export function heatmapSpec(
               mark: {
                 type: "text" as const,
                 color: heatmapTextColor(value),
-                fontSize: 12,
-                fontWeight: "bold" as const,
+                fontSize: 10,
+                fontWeight: "normal" as const,
                 tooltip: true,
               },
               encoding: {
                 text: {
-                  field: value,
+                  field: deriveCellLabel ? HEATMAP_LABEL_FIELD : value,
                   type: "quantitative" as const,
-                  format: percent ? ".1%" : ",.2~f",
+                  format: percent ? (showPercentSign ? ".1%" : ".1f") : ",.2~f",
                 },
                 tooltip,
               },

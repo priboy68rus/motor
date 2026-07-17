@@ -538,7 +538,7 @@ should be quoted, and declarations may span multiple lines.
 | `Table` | `query` | `title`, `columns` | HTML table. `columns` is a comma-separated projection/order for display. |
 | `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction`, `format`, `currency` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
 | `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `details`, `format`, `currency`, `stack`, `bar_width` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
-| `Heatmap` | `query`, `x`, `y`, `value` | `title`, `format`, `color_scheme`, `color_direction`, `show_values`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency` | Rectangular heatmap with a quantitative gradient and an optional neutral per-row metric column. `format` is `number` (default) or `percent`; `show_values` defaults to `true`. |
+| `Heatmap` | `query`, `x`, `y`, `value` | `title`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency` | Rectangular heatmap with a quantitative gradient and an optional neutral per-row metric column. `format` is `number` (default) or `percent`; `show_values` and `show_percent_sign` default to `true`. |
 
 `query` must reference an existing `kind=query` SQL block. Referenced column
 names such as `value`, `x`, and `y` must exist in its result.
@@ -672,6 +672,7 @@ heatmap's numeric `value` scale:
   color_scheme="blues"
   color_direction="higher_is_darker"
   show_values="true"
+  show_percent_sign="false"
   row_metric="cohort_size"
   row_metric_title="Cohort size"
   row_metric_notation="standard"
@@ -687,7 +688,10 @@ diverging scale: negative values are red, zero is neutral gray, and positive
 values are blue. Both sides use the same absolute limit, determined by the
 larger of `abs(minimum)` and `abs(maximum)`. In that mode the sequential scheme
 and direction are ignored.
-Cell values are displayed by default; set `show_values="false"` to hide them.
+Cell values use a 10 px normal-weight font and are displayed by default; set
+`show_values="false"` to hide them. With `format="percent"`, set
+`show_percent_sign="false"` to render `0.425` as `42.5` inside the cell while
+keeping `42.5%` in the legend and tooltip.
 Their text automatically switches between a contrasting darker or lighter
 variant of the cell color, without an outline.
 The chart keeps at least 34 pixels per distinct Y value, growing beyond its

@@ -114,6 +114,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "color_scheme",
             "color_direction",
             "show_values",
+            "show_percent_sign",
             "row_metric",
             "row_metric_title",
             "row_metric_format",
@@ -586,6 +587,16 @@ def _extract_components(
             if heatmap_format not in {"number", "percent"}:
                 raise ReportValidationError(
                     "Heatmap format must be one of: number, percent"
+                )
+            show_percent_sign_explicit = "show_percent_sign" in attributes
+            show_percent_sign = attributes.setdefault("show_percent_sign", True)
+            if not isinstance(show_percent_sign, bool):
+                raise ReportValidationError(
+                    "Heatmap show_percent_sign must be true or false"
+                )
+            if show_percent_sign_explicit and heatmap_format != "percent":
+                raise ReportValidationError(
+                    "Heatmap show_percent_sign requires format='percent'"
                 )
             row_metric = attributes.get("row_metric")
             row_metric_attributes = {
