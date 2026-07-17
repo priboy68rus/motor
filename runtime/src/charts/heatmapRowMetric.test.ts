@@ -116,6 +116,6 @@ test("Vega renders a heatmap with the row metric layers", async () => {
     typeof valueLabelMark === "object"
       ? (valueLabelMark as unknown as Record<string, unknown>)
       : {};
-  assert.equal(markProperties.fontSize, 10);
+  assert.equal(markProperties.fontSize, 11);
   assert.equal(markProperties.fontWeight, "normal");
 });

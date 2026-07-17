@@ -469,7 +469,7 @@ An entirely negative result still reserves the equally sized positive half of
 the scale even though no positive cells use it. Null, empty, and non-finite
 values are excluded when deciding the color domain.
 
-Value labels are enabled by default and use a 10 px normal-weight font. Percent
+Value labels are enabled by default and use an 11 px normal-weight font. Percent
 labels use one decimal place; number labels use thousands separators and at
 most two decimal places. `show_percent_sign="false"` removes only the `%`
 character from percent cell labels while retaining percent scaling. The legend

@@ -485,7 +485,7 @@ export function heatmapSpec(
               mark: {
                 type: "text" as const,
                 color: heatmapTextColor(value),
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: "normal" as const,
                 tooltip: true,
               },

@@ -688,7 +688,7 @@ diverging scale: negative values are red, zero is neutral gray, and positive
 values are blue. Both sides use the same absolute limit, determined by the
 larger of `abs(minimum)` and `abs(maximum)`. In that mode the sequential scheme
 and direction are ignored.
-Cell values use a 10 px normal-weight font and are displayed by default; set
+Cell values use an 11 px normal-weight font and are displayed by default; set
 `show_values="false"` to hide them. With `format="percent"`, set
 `show_percent_sign="false"` to render `0.425` as `42.5` inside the cell while
 keeping `42.5%` in the legend and tooltip.
