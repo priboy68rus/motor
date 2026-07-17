@@ -1,5 +1,6 @@
 import { renderChart } from "./charts/vegaAdapter";
 import type { ChartHandle } from "./charts/vegaAdapter";
+import { downloadComponentCsv } from "./csvDownload";
 import type { RuntimeMetrics, RuntimeMetricsSnapshot } from "./runtimeMetrics";
 import {
   formatSignedPercent,
@@ -230,6 +231,51 @@ function renderLoadingMetrics(
 function renderText(element: HTMLElement, component: ComponentSpec): void {
   element.className = "motor-card motor-text";
   element.append(text("p", String(component.props.text), "motor-text-body"));
+}
+
+function downloadButton(
+  reportSlug: string,
+  component: ComponentSpec,
+  rows: QueryRow[],
+  pending: boolean,
+): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "motor-download-data";
+  button.disabled = pending || rows.length === 0;
+  button.title = pending
+    ? "Updating data…"
+    : button.disabled
+      ? "No rows to download"
+      : "Download CSV";
+  button.setAttribute("aria-label", `Download ${component.id} data as CSV`);
+  button.innerHTML =
+    '<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">' +
+    '<path d="M10 2.75v9.5m0 0 3.5-3.5m-3.5 3.5-3.5-3.5M4 15.25h12" />' +
+    "</svg>";
+  button.addEventListener("click", () => {
+    if (button.disabled) return;
+    downloadComponentCsv(reportSlug, component, rows);
+  });
+  return button;
+}
+
+function attachDownloadControl(
+  element: HTMLElement,
+  reportSlug: string,
+  component: ComponentSpec,
+  rows: QueryRow[],
+  pending: boolean,
+): void {
+  if (component.props.download === false) return;
+  element.classList.add("motor-has-download");
+  const header = document.createElement("div");
+  header.className = "motor-component-header";
+  const heading = Array.from(element.children).find((child) => child.tagName === "H2");
+  if (heading) header.append(heading);
+  else header.classList.add("actions-only");
+  header.append(downloadButton(reportSlug, component, rows, pending));
+  element.prepend(header);
 }
 
 function renderTable(element: HTMLElement, rows: QueryRow[], component: ComponentSpec): void {
@@ -962,6 +1008,7 @@ export class ReportRenderer {
         this.latestErrors,
         this.latestValues,
         this.latestOptions,
+        true,
       );
       if (component.query && this.spec.queries[component.query]?.kind === "query") {
         queryNames.add(component.query);
@@ -982,6 +1029,11 @@ export class ReportRenderer {
       const element = this.elements.get(component.id);
       element?.classList.add("motor-loading", "motor-stale");
       element?.setAttribute("aria-busy", "true");
+      const download = element?.querySelector<HTMLButtonElement>(".motor-download-data");
+      if (download) {
+        download.disabled = true;
+        download.title = "Updating data…";
+      }
     }
   }
 
@@ -1075,6 +1127,7 @@ export class ReportRenderer {
     errors: Record<string, string>,
     values: ParamValues,
     options: ParamOptions,
+    downloadPending = false,
   ): Promise<void> {
     const element = this.elements.get(component.id);
     if (!element) return;
@@ -1109,6 +1162,20 @@ export class ReportRenderer {
     } else {
       element.className = "motor-card motor-component";
       const rows = component.query ? results[component.query] ?? [] : [];
+      if (
+        component.type === "Table" ||
+        component.type === "LineChart" ||
+        component.type === "BarChart" ||
+        component.type === "Heatmap"
+      ) {
+        attachDownloadControl(
+          element,
+          this.manifest.report.slug,
+          component,
+          rows,
+          downloadPending,
+        );
+      }
       if (component.type === "Table") renderTable(element, rows, component);
       else if (component.type === "BigValue") renderBigValue(element, rows, component);
       else if (

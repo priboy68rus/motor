@@ -6,7 +6,7 @@
   "scripts": {
     "build": "vite build && node scripts/copy-duckdb-assets.mjs",
     "check": "tsc --noEmit",
-    "test": "for test_file in src/charts/*.test.ts; do test_name=$(basename \"$test_file\" .ts); esbuild \"$test_file\" --bundle --platform=node --format=esm --outfile=\"node_modules/.cache/motor/$test_name.mjs\" && node \"node_modules/.cache/motor/$test_name.mjs\" || exit 1; done"
+    "test": "for test_file in src/*.test.ts src/charts/*.test.ts; do test_name=$(basename \"$test_file\" .ts); esbuild \"$test_file\" --bundle --platform=node --format=esm --outfile=\"node_modules/.cache/motor/$test_name.mjs\" && node \"node_modules/.cache/motor/$test_name.mjs\" || exit 1; done"
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "1.32.0",

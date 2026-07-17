@@ -37,10 +37,10 @@ values or chart errors rather than build-time validation errors.
 | [`VersionBadge`](#versionbadge) | — | `id` |
 | [`LoadingMetrics`](#loadingmetrics) | — | `id`, `title`, `placement` |
 | [`BigValue`](#bigvalue) | `query`, `value` | `id`, `title`, `format`, `currency`, `notation`, `compare_value`, `delta`, `delta_label`, `direction` |
-| [`Table`](#table) | `query` | `id`, `title`, `columns` |
-| [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction` |
-| [`BarChart`](#barchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `stack`, `bar_width` |
-| [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency` |
+| [`Table`](#table) | `query` | `id`, `title`, `columns`, `download` |
+| [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction`, `download` |
+| [`BarChart`](#barchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `stack`, `bar_width`, `download` |
+| [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency`, `download` |
 
 ## `Filters`
 
@@ -240,12 +240,61 @@ neither direction as good or bad. Period selection and joins belong in SQL.
 | `query` | SQL block name | yes | — | Existing `kind=query`. |
 | `title` | string | no | — | Card heading. |
 | `columns` | comma-separated result columns | no | first-row key order | Display projection and order. Whitespace is trimmed. |
+| `download` | boolean | no | `true` | Shows the current-data CSV button. |
 
 All query rows are rendered in query order. If there are no rows, the card
 shows `No rows`. Values are formatted automatically: numeric JavaScript values
 use localized number formatting, null uses `—`, and other values become text.
 Missing configured columns render `—`. Table headers are exact column names;
 renaming and presentation formatting should currently be done in SQL.
+
+## CSV downloads
+
+`Table`, `LineChart`, `BarChart`, and `Heatmap` show a small CSV button by
+default. Set `download="false"` on an individual component to remove it:
+
+```md
+<LineChart query="revenue" x="month" y="gmv" download="false" />
+```
+
+The button exports the last successfully rendered rows for that component. All
+reactive SQL filters and dimension selections have therefore already been
+applied. While an affected query is updating, the button is disabled so the
+previous result cannot be downloaded under a newer visible filter state. It is
+also disabled for an empty result and omitted when the query or chart fails.
+
+The CSV contains visible data fields rather than every column returned by the
+query:
+
+- `Table` exports configured `columns`, or every result column when `columns`
+  is absent;
+- `LineChart` and `BarChart` export `x`, `y`, the effective `group` or `color`,
+  and every `details` field;
+- `Heatmap` exports `x`, `y`, `value`, and `row_metric` when configured;
+- `BigValue` does not provide a CSV button.
+
+Rows retain SQL result order. A Table honors its explicit `columns` order;
+otherwise selected columns retain their SQL result order. Configured fields
+missing from the result are appended and produce empty cells. Hidden helper
+columns are not exported. Values remain machine-readable query values: for
+example, a fraction displayed as `42.5%` is written as `0.425`, and compact
+notation is not applied.
+
+For `BarChart stack="normalize"`, `normalize_gross`, or `normalize_net`, the
+file contains both the raw Y column and an adjacent `<y>_normalized` column
+holding the value actually plotted. If that derived name already exists,
+underscores are appended until it is unique.
+
+Files are named
+`<report-slug>-<component-id>-<UTC-YYYYMMDD-HHMMSS>.csv`. They use UTF-8 with a
+byte-order mark and CRLF lines for Excel compatibility. Null becomes an empty
+cell, dates remain ISO values, and arrays or structures are JSON. Strings that
+start with `=`, `+`, `-`, `@`, tab, or carriage return receive a leading
+apostrophe to prevent spreadsheet formula execution.
+
+CSV projection is a convenience feature, not an access-control boundary. The
+self-contained artifact still embeds complete source files; see
+[CLI and runtime](cli-and-runtime.md#self-contained-html-artifact).
 
 ## Shared chart behavior
 
@@ -318,6 +367,7 @@ Other values use a nominal axis.
 | `color_direction` | enum | conditional | `higher_is_darker` | Requires `color_scheme`; `higher_is_darker` or `lower_is_darker`. |
 | `format` | string | no | — | Only `percent` currently changes rendering. |
 | `currency` | string | no | — | Reserved; currently no chart effect. |
+| `download` | boolean | no | `true` | Shows the current-data CSV button. |
 
 Markers:
 
@@ -375,6 +425,7 @@ scheme becomes an in-report chart rendering error.
 | `bar_width` | positive finite number | no | axis-specific | Explicit bar width in pixels. |
 | `format` | string | no | — | Only `percent` currently changes rendering. |
 | `currency` | string | no | — | Reserved; currently no chart effect. |
+| `download` | boolean | no | `true` | Shows the current-data CSV button. |
 
 Stack modes:
 
@@ -443,6 +494,7 @@ Renders one rectangular cell per query row.
 | `row_metric_format` | enum | no | `number` | `number`, `percent`, or `currency`. Requires `row_metric`. Percent expects a fraction. |
 | `row_metric_notation` | enum | no | `standard` | `standard` shows the full localized number; `compact` abbreviates it, for example `15.2K` or the locale equivalent. Requires `row_metric`. |
 | `row_metric_currency` | ISO 4217 code | no | `USD` for currency | Three-letter currency code such as `RUB` or `EUR`. Accepted only with `row_metric_format="currency"`. |
+| `download` | boolean | no | `true` | Shows the current-data CSV button. |
 
 The legend and tooltip use percent formatting when requested. Missing rows
 produce empty cells; a zero value remains a real colored cell. Cells have white

@@ -374,6 +374,7 @@ def test_compiles_query_graph_and_components() -> None:
     chart = next(item for item in spec["components"] if item["type"] == "BarChart")
     assert chart["query"] == "revenue_by_day"
     assert chart["props"]["x"] == "day"
+    assert chart["props"]["download"] is True
     filters = next(item for item in spec["components"] if item["type"] == "Filters")
     assert filters["props"]["title"] == "Global filters"
     assert filters["props"]["placement"] == "sidebar"
@@ -409,6 +410,9 @@ def test_compiles_query_graph_and_components() -> None:
     assert chart["props"]["stack"] == "zero"
     line_chart = next(item for item in spec["components"] if item["type"] == "LineChart")
     assert line_chart["props"]["marker"] == "circle"
+    assert line_chart["props"]["download"] is True
+    table = next(item for item in spec["components"] if item["type"] == "Table")
+    assert table["props"]["download"] is True
     assert {item["type"] for item in spec["components"]} >= {
         "DataStatus",
         "Text",
@@ -1327,6 +1331,7 @@ select cohort_month, period_number, cohort_size, retention from cohorts
         "row_metric_title": "Cohort size",
         "row_metric_format": "number",
         "row_metric_notation": "compact",
+        "download": True,
     }
 
 
@@ -1346,7 +1351,14 @@ data:
 ```sql name=heatmap kind=query
 select x, y, value from values
 ```
-<Heatmap query="heatmap" x="x" y="y" value="value" show_values="false" />
+<Heatmap
+  query="heatmap"
+  x="x"
+  y="y"
+  value="value"
+  show_values="false"
+  download="false"
+/>
 """,
         encoding="utf-8",
     )
@@ -1355,6 +1367,7 @@ select x, y, value from values
 
     heatmap = next(item for item in spec["components"] if item["type"] == "Heatmap")
     assert heatmap["props"]["show_values"] is False
+    assert heatmap["props"]["download"] is False
 
 
 @pytest.mark.parametrize(
@@ -1394,6 +1407,11 @@ select x, y, value from values
             '<Heatmap query="retention" x="period_number" y="cohort_month" '
             'value="retention" show_percent_sign="false" />',
             "show_percent_sign requires format='percent'",
+        ),
+        (
+            '<Heatmap query="retention" x="period_number" y="cohort_month" '
+            'value="retention" download="sometimes" />',
+            "download must be true or false",
         ),
         (
             '<Heatmap query="retention" x="period_number" y="cohort_month" '

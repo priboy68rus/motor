@@ -42,6 +42,35 @@ export function validateStandardNormalize(rows: StackRow[], x: string, y: string
   );
 }
 
+export function normalizeStandardRows(
+  rows: StackRow[],
+  x: string,
+  y: string,
+  temporalX: boolean,
+): { rows: StackRow[]; field: string; label: string } {
+  validateStandardNormalize(rows, x, y);
+  const field = internalFieldName(rows, "__motor_normalized_value");
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    const value = numericValue(row[y]);
+    if (value == null) continue;
+    const key = rowKey(row[x], temporalX);
+    totals.set(key, (totals.get(key) ?? 0) + value);
+  }
+  return {
+    field,
+    label: "Share",
+    rows: rows.map((row) => {
+      const value = numericValue(row[y]);
+      const total = totals.get(rowKey(row[x], temporalX));
+      return {
+        ...row,
+        [field]: value == null ? null : total ? value / total : 0,
+      };
+    }),
+  };
+}
+
 export function normalizeSignedRows(
   rows: StackRow[],
   x: string,

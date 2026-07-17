@@ -68,7 +68,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "direction",
         },
     ),
-    "Table": ({"query"}, {"query", "title", "columns"}),
+    "Table": ({"query"}, {"query", "title", "columns", "download"}),
     "LineChart": (
         {"query", "x", "y"},
         {
@@ -84,6 +84,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "marker",
             "color_scheme",
             "color_direction",
+            "download",
         },
     ),
     "BarChart": (
@@ -100,6 +101,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "details",
             "stack",
             "bar_width",
+            "download",
         },
     ),
     "Heatmap": (
@@ -120,6 +122,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "row_metric_format",
             "row_metric_notation",
             "row_metric_currency",
+            "download",
         },
     ),
 }
@@ -693,6 +696,12 @@ def _extract_components(
                         "BigValue direction must be one of: higher_is_better, "
                         "lower_is_better, neutral"
                     )
+        if component_type in {"Table", "LineChart", "BarChart", "Heatmap"}:
+            download = attributes.setdefault("download", True)
+            if not isinstance(download, bool):
+                raise ReportValidationError(
+                    f"{component_type} download must be true or false"
+                )
         query = attributes.pop("query", None)
         if component_type == "Filters":
             params = [item.strip() for item in str(attributes["params"]).split(",") if item.strip()]

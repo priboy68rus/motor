@@ -35,6 +35,14 @@
     h2 { font-size: 1rem; margin: 0 0 16px; }
     .motor-card { background: white; border: 1px solid #dce1e8; border-radius: 12px; padding: 20px; margin: 16px 0; box-shadow: 0 2px 8px #1720330a; overflow-x: auto; }
     .motor-component { position: relative; transition: opacity .15s ease; }
+    .motor-component-header { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 16px; }
+    .motor-component-header.actions-only { min-height: 24px; margin-bottom: 4px; justify-content: flex-end; }
+    .motor-component-header h2 { min-width: 0; margin: 0; }
+    .motor-download-data { appearance: none; display: inline-flex; flex: 0 0 auto; width: 26px; height: 26px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 6px; padding: 4px; color: #667085; background: transparent; cursor: pointer; opacity: .42; transition: opacity .12s ease, color .12s ease, background .12s ease, border-color .12s ease; }
+    .motor-download-data svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
+    .motor-component:hover .motor-download-data:not(:disabled), .motor-download-data:focus-visible { border-color: var(--motor-accent-border); color: var(--motor-accent-strong); background: var(--motor-accent-subtle); opacity: 1; outline: none; }
+    .motor-download-data:focus-visible { outline: 2px solid var(--motor-accent); outline-offset: 1px; }
+    .motor-download-data:disabled { cursor: default; opacity: .22; }
     .motor-component-error, .motor-fatal-error { color: #a11b1b; background: #fff4f4; border: 1px solid #f2b8b8; border-radius: 12px; padding: 20px; }
     .motor-version { color: var(--motor-accent-strong); font-family: ui-monospace, monospace; font-size: .8rem; margin: 12px 0; overflow-wrap: anywhere; }
     .motor-data-status { display: grid; gap: 6px; color: #667085; font-size: .82rem; margin: 12px 0; overflow-wrap: anywhere; }
@@ -117,6 +125,7 @@
     .motor-tab-panel[hidden] { display: none; }
     .motor-stale > * { opacity: .42; }
     .motor-loading::after { content: "Updating…"; position: absolute; inset: 12px 12px auto auto; padding: 5px 8px; border-radius: 6px; color: #475467; background: #f2f4f7; font-size: .75rem; font-weight: 650; opacity: 1; }
+    .motor-has-download.motor-loading::after { right: 48px; }
     .motor-chart.vega-embed { display: block; width: 100%; min-width: 0; }
     .motor-chart-shared-tooltip { position: fixed; z-index: 1000; min-width: 180px; max-width: min(960px, calc(100vw - 16px)); box-sizing: border-box; padding: 10px 12px; border: 1px solid #344054; border-radius: 8px; color: white; background: #172033f2; box-shadow: 0 8px 24px #10182840; pointer-events: none; font-size: .82rem; }
     .motor-chart-shared-tooltip[hidden] { display: none; }
@@ -171,6 +180,9 @@
       .motor-filter-list, .motor-filter-controls { display: grid; grid-template-columns: minmax(0, 1fr); }
       .motor-filter { min-width: 0; }
       .motor-multiselect-dropdown { width: 100%; }
+    }
+    @media (hover: none) {
+      .motor-download-data:not(:disabled) { opacity: .7; }
     }
   </style>
 </head>

@@ -157,6 +157,9 @@ Because source files are embedded in full, anyone who receives the HTML can
 extract all source rows, including columns not selected by visible queries.
 Do not distribute an artifact to someone who should not possess its complete
 input data. SQL filtering is a presentation rule, not access control.
+Component CSV downloads expose only the current visible result fields, but do
+not change this security model: the complete embedded sources remain available
+to anyone who has the HTML artifact.
 
 ## Browser requirements
 

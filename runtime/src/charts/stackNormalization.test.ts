@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeSignedRows, validateStandardNormalize } from "./stackNormalization";
+import {
+  normalizeSignedRows,
+  normalizeStandardRows,
+  validateStandardNormalize,
+} from "./stackNormalization";
 
 const rows = (first: number, second: number) => [
   { period: "2026-01", kind: "first", value: first },
@@ -40,4 +44,11 @@ test("normalize rejects signed values and gross mode handles an all-zero stack",
   const result = normalizeSignedRows(rows(0, 0), "period", "value", false, "normalize_gross");
   assert.equal(result.rows[0]![result.field], 0);
   assert.equal(result.rows[1]![result.field], 0);
+});
+
+test("standard normalization returns each value's positive stack share", () => {
+  const result = normalizeStandardRows(rows(80, 20), "period", "value", false);
+  assert.equal(result.label, "Share");
+  assert.equal(result.rows[0]![result.field], 0.8);
+  assert.equal(result.rows[1]![result.field], 0.2);
 });
