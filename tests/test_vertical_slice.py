@@ -513,6 +513,8 @@ where {{ in_filter("c.month_dt", cohort_month) }}
     assert spec["params"]["cohort_month"]["options"] == {
         "source": "cohorts",
         "column": "month_dt",
+        "include_null": True,
+        "null_label": "(Null)",
     }
     assert [source.passport.source_format for source in sources] == ["csv", "parquet"]
     assert manifest["sources"][1]["source_format"] == "parquet"
@@ -564,7 +566,12 @@ select * from events where {{ in_filter("country", country) }}
         "empty_behavior": "none",
         "control": "radio",
         "allow_all": True,
-        "options": {"source": "events", "column": "country"},
+        "options": {
+            "source": "events",
+            "column": "country",
+            "include_null": True,
+            "null_label": "(Null)",
+        },
     }
     assert spec["queries"]["filtered"]["depends_on"] == {
         "sources": ["events"],
@@ -1009,6 +1016,8 @@ params:
     assert spec["params"]["country"]["control"] == "auto"
     assert spec["params"]["single_country"]["control"] == "dropdown"
     assert spec["params"]["single_country"]["allow_all"] is True
+    assert spec["params"]["single_country"]["options"]["include_null"] is True
+    assert spec["params"]["single_country"]["options"]["null_label"] == "(Null)"
     assert spec["params"]["period"]["default"] == "all"
     assert "empty_behavior" not in spec["params"]["period"]
 
@@ -1033,6 +1042,7 @@ params:
     options:
       source: events
       column: country
+      include_null: false
 ---
 """,
         encoding="utf-8",
@@ -1041,6 +1051,80 @@ params:
     _, spec, _ = compile_report(report)
 
     assert spec["params"]["country"]["allow_all"] is False
+    assert spec["params"]["country"]["options"]["include_null"] is False
+
+
+def test_select_and_multiselect_can_default_to_null(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,country\n1,DE\n2,\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+params:
+  country:
+    type: select
+    default: null
+    options:
+      source: events
+      column: country
+      null_label: Missing
+  countries:
+    type: multiselect
+    default: [null, DE]
+    options:
+      source: events
+      column: country
+---
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert "default" in spec["params"]["country"]
+    assert spec["params"]["country"]["default"] is None
+    assert spec["params"]["country"]["options"] == {
+        "source": "events",
+        "column": "country",
+        "include_null": True,
+        "null_label": "Missing",
+    }
+    assert spec["params"]["countries"]["default"] == [None, "DE"]
+
+
+def test_null_default_requires_null_option(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("id,country\n1,DE\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+params:
+  country:
+    type: select
+    default: null
+    options:
+      source: events
+      column: country
+      include_null: false
+---
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="null defaults require"):
+        compile_report(report)
 
 
 def test_select_without_all_requires_concrete_default(tmp_path: Path) -> None:

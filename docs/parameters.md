@@ -13,8 +13,8 @@ Unknown fields are rejected.
 | `type` | enum | all | yes | — | `select`, `multiselect`, `date_range`, or `dimension`. |
 | `label` | non-empty string | all | no | generated from name | Control label. Underscores become spaces and the first character is capitalized. |
 | `default` | type-specific | all | dimension only | `all` except dimension | Initial runtime value. |
-| `options` | mapping | select, multiselect | yes | — | Source column used to load allowed UI values. |
-| `empty_behavior` | enum | select, multiselect | no | `none` | SQL behavior for null or an empty selection: `all` or `none`. |
+| `options` | mapping | select, multiselect | yes | — | Source column and SQL `NULL` presentation used to load UI values. |
+| `empty_behavior` | enum | select, multiselect | no | `none` | SQL behavior for an empty selection: `all` or `none`. A selectable SQL `NULL` is not an empty selection. |
 | `control` | enum | select, multiselect | no | type-specific | Visual control mode. |
 | `choices` | mapping | dimension | yes | — | Static allowlist mapping choice names to SQL fields. |
 | `allow_none` | boolean | dimension | no | `false` | Adds a `Nothing` choice that substitutes an empty SQL string. |
@@ -25,15 +25,17 @@ other types. For example, `date_range` rejects `options`, `empty_behavior`, and
 `control`; non-dimension parameters reject `choices` and `allow_none`, and
 non-select parameters reject `allow_all`.
 
-The compiler validates dimension defaults completely. It does not currently
-check a select/multiselect default against loaded source options or validate
-the internal shape of a date-range default. Use the documented shapes below;
-an invalid value can produce a `None` control summary or a runtime SQL error.
+The compiler validates dimension defaults completely and rejects a null
+select/multiselect default when `options.include_null` is `false`. It does not
+currently check other select/multiselect defaults against loaded source options
+or validate the internal shape of a date-range default. Use the documented
+shapes below; an invalid value can produce a `None` control summary or a runtime
+SQL error.
 
 ## `select`
 
-A single source-value filter. Its runtime value is one scalar value or the
-special string `all`.
+A single source-value filter. Its runtime value is one scalar value, SQL
+`NULL`, or the special string `all`.
 
 ```yaml
 params:
@@ -47,14 +49,16 @@ params:
     options:
       source: orders
       column: region
+      include_null: true
+      null_label: "(Null)"
 ```
 
 | Field | Required | Default | Allowed values / shape |
 | --- | --- | --- | --- |
 | `type` | yes | — | `select` |
 | `label` | no | generated | Non-empty string. |
-| `default` | no | `all` | `all` or one scalar source value. |
-| `options` | yes | — | `{source: <data name>, column: <column name>}` |
+| `default` | no | `all` | `all`, one scalar source value, or `null` when `options.include_null` is `true`. |
+| `options` | yes | — | See [Options source](#options-source). |
 | `empty_behavior` | no | `none` | `none` or `all` |
 | `control` | no | `dropdown` | `dropdown`, `radio`, or `auto` |
 | `allow_all` | no | `true` | Boolean. When `false`, `default` must be a concrete source value. |
@@ -76,10 +80,14 @@ that option in both dropdown and inline-radio controls. A select without `All`
 must explicitly declare a non-`all` default so its initial and reset states are
 visible in the control. `select` never emits an array.
 
+When the selected option is SQL `NULL`, `in_filter` renders `column IS NULL`.
+An explicit `default: null` selects that option. It is rejected when
+`options.include_null` is `false`.
+
 ## `multiselect`
 
 A multiple source-value filter. Its runtime value is an array of scalar values
-or the special string `all`.
+and/or SQL `NULL`, or the special string `all`.
 
 ```yaml
 params:
@@ -92,14 +100,16 @@ params:
     options:
       source: orders
       column: country
+      include_null: true
+      null_label: "(Null)"
 ```
 
 | Field | Required | Default | Allowed values / shape |
 | --- | --- | --- | --- |
 | `type` | yes | — | `multiselect` |
 | `label` | no | generated | Non-empty string. |
-| `default` | no | `all` | `all` or a YAML list of source values. |
-| `options` | yes | — | `{source: <data name>, column: <column name>}` |
+| `default` | no | `all` | `all` or a YAML list of source values; the list may contain `null` when enabled in `options`. |
+| `options` | yes | — | See [Options source](#options-source). |
 | `empty_behavior` | no | `none` | `none` or `all` |
 | `control` | no | `auto` | `auto`, `checkboxes`, or `dropdown` |
 
@@ -127,6 +137,8 @@ Selection behavior:
 - With `empty_behavior: all`, an empty list still makes `in_filter` render
   `TRUE`; prefer the default `empty_behavior: none` when the UI should support
   an explicit "select nothing" state.
+- Selecting SQL `NULL` alone renders `column IS NULL`. Selecting it together
+  with concrete values renders `(column IN (...) OR column IS NULL)`.
 
 ## Options source
 
@@ -136,26 +148,30 @@ Selection behavior:
 options:
   source: orders
   column: country
+  include_null: true
+  null_label: "(Null)"
 ```
 
-| Field | Required | Contract |
-| --- | --- | --- |
-| `source` | yes | Must name a configured data source. Named SQL views and queries cannot supply options. |
-| `column` | yes | Must exist in the source schema/header. |
+| Field | Type | Required | Default | Contract |
+| --- | --- | --- | --- | --- |
+| `source` | data source name | yes | — | Must name a configured data source. Named SQL views and queries cannot supply options. |
+| `column` | column name | yes | — | Must exist in the source schema/header. |
+| `include_null` | boolean | no | `true` | Includes one selectable SQL `NULL` option when the source column contains nulls. `false` removes nulls from the option query. |
+| `null_label` | non-empty string | no | `(Null)` | UI and search label for the SQL `NULL` option. It does not alter the source data or SQL predicate. |
 
 At runtime motor runs the equivalent of:
 
 ```sql
 SELECT DISTINCT column AS value
 FROM source
-WHERE column IS NOT NULL
 ORDER BY 1
 ```
 
-Options are loaded once when the report starts. They are sorted, distinct,
-non-null, and are not cascading: changing one parameter does not recalculate
-another parameter's option list. Dropdown search only hides non-matching UI
-labels; it does not query DuckDB.
+With `include_null: false`, motor adds `WHERE column IS NOT NULL`. Options are
+loaded once when the report starts. They are sorted, distinct, and are not
+cascading: changing one parameter does not recalculate another parameter's
+option list. Dropdown search uses `null_label` for SQL `NULL` and only hides
+non-matching UI labels; it does not query DuckDB.
 
 ## `date_range`
 

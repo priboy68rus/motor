@@ -184,7 +184,8 @@ When the page opens, motor:
 2. creates the embedded DuckDB worker and database;
 3. loads CSVs with header/type detection and Parquet files with `read_parquet`
    into `main` tables;
-4. reads distinct parameter options from source tables;
+4. reads distinct parameter options from source tables, including SQL `NULL`
+   by default when present;
 5. runs initially visible query dependency closures;
 6. mounts layout and components;
 7. starts the optional update check if `update_check` is configured;

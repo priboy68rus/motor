@@ -79,7 +79,10 @@ def compile_report(
             for name, config in parsed.config.data.items()
         },
         "params": {
-            name: config.model_dump(mode="json", exclude_none=True)
+            name: {
+                **config.model_dump(mode="json", exclude_none=True),
+                "default": config.model_dump(mode="json")["default"],
+            }
             for name, config in parsed.config.params.items()
         },
         "queries": {

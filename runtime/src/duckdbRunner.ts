@@ -192,7 +192,9 @@ export class DuckDBRunner {
       if (!param.options) continue;
       const source = quoteIdentifier(param.options.source);
       const column = quoteIdentifier(param.options.column);
-      const sql = `SELECT DISTINCT ${column} AS value FROM ${source} WHERE ${column} IS NOT NULL ORDER BY 1`;
+      const nullPredicate =
+        param.options.include_null === false ? ` WHERE ${column} IS NOT NULL` : "";
+      const sql = `SELECT DISTINCT ${column} AS value FROM ${source}${nullPredicate} ORDER BY 1`;
       const metric = metrics?.start(
         `Load filter options ${name}`,
         `${param.options.source}.${param.options.column}`,

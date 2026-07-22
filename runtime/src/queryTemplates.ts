@@ -19,10 +19,22 @@ function quoteValue(value: unknown): string {
 
 function inFilter(column: string, value: unknown, spec: ParamSpec): string {
   if (value === "all") return "TRUE";
-  if (value == null) return spec.empty_behavior === "none" ? "FALSE" : "TRUE";
+  const emptyResult = spec.empty_behavior === "none" ? "FALSE" : "TRUE";
+  if (value === undefined) return emptyResult;
+  const includeNull = spec.options?.include_null !== false;
+  if (value === null && !includeNull) return emptyResult;
   const values = Array.isArray(value) ? value : [value];
-  if (values.length === 0) return spec.empty_behavior === "none" ? "FALSE" : "TRUE";
-  return `${quoteIdentifier(column)} IN (${values.map(quoteValue).join(", ")})`;
+  if (values.length === 0) return emptyResult;
+  const identifier = quoteIdentifier(column);
+  const hasNull = includeNull && values.some((item) => item === null);
+  const concreteValues = values.filter((item) => item !== null && item !== undefined);
+  const predicates: string[] = [];
+  if (concreteValues.length > 0) {
+    predicates.push(`${identifier} IN (${concreteValues.map(quoteValue).join(", ")})`);
+  }
+  if (hasNull) predicates.push(`${identifier} IS NULL`);
+  if (predicates.length === 0) return emptyResult;
+  return predicates.length === 1 ? predicates[0]! : `(${predicates.join(" OR ")})`;
 }
 
 function betweenFilter(column: string, value: unknown): string {

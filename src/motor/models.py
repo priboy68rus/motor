@@ -73,6 +73,8 @@ class ThemeConfig(StrictModel):
 class ParamOptions(StrictModel):
     source: str
     column: str
+    include_null: bool = True
+    null_label: str = Field(default="(Null)", min_length=1)
 
 
 class DimensionChoice(StrictModel):
@@ -113,6 +115,19 @@ class ParamConfig(StrictModel):
             raise ValueError(f"{self.type} parameters must declare options")
         if self.type in {"select", "multiselect"} and self.empty_behavior is None:
             self.empty_behavior = "none"
+        if (
+            self.type in {"select", "multiselect"}
+            and self.options is not None
+            and not self.options.include_null
+            and (
+                self.default is None
+                or (
+                    isinstance(self.default, list)
+                    and any(value is None for value in self.default)
+                )
+            )
+        ):
+            raise ValueError("null defaults require options.include_null: true")
         if self.type == "multiselect" and self.control is None:
             self.control = "auto"
         if self.type == "select" and self.control is None:

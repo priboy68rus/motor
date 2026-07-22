@@ -293,7 +293,7 @@ Parameter fields:
 | `type` | all | yes | — | `select`, `multiselect`, `date_range`, or `dimension`. |
 | `label` | all | no | parameter name | Label displayed by the control. |
 | `default` | all | only `dimension` | `all` for other types | Initial value. A dimension default must name a choice, or `none` when enabled. |
-| `options` | `select`, `multiselect` | yes | — | Data source and column used to load filter values. |
+| `options` | `select`, `multiselect` | yes | — | Data source, column, and optional SQL `NULL` presentation used to load filter values. |
 | `empty_behavior` | `select`, `multiselect` | no | `none` | Result of an empty selection: `all` disables the predicate; `none` returns no rows. |
 | `control` | `select`, `multiselect` | no | type-specific | Select presentation: `auto`, `radio`, or `dropdown`; multiselect presentation: `auto`, `checkboxes`, or `dropdown`. |
 | `choices` | `dimension` | yes | — | Static allowlist of selectable SQL fields. |
@@ -301,8 +301,10 @@ Parameter fields:
 
 For `select` and `multiselect`, `options.source` must name a configured data
 source and `options.column` must exist in that source. The browser loads sorted
-distinct non-null values from that column. Filter options are currently static,
-not cascading.
+distinct values from that column. SQL `NULL` is included by default with the
+label `(Null)`; set `options.include_null: false` to omit it or customize the
+text with `options.null_label`. Filter options are currently static, not
+cascading.
 
 `multiselect` also accepts an optional `control` field:
 
@@ -388,7 +390,8 @@ Selection semantics:
 - `select` renders one dropdown and stores either one source value or `all`.
   The searchable overlay uses radio buttons and closes after a choice. It uses
   the same `in_filter` SQL helper and reactive query updates as `multiselect`,
-  but never returns an array.
+  but never returns an array. SQL `NULL` is a real selectable source value;
+  `default: null` selects it when `options.include_null` is enabled.
 - `date_range` also defaults to `all`, which disables its SQL predicate until
   both dates are selected. It does not support `empty_behavior`.
 - `default: all` disables the corresponding SQL predicate.
@@ -490,10 +493,11 @@ accepted:
 ```
 
 `in_filter` accepts a `select` or `multiselect` parameter and produces an
-escaped `IN (...)` predicate, `TRUE`, or `FALSE` according to the selection and
-`empty_behavior`. `between_filter` accepts a `date_range` parameter and creates
-an inclusive calendar-date predicate. The first argument must be a simple or
-dotted SQL column identifier.
+escaped `IN (...)`, `IS NULL`, combined `IN (...) OR IS NULL`, `TRUE`, or
+`FALSE` predicate according to the selection and `empty_behavior`.
+`between_filter` accepts a `date_range` parameter and creates an inclusive
+calendar-date predicate. The first argument must be a simple or dotted SQL
+column identifier.
 
 `dimension` accepts only a `dimension` parameter. It resolves the selected
 choice through the compiled `choices` allowlist and emits a quoted SQL field.

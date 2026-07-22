@@ -125,11 +125,15 @@ Accepts a `select` or `multiselect` parameter and renders one SQL predicate:
 | `all` | `TRUE` |
 | scalar `DE` | `"column" IN ('DE')` |
 | list `[DE, FR]` | `"column" IN ('DE', 'FR')` |
-| null or empty list with `empty_behavior: none` | `FALSE` |
-| null or empty list with `empty_behavior: all` | `TRUE` |
+| `null` with `options.include_null: true` | `"column" IS NULL` |
+| list `[DE, null]` with `options.include_null: true` | `("column" IN ('DE') OR "column" IS NULL)` |
+| empty list with `empty_behavior: none` | `FALSE` |
+| empty list with `empty_behavior: all` | `TRUE` |
+| `null` with `options.include_null: false` | Uses `empty_behavior` as an unavailable/empty selection. |
 
 Numbers are emitted as finite numeric literals, booleans as `TRUE`/`FALSE`,
-and other values as escaped SQL strings. Identifier segments are double-quoted.
+and other values as escaped SQL strings. SQL `NULL` is always represented by
+`IS NULL`, never by `IN (NULL)`. Identifier segments are double-quoted.
 Use the helper as a complete predicate:
 
 ```sql

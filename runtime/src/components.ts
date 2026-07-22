@@ -448,6 +448,10 @@ function valueKey(value: unknown): string {
   return JSON.stringify(value);
 }
 
+function filterOptionLabel(param: ParamSpec, value: unknown): string {
+  return value === null ? (param.options?.null_label ?? "(Null)") : String(value);
+}
+
 function filterField(name: string, label?: string): { field: HTMLElement; controls: HTMLElement } {
   const field = document.createElement("fieldset");
   field.className = "motor-filter";
@@ -584,11 +588,12 @@ function renderMultiselect(
   const selected = new Set(Array.isArray(value) ? value.map(valueKey) : []);
   const allSelected = value === "all";
   const optionInputs = options.map((option) => {
-    const control = checkbox(String(option));
-    control.label.dataset.filterValue = String(option);
+    const label = filterOptionLabel(param, option);
+    const control = checkbox(label);
+    control.label.dataset.filterValue = label;
     control.input.checked = allSelected || selected.has(valueKey(option));
     optionList.append(control.label);
-    return { input: control.input, label: control.label, value: option };
+    return { input: control.input, label: control.label, value: option, displayLabel: label };
   });
   const selectedOptions = (): typeof optionInputs =>
     optionInputs.filter((option) => option.input.checked);
@@ -610,7 +615,7 @@ function renderMultiselect(
       active.length === 0
         ? "None"
         : active.length === 1
-          ? String(active[0]?.value)
+          ? (active[0]?.displayLabel ?? "None")
           : `${active.length} selected`;
   };
   updateSummary();
@@ -675,15 +680,20 @@ function renderSelect(
     optionList.append(all.label);
   }
   const optionInputs = options.map((option) => {
-    const control = radio(String(option), groupName);
-    control.label.dataset.filterValue = String(option);
+    const label = filterOptionLabel(param, option);
+    const control = radio(label, groupName);
+    control.label.dataset.filterValue = label;
     control.input.checked = value !== "all" && valueKey(option) === valueKey(value);
     optionList.append(control.label);
-    return { input: control.input, value: option };
+    return { input: control.input, value: option, displayLabel: label };
   });
   const selected = optionInputs.find((option) => option.input.checked);
   if (summary) {
-    summary.textContent = all?.input.checked ? "All" : selected ? String(selected.value) : "None";
+    summary.textContent = all?.input.checked
+      ? "All"
+      : selected
+        ? selected.displayLabel
+        : "None";
   }
   if (all) {
     all.input.addEventListener("change", () => {
@@ -696,7 +706,7 @@ function renderSelect(
   for (const option of optionInputs) {
     option.input.addEventListener("change", () => {
       if (!option.input.checked) return;
-      if (summary) summary.textContent = String(option.value);
+      if (summary) summary.textContent = option.displayLabel;
       if (details) details.open = false;
       onChange(name, option.value);
     });
