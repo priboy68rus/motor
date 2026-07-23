@@ -150,7 +150,8 @@ A report is one UTF-8 Markdown file containing:
 
 1. YAML frontmatter between two `---` lines.
 2. Named SQL fenced blocks.
-3. Self-closing component declarations and optional `Row`/`Tabs` layout blocks.
+3. Self-closing component declarations, optional compile-time `Template`
+   declarations, and optional `Row`/`Tabs` layout blocks.
 4. Optional Markdown comments for temporarily disabling body content.
 
 The current runtime renders the report title and declared components. Ordinary
@@ -530,6 +531,35 @@ into unrelated SQL.
 All components are self-closing and may have an optional unique `id`. Without
 one, motor assigns `component_001`, `component_002`, and so on. Attribute values
 should be quoted, and declarations may span multiple lines.
+
+Repeated component settings can be extracted into a named compile-time
+template:
+
+```md
+<Template
+  name="cohort_line"
+  component="LineChart"
+  query="cohorts_costs"
+  x="period_number"
+  group="cohort_month"
+  color_scheme="blues"
+  details="cohort_size,company_count"
+/>
+
+<LineChart
+  template="cohort_line"
+  title="CP1 cumulative per user"
+  y="cumulative_cp1_per_user"
+/>
+```
+
+Template attributes act as defaults; attributes on the concrete component
+override them. `unset="details"` removes an inherited optional field. Templates
+are report-global, order-independent, type-specific, and expanded entirely at
+compilation, so they add no runtime work or layout item. They cannot contain
+`id` or inherit another template. See the complete declaration, merge, and
+validation contract in
+[component templates](docs/components.md#component-templates).
 
 | Component | Required attributes | Optional attributes | Behavior |
 | --- | --- | --- | --- |

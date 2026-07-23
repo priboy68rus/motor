@@ -12,12 +12,14 @@ rejected.
 
 ## Common component rules
 
-Every component accepts the optional common attribute `id` in addition to the
-attributes listed below.
+Every component accepts the optional common attribute `id` and the compile-time
+attributes `template` and `unset` in addition to the attributes listed below.
 
 | Attribute | Required | Default | Contract |
 | --- | --- | --- | --- |
 | `id` | no | `component_NNN` | Unique identifier. Must be an identifier such as `monthly_revenue`; used as the HTML section ID. |
+| `template` | no | — | Name of a compatible [`Template`](#component-templates) declaration whose attributes supply defaults. |
+| `unset` | no | — | Comma-separated inherited attributes to remove. Requires `template`. |
 
 Automatic IDs follow component source order starting at `component_001`.
 Explicit and automatic IDs must not collide.
@@ -26,6 +28,84 @@ Components with a `query` attribute must reference an existing `kind=query`
 SQL block. A `kind=view` cannot be rendered. Column attributes are validated by
 DuckDB/rendering at runtime, so misspelled result columns can produce empty
 values or chart errors rather than build-time validation errors.
+
+## Component templates
+
+`Template` is a self-closing compile-time declaration for reusable component
+defaults. It does not render, occupy layout space, receive a component ID, or
+create a component entry in the compiled runtime specification:
+
+```md
+<Template
+  name="cohort_line"
+  component="LineChart"
+  query="cohorts_costs"
+  x="period_number"
+  group="cohort_month"
+  color_scheme="blues"
+  color_direction="higher_is_darker"
+  details="cohort_size,company_count"
+/>
+
+<LineChart
+  template="cohort_line"
+  title="CP1 cumulative per user"
+  y="cumulative_cp1_per_user"
+/>
+```
+
+### `Template` declaration
+
+| Attribute | Type | Required | Default | Contract |
+| --- | --- | --- | --- | --- |
+| `name` | identifier | yes | — | Report-wide unique template name such as `cohort_line`. |
+| `component` | component type | yes | — | Target type: `Filters`, `Text`, `DataStatus`, `VersionBadge`, `LoadingMetrics`, `BigValue`, `Table`, `LineChart`, `BarChart`, or `Heatmap`. |
+| target attributes | type-specific | no | — | Any attribute supported by the target component except `id`, `template`, and `unset`. Required target attributes may be deferred to each use. |
+
+Template names are global and declaration order does not matter, so a
+component may reference a template declared later in the file. A template may
+be declared at top level or inside a layout block; it never inherits tab or row
+scope. Duplicate names, unknown target types, forbidden fields, and attributes
+unsupported by the target component fail compilation even when the template is
+unused. Full required-field, value, interaction, and query-reference validation
+runs after a template is expanded into each using component.
+
+Templates cannot inherit other templates. `id` must be declared on an actual
+component when an explicit ID is needed.
+
+### Expansion and overrides
+
+Compilation applies attributes in this order:
+
+1. Copy all attributes from the named template.
+2. Remove inherited fields listed in `unset`.
+3. Apply attributes written directly on the component.
+4. Run the ordinary target-component validation.
+
+Therefore direct attributes always win:
+
+```md
+<LineChart
+  template="cohort_line"
+  y="cp1_per_user"
+  color_scheme="greens"
+/>
+```
+
+Use `unset` when one instance must omit an optional inherited attribute:
+
+```md
+<LineChart
+  template="cohort_line"
+  y="cp1_per_user"
+  unset="details,color_direction"
+/>
+```
+
+`unset` accepts only attributes supported by the component type. Removing an
+inherited required field without supplying it directly produces the normal
+missing-required-attribute build error. Using an unknown template or a template
+declared for another component type also fails compilation.
 
 ## Component summary
 

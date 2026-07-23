@@ -1,7 +1,8 @@
 # Layout reference
 
 Layout is declared by component source order plus optional `Row`, `Tabs`, and
-`Tab` blocks. There is no separate layout YAML.
+`Tab` blocks. Compile-time `Template` declarations never create layout items.
+There is no separate layout YAML.
 
 ## Default source-order layout
 
@@ -13,10 +14,11 @@ A top-level component outside `Row` occupies its own full-width content line:
 <Table query="detail" />
 ```
 
-The rendered order is the order of declarations in `report.md`. SQL block and
-ordinary Markdown positions do not create visible layout items. Sidebar
-components retain their relative source order inside the sidebar; content
-components retain their relative source order in the content area.
+The rendered order is the order of declarations in `report.md`. SQL blocks,
+component templates, and ordinary Markdown positions do not create visible
+layout items. Sidebar components retain their relative source order inside the
+sidebar; content components retain their relative source order in the content
+area.
 
 ## `Row`
 
@@ -36,7 +38,8 @@ Contract:
 
 - `Row` accepts no attributes.
 - It requires at least one component.
-- It may contain only self-closing component declarations and whitespace.
+- It may contain only self-closing component or `Template` declarations and
+  whitespace. Templates do not count toward the required component.
 - Rows cannot be nested.
 - A row may be top-level or directly inside a `Tab`.
 - `placement="sidebar"` components cannot be placed in a row.
@@ -116,7 +119,8 @@ The sidebar exists only if at least one component uses sidebar placement.
 ### `Tabs` contract
 
 - Accepts no attributes.
-- Contains one or more `Tab` blocks and whitespace, nothing else.
+- Contains one or more `Tab` blocks, optional global `Template` declarations,
+  and whitespace, nothing else.
 - Cannot be nested inside another `Tabs` or `Tab`.
 - Multiple top-level tab sets are allowed.
 
@@ -127,8 +131,10 @@ The sidebar exists only if at least one component uses sidebar placement.
 | `title` | yes | Exactly one non-empty title attribute. |
 
 - A tab must be a direct child of `Tabs`.
-- It must contain at least one component or row.
-- It may contain components, rows, and whitespace.
+- It must contain at least one rendered component or row; templates do not
+  count.
+- It may contain components, rows, global `Template` declarations, and
+  whitespace.
 - It cannot contain another `Tab` or `Tabs`.
 - Sidebar components are forbidden inside tabs.
 
@@ -163,6 +169,7 @@ global, reference it in the shared upstream view used by all relevant queries.
 | `Row` | yes | no | no | yes |
 | `Tabs` | yes | no | no | no |
 | `Tab` | no | no | yes | no |
+| compile-time `Template` | yes | yes | yes | yes |
 
 Ordinary Markdown is ignored at the top level, but structural blocks require
 their allowed children only. Text inside a row or tabs container therefore

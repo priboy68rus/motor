@@ -5,7 +5,8 @@
 A report is one UTF-8 Markdown file with this order:
 
 1. YAML frontmatter between `---` delimiter lines. It must start on line 1.
-2. Markdown body containing named SQL blocks and component declarations.
+2. Markdown body containing named SQL blocks, component declarations, and
+   optional compile-time `Template` declarations.
 3. Optional `Row`, `Tabs`, and `Tab` layout blocks.
 
 Ordinary Markdown body text is preserved in the compiled specification but is

@@ -1736,3 +1736,212 @@ data:
 
     with pytest.raises(ReportValidationError, match="nested Row layouts"):
         compile_report(report)
+
+
+def test_component_templates_expand_with_overrides_unset_and_forward_references(
+    tmp_path: Path,
+) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text(
+        "period,cohort,value,cohort_size\n1,2026-01,10,100\n",
+        encoding="utf-8",
+    )
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  cohorts:
+    path: data.csv
+---
+```sql name=cohort_values kind=query
+select period, cohort, value, cohort_size from cohorts
+```
+<Row>
+  <LineChart
+    template="cohort_line"
+    title="With details"
+    y="value"
+    color_scheme="greens"
+  />
+  <LineChart
+    template="cohort_line"
+    title="Without details"
+    y="value"
+    unset="details"
+  />
+</Row>
+<Heatmap template="cohort_heatmap" value="value" />
+<Template
+  name="cohort_line"
+  component="LineChart"
+  query="cohort_values"
+  x="period"
+  group="cohort"
+  color_scheme="blues"
+  color_direction="higher_is_darker"
+  details="cohort_size"
+/>
+<Template
+  name="cohort_heatmap"
+  component="Heatmap"
+  query="cohort_values"
+  x="period"
+  y="cohort"
+  show_values="false"
+/>
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert [component["id"] for component in spec["components"]] == [
+        "component_001",
+        "component_002",
+        "component_003",
+    ]
+    first, second, heatmap = spec["components"]
+    assert all(
+        "template" not in component["props"] and "unset" not in component["props"]
+        for component in spec["components"]
+    )
+    assert first["query"] == "cohort_values"
+    assert first["props"]["color_scheme"] == "greens"
+    assert first["props"]["details"] == "cohort_size"
+    assert "details" not in second["props"]
+    assert heatmap["type"] == "Heatmap"
+    assert heatmap["props"]["show_values"] is False
+    assert spec["layout"] == [
+        {
+            "type": "row",
+            "components": ["component_001", "component_002"],
+        },
+        {"type": "component", "component": "component_003"},
+    ]
+
+
+def test_component_template_inside_tabs_is_global_and_not_a_layout_item(
+    tmp_path: Path,
+) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("x,value\nA,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+```sql name=summary kind=query
+select x, value from events
+```
+<Tabs>
+  <Template
+    name="line"
+    component="LineChart"
+    query="summary"
+    x="x"
+    y="value"
+  />
+  <Tab title="Chart">
+    <LineChart template="line" />
+  </Tab>
+</Tabs>
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert len(spec["components"]) == 1
+    assert spec["layout"] == [
+        {
+            "type": "tabs",
+            "tabset_id": "tabs_001",
+            "tabs": [
+                {
+                    "id": "tab_001",
+                    "title": "Chart",
+                    "layout": [
+                        {"type": "component", "component": "component_001"}
+                    ],
+                }
+            ],
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        (
+            '<LineChart template="missing" query="summary" x="x" y="value" />',
+            "references unknown Template",
+        ),
+        (
+            '<Template name="base" component="Heatmap" />\n'
+            '<LineChart template="base" query="summary" x="x" y="value" />',
+            "cannot use Template 'base' for Heatmap",
+        ),
+        (
+            '<Template name="base" component="LineChart" />\n'
+            '<Template name="base" component="LineChart" />',
+            "duplicate Template name",
+        ),
+        (
+            '<Template name="base" component="LineChart" nope="value" />',
+            "has unsupported attributes: nope",
+        ),
+        (
+            '<Template name="base" component="LineChart" id="shared" />',
+            "cannot declare attributes: id",
+        ),
+        (
+            '<LineChart query="summary" x="x" y="value" unset="details" />',
+            "unset requires a template attribute",
+        ),
+        (
+            '<Template name="base" component="LineChart" />\n'
+            '<LineChart template="base" query="summary" x="x" y="value" '
+            'unset="nope" />',
+            "cannot unset unsupported attributes: nope",
+        ),
+        (
+            '<Template name="base" component="LineChart" query="summary" '
+            'x="x" y="value" />\n'
+            '<LineChart template="base" unset="y" />',
+            "is missing required attributes: y",
+        ),
+    ],
+)
+def test_component_template_validation(
+    tmp_path: Path, body: str, message: str
+) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("x,value\nA,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        f"""---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+```sql name=summary kind=query
+select x, value from events
+```
+{body}
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match=message):
+        compile_report(report)

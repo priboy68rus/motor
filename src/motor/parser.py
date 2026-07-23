@@ -218,6 +218,12 @@ class _TabsetRange:
     tabs: tuple[_TabRange, ...]
 
 
+@dataclass(frozen=True)
+class _ComponentTemplate:
+    component_type: str
+    defaults: dict[str, Any]
+
+
 def _parse_sql_metadata(metadata: str, line_number: int) -> tuple[str, str]:
     try:
         tokens = shlex.split(metadata)
@@ -369,6 +375,78 @@ def _parse_attributes(raw: str, component_type: str) -> dict[str, Any]:
     return attributes
 
 
+def _extract_component_templates(
+    body: str, matches: list[re.Match[str]]
+) -> tuple[dict[str, _ComponentTemplate], str]:
+    templates: dict[str, _ComponentTemplate] = {}
+    template_matches = [match for match in matches if match.group(1) == "Template"]
+    for match in template_matches:
+        attributes = _parse_attributes(match.group(2), "Template")
+        missing = {"name", "component"} - set(attributes)
+        if missing:
+            raise ReportValidationError(
+                "Template is missing required attributes: "
+                + ", ".join(sorted(missing))
+            )
+        name = attributes.pop("name")
+        component_type = attributes.pop("component")
+        if not isinstance(name, str) or not name.isidentifier():
+            raise ReportValidationError(f"invalid Template name {name!r}")
+        if name in templates:
+            raise ReportValidationError(f"duplicate Template name {name!r}")
+        if not isinstance(component_type, str) or component_type not in _COMPONENT_RULES:
+            raise ReportValidationError(
+                f"Template {name!r} references unsupported component {component_type!r}"
+            )
+        forbidden = {"id", "template", "unset"} & set(attributes)
+        if forbidden:
+            raise ReportValidationError(
+                f"Template {name!r} cannot declare attributes: "
+                + ", ".join(sorted(forbidden))
+            )
+        _required, allowed = _COMPONENT_RULES[component_type]
+        unknown = set(attributes) - allowed
+        if unknown:
+            raise ReportValidationError(
+                f"Template {name!r} for {component_type} has unsupported attributes: "
+                + ", ".join(sorted(unknown))
+            )
+        templates[name] = _ComponentTemplate(
+            component_type=component_type,
+            defaults=attributes,
+        )
+
+    layout_body = body
+    for match in reversed(template_matches):
+        layout_body = (
+            layout_body[: match.start()]
+            + _blank_comment(layout_body[match.start() : match.end()])
+            + layout_body[match.end() :]
+        )
+    return templates, layout_body
+
+
+def _parse_unset_attributes(
+    raw: Any, component_type: str, allowed: set[str]
+) -> set[str]:
+    if not isinstance(raw, str):
+        raise ReportValidationError(
+            f"{component_type} unset must be a comma-separated string"
+        )
+    fields = {field.strip() for field in raw.split(",") if field.strip()}
+    if not fields or any(not field.isidentifier() for field in fields):
+        raise ReportValidationError(
+            f"{component_type} unset must contain valid comma-separated attribute names"
+        )
+    unknown = fields - allowed
+    if unknown:
+        raise ReportValidationError(
+            f"{component_type} cannot unset unsupported attributes: "
+            + ", ".join(sorted(unknown))
+        )
+    return fields
+
+
 def _extract_rows(body: str) -> tuple[list[tuple[int, int, int, int]], set[int]]:
     matches = list(_ROW_TAG.finditer(body))
     valid_starts = {match.start() for match in matches}
@@ -494,8 +572,10 @@ def _extract_components(
     records: list[tuple[re.Match[str], ComponentSpec]] = []
     identifiers: set[str] = set()
     matches = list(_COMPONENT.finditer(body))
-    rows, row_starts = _extract_rows(body)
-    tabsets, tab_starts = _extract_tabs(body)
+    templates, layout_body = _extract_component_templates(body, matches)
+    component_matches = [match for match in matches if match.group(1) != "Template"]
+    rows, row_starts = _extract_rows(layout_body)
+    tabsets, tab_starts = _extract_tabs(layout_body)
     valid_starts = {match.start() for match in matches}
     for start in _COMPONENT_START.finditer(body):
         if start.group(1) == "Row" and start.start() in row_starts:
@@ -506,7 +586,7 @@ def _extract_components(
             raise ReportValidationError(
                 f"component {start.group(1)!r} must be a self-closing declaration"
             )
-    for index, match in enumerate(matches, start=1):
+    for index, match in enumerate(component_matches, start=1):
         component_type = match.group(1)
         if component_type not in _COMPONENT_RULES:
             raise ReportValidationError(f"unsupported component {component_type!r}")
@@ -516,6 +596,30 @@ def _extract_components(
         if not component_id.isidentifier() or component_id in identifiers:
             raise ReportValidationError(f"invalid or duplicate component id {component_id!r}")
         identifiers.add(component_id)
+        template_name = attributes.pop("template", None)
+        unset_raw = attributes.pop("unset", None)
+        if template_name is None:
+            if unset_raw is not None:
+                raise ReportValidationError(
+                    f"{component_type} unset requires a template attribute"
+                )
+        else:
+            if not isinstance(template_name, str) or template_name not in templates:
+                raise ReportValidationError(
+                    f"{component_type} references unknown Template {template_name!r}"
+                )
+            template = templates[template_name]
+            if template.component_type != component_type:
+                raise ReportValidationError(
+                    f"{component_type} cannot use Template {template_name!r} for "
+                    f"{template.component_type}"
+                )
+            inherited = dict(template.defaults)
+            if unset_raw is not None:
+                for field in _parse_unset_attributes(unset_raw, component_type, allowed):
+                    inherited.pop(field, None)
+            inherited.update(attributes)
+            attributes = inherited
         unknown = set(attributes) - allowed
         missing = required - set(attributes)
         if unknown:
@@ -733,7 +837,7 @@ def _extract_components(
             for match, component in records
             if content_start <= match.start() and match.end() <= content_end
         ]
-        remainder = body[content_start:content_end]
+        remainder = layout_body[content_start:content_end]
         for match, _component in reversed(children):
             relative_start = match.start() - content_start
             relative_end = match.end() - content_start
