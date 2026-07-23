@@ -112,6 +112,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "y",
             "value",
             "title",
+            "details",
             "format",
             "color_scheme",
             "color_direction",

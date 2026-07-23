@@ -572,7 +572,7 @@ validation contract in
 | `Table` | `query` | `title`, `columns`, `download` | HTML table. `columns` is a comma-separated projection/order for display. |
 | `LineChart` | `query`, `x`, `y` | `title`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction`, `format`, `currency`, `download` | Vega-Lite line chart. Date-like values on `x` use a temporal axis. `marker` is `none` (default), `point`, or `circle`. |
 | `BarChart` | `query`, `x`, `y` | `title`, `group`, `color`, `details`, `format`, `currency`, `stack`, `bar_width`, `download` | Vega-Lite bar chart. Date-like values on `x` use a temporal axis. |
-| `Heatmap` | `query`, `x`, `y`, `value` | `title`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency`, `download` | Rectangular heatmap with a quantitative gradient and an optional neutral per-row metric column. `format` is `number` (default) or `percent`; `show_values`, `show_percent_sign`, and `download` default to `true`. |
+| `Heatmap` | `query`, `x`, `y`, `value` | `title`, `details`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency`, `download` | Rectangular heatmap with a quantitative gradient, a shared-X tooltip, and an optional neutral per-row metric column. `format` is `number` (default) or `percent`; `show_values`, `show_percent_sign`, and `download` default to `true`. |
 
 Tables and charts show a subtle data-download button by default; it offers CSV
 and Excel (`.xlsx`). Use `download="false"` to hide it. Both formats contain the
@@ -665,10 +665,10 @@ on the chart. For example, hovering one month can show retention for every
 cohort or GMV for every channel. The series directly under the cursor is
 highlighted without changing the list order.
 
-Shared line/bar tooltips use one table layout with consistent typography,
-colors, and series swatches. `details="field_a,field_b"` on `LineChart` or
-`BarChart` adds extra query columns to that tooltip; detail labels appear once
-as column headers instead of repeating on every row. Details do not affect
+Shared chart tooltips use one table layout with consistent typography, colors,
+and swatches. `details="field_a,field_b"` on `LineChart`, `BarChart`, or
+`Heatmap` adds extra query columns to that tooltip; detail labels appear once as
+column headers instead of repeating on every row. Details do not affect
 grouping, color, stacking, axes, or SQL dependencies. Labels are generated from
 field names, e.g. `cohort_size` becomes `Cohort size`.
 
@@ -718,6 +718,7 @@ heatmap's numeric `value` scale:
   row_metric="cohort_size"
   row_metric_title="Cohort size"
   row_metric_notation="standard"
+  details="retained_users,company_count"
   title="Retention heatmap"
 />
 ```
@@ -746,6 +747,10 @@ different non-null values for one Y are rejected. `row_metric_format` supports
 `number`, `percent`, and `currency`; `row_metric_notation` is `standard`
 (default) or `compact`. See the complete field and formatting contract in
 [Heatmap](docs/components.md#heatmap).
+Hovering any heatmap cell opens the same custom shared-X table used by the
+other charts. It lists every Y row at that X, highlights the cell under the
+cursor without changing SQL order, and shows configured `details` as additional
+columns. A configured `row_metric` is included automatically.
 Any Vega sequential scheme name may be used, for example `blues`, `greens`,
 `viridis`, `magma`, `inferno`, or `cividis`. An unknown scheme is reported as a
 chart-rendering error in the report.

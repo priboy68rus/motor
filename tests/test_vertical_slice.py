@@ -1217,7 +1217,7 @@ group by 1
         compile_report(report)
 
 
-def test_line_and_bar_chart_details_are_compiled(tmp_path: Path) -> None:
+def test_chart_details_are_compiled(tmp_path: Path) -> None:
     data = tmp_path / "cohorts.csv"
     data.write_text(
         "cohort_month,period_number,retention,cohort_size,retained_users\n"
@@ -1250,6 +1250,13 @@ select cohort_month, period_number, retention, cohort_size, retained_users from 
   y="retention"
   details="cohort_size"
 />
+<Heatmap
+  query="retention"
+  x="period_number"
+  y="cohort_month"
+  value="retention"
+  details="cohort_size, retained_users"
+/>
 """,
         encoding="utf-8",
     )
@@ -1258,8 +1265,10 @@ select cohort_month, period_number, retention, cohort_size, retained_users from 
 
     line = next(item for item in spec["components"] if item["type"] == "LineChart")
     bar = next(item for item in spec["components"] if item["type"] == "BarChart")
+    heatmap = next(item for item in spec["components"] if item["type"] == "Heatmap")
     assert line["props"]["details"] == "cohort_size, retained_users"
     assert bar["props"]["details"] == "cohort_size"
+    assert heatmap["props"]["details"] == "cohort_size, retained_users"
 
 
 @pytest.mark.parametrize(

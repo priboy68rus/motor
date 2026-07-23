@@ -29,6 +29,7 @@ type XType = "temporal" | "nominal";
 
 type SharedTooltipEntry = {
   series: unknown;
+  colorValue: unknown;
   value: unknown;
   normalizedValue?: unknown;
   details: { label: string; value: unknown }[];
@@ -43,12 +44,20 @@ type SharedTooltipConfig = {
   x: string;
   y: string;
   series?: string;
+  seriesLabel?: string;
+  colorField?: string;
   xType: XType;
   rows: QueryRow[];
   valueFormat: ValueFormatOptions;
-  details: string[];
+  details: TooltipDetailConfig[];
   normalizedField?: string;
   normalizedLabel?: string;
+  rowMetric?: TooltipDetailConfig & { seriesField: string };
+};
+
+type TooltipDetailConfig = {
+  field: string;
+  label?: string;
 };
 
 function parseDetails(value: unknown): string[] {
@@ -74,7 +83,9 @@ function tooltipKey(value: unknown, xType: XType): string {
   return `json:${JSON.stringify(value)}`;
 }
 
-function sharedTooltipBuckets(config: SharedTooltipConfig): Map<string, SharedTooltipBucket> {
+export function sharedTooltipBuckets(
+  config: SharedTooltipConfig,
+): Map<string, SharedTooltipBucket> {
   const buckets = new Map<string, SharedTooltipBucket>();
   for (const row of config.rows) {
     const xValue = row[config.x];
@@ -86,13 +97,18 @@ function sharedTooltipBuckets(config: SharedTooltipConfig): Map<string, SharedTo
     }
     bucket.entries.push({
       series: config.series ? row[config.series] : row[config.y],
+      colorValue: config.colorField
+        ? row[config.colorField]
+        : config.series
+          ? row[config.series]
+          : row[config.y],
       value: row[config.y],
       ...(config.normalizedField
         ? { normalizedValue: row[config.normalizedField] }
         : {}),
-      details: config.details.map((field) => ({
-        label: detailLabel(field),
-        value: row[field],
+      details: config.details.map((detail) => ({
+        label: detail.label ?? detailLabel(detail.field),
+        value: row[detail.field],
       })),
     });
   }
@@ -142,6 +158,55 @@ function mountSharedTooltip(
     if (!(event instanceof MouseEvent)) return;
     const datum = item?.datum;
     if (
+      config.rowMetric &&
+      item?.mark.role === "mark" &&
+      datum &&
+      typeof datum === "object" &&
+      config.rowMetric.seriesField in datum &&
+      config.rowMetric.field in datum &&
+      !(config.x in datum)
+    ) {
+      const row = datum as QueryRow;
+      const renderKey = `row-metric\u0000${tooltipKey(
+        row[config.rowMetric.seriesField],
+        "nominal",
+      )}`;
+      if (activeKey !== renderKey) {
+        const heading = document.createElement("div");
+        heading.className = "motor-chart-shared-tooltip-heading";
+        heading.textContent =
+          `${config.rowMetric.seriesField}: ${tooltipText(row[config.rowMetric.seriesField])}`;
+        const table = document.createElement("table");
+        table.className = "motor-chart-shared-tooltip-table";
+        const head = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        headRow.append(
+          text(
+            "th",
+            config.rowMetric.label ?? detailLabel(config.rowMetric.field),
+            "motor-chart-shared-tooltip-detail-heading",
+          ),
+        );
+        head.append(headRow);
+        const body = document.createElement("tbody");
+        const bodyRow = document.createElement("tr");
+        bodyRow.append(
+          text(
+            "td",
+            formatValue(row[config.rowMetric.field]),
+            "motor-chart-shared-tooltip-detail-value",
+          ),
+        );
+        body.append(bodyRow);
+        table.append(head, body);
+        tooltip.replaceChildren(heading, table);
+        activeKey = renderKey;
+      }
+      tooltip.hidden = false;
+      positionTooltip(tooltip, event);
+      return;
+    }
+    if (
       item?.mark.role !== "mark" ||
       !datum ||
       typeof datum !== "object" ||
@@ -174,7 +239,13 @@ function mountSharedTooltip(
       const headRow = document.createElement("tr");
       if (config.series) {
         headRow.append(text("th", "", "motor-chart-shared-tooltip-swatch-heading"));
-        headRow.append(text("th", config.series, "motor-chart-shared-tooltip-series-heading"));
+        headRow.append(
+          text(
+            "th",
+            config.seriesLabel ?? config.series,
+            "motor-chart-shared-tooltip-series-heading",
+          ),
+        );
       }
       headRow.append(text("th", config.y, "motor-chart-shared-tooltip-value-heading"));
       if (config.normalizedLabel) {
@@ -186,9 +257,13 @@ function mountSharedTooltip(
           ),
         );
       }
-      for (const field of config.details) {
+      for (const detail of config.details) {
         headRow.append(
-          text("th", detailLabel(field), "motor-chart-shared-tooltip-detail-heading"),
+          text(
+            "th",
+            detail.label ?? detailLabel(detail.field),
+            "motor-chart-shared-tooltip-detail-heading",
+          ),
         );
       }
       head.append(headRow);
@@ -203,7 +278,7 @@ function mountSharedTooltip(
           swatchCell.className = "motor-chart-shared-tooltip-swatch-cell";
           const swatch = document.createElement("span");
           swatch.className = "motor-chart-shared-tooltip-swatch";
-          const color = colorScale?.(entry.series);
+          const color = colorScale?.(entry.colorValue);
           if (color != null) swatch.style.backgroundColor = String(color);
           swatchCell.append(swatch);
           row.append(
@@ -239,20 +314,7 @@ function mountSharedTooltip(
       activeKey = renderKey;
     }
     tooltip.hidden = false;
-
-    const gap = 14;
-    const margin = 8;
-    const bounds = tooltip.getBoundingClientRect();
-    let left = event.clientX + gap;
-    let top = event.clientY + gap;
-    if (left + bounds.width > window.innerWidth - margin) {
-      left = Math.max(margin, event.clientX - bounds.width - gap);
-    }
-    if (top + bounds.height > window.innerHeight - margin) {
-      top = Math.max(margin, event.clientY - bounds.height - gap);
-    }
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
+    positionTooltip(tooltip, event);
   };
 
   view.addEventListener("mousemove", move);
@@ -264,6 +326,22 @@ function mountSharedTooltip(
       tooltip.remove();
     },
   };
+}
+
+function positionTooltip(tooltip: HTMLElement, event: MouseEvent): void {
+  const gap = 14;
+  const margin = 8;
+  const bounds = tooltip.getBoundingClientRect();
+  let left = event.clientX + gap;
+  let top = event.clientY + gap;
+  if (left + bounds.width > window.innerWidth - margin) {
+    left = Math.max(margin, event.clientX - bounds.width - gap);
+  }
+  if (top + bounds.height > window.innerHeight - margin) {
+    top = Math.max(margin, event.clientY - bounds.height - gap);
+  }
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
 }
 
 async function embedChart(
@@ -360,25 +438,6 @@ export function heatmapSpec(
       };
   const yCount = new Set(rows.map((row) => tooltipKey(row[y], "nominal"))).size;
   const height = Math.max(300, yCount * 34) + (rowMetricResult ? 26 : 0);
-  const tooltip = [
-    { field: y, type: "ordinal" as const, title: y },
-    { field: x, type: "ordinal" as const, title: x },
-    {
-      field: value,
-      type: "quantitative" as const,
-      title: value,
-      ...(percent ? { format: ".1%" } : {}),
-    },
-    ...(rowMetricResult && rowMetricTitle
-      ? [
-          {
-            field: ROW_METRIC_TOOLTIP_FIELD,
-            type: "nominal" as const,
-            title: rowMetricTitle,
-          },
-        ]
-      : []),
-  ];
   const rowMetricWidth = 82;
   return {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
@@ -409,19 +468,11 @@ export function heatmapSpec(
                 color: "#f6f7f9",
                 stroke: "white",
                 strokeWidth: 1,
-                tooltip: true,
+                tooltip: false,
               },
               encoding: {
                 x: { value: -rowMetricWidth },
                 x2: { value: -2 },
-                tooltip: [
-                  { field: y, type: "ordinal" as const, title: y },
-                  {
-                    field: ROW_METRIC_TOOLTIP_FIELD,
-                    type: "nominal" as const,
-                    title: rowMetricTitle,
-                  },
-                ],
               },
             },
             {
@@ -433,19 +484,11 @@ export function heatmapSpec(
                 color: "#344054",
                 fontSize: 12,
                 fontWeight: "bold" as const,
-                tooltip: true,
+                tooltip: false,
               },
               encoding: {
                 x: { value: -10 },
                 text: { field: ROW_METRIC_DISPLAY_FIELD, type: "nominal" as const },
-                tooltip: [
-                  { field: y, type: "ordinal" as const, title: y },
-                  {
-                    field: ROW_METRIC_TOOLTIP_FIELD,
-                    type: "nominal" as const,
-                    title: rowMetricTitle,
-                  },
-                ],
               },
             },
             {
@@ -467,7 +510,7 @@ export function heatmapSpec(
           ]
         : []),
       {
-        mark: { type: "rect", tooltip: true, stroke: "white", strokeWidth: 1 },
+        mark: { type: "rect", tooltip: false, stroke: "white", strokeWidth: 1 },
         encoding: {
           color: {
             field: value,
@@ -476,7 +519,6 @@ export function heatmapSpec(
             scale: colorScale,
             ...(percent ? { legend: { format: ".0%" } } : {}),
           },
-          tooltip,
         },
       },
       ...(showValues
@@ -487,7 +529,7 @@ export function heatmapSpec(
                 color: heatmapTextColor(value),
                 fontSize: 11,
                 fontWeight: "normal" as const,
-                tooltip: true,
+                tooltip: false,
               },
               encoding: {
                 text: {
@@ -495,7 +537,6 @@ export function heatmapSpec(
                   type: "quantitative" as const,
                   format: percent ? (showPercentSign ? ".1%" : ".1f") : ",.2~f",
                 },
-                tooltip,
               },
             },
           ]
@@ -504,12 +545,76 @@ export function heatmapSpec(
   };
 }
 
+export function heatmapTooltipConfig(
+  component: ComponentSpec,
+  rows: QueryRow[],
+): SharedTooltipConfig {
+  const x = String(component.props.x);
+  const y = String(component.props.y);
+  const value = String(component.props.value);
+  const rowMetric = component.props.row_metric
+    ? String(component.props.row_metric)
+    : undefined;
+  const rowMetricTitle = rowMetric
+    ? String(component.props.row_metric_title ?? rowMetric)
+    : undefined;
+  const rowMetricResult = rowMetric
+    ? buildHeatmapRowMetric(rows, y, rowMetric, {
+        format: String(component.props.row_metric_format ?? "number") as ValueFormat,
+        notation: "standard",
+        ...(component.props.row_metric_currency
+          ? { currency: String(component.props.row_metric_currency) }
+          : {}),
+      })
+    : undefined;
+  const tooltipRows = rowMetricResult
+    ? rows.map((row) => ({
+        ...row,
+        [ROW_METRIC_TOOLTIP_FIELD]:
+          rowMetricResult.tooltipByRow.get(heatmapRowMetricKey(row[y])) ?? "—",
+      }))
+    : rows;
+  const detailFields = parseDetails(component.props.details);
+  const details: TooltipDetailConfig[] = detailFields
+    .filter((field) => field !== rowMetric)
+    .map((field) => ({ field }));
+  if (rowMetricResult && rowMetricTitle) {
+    details.push({ field: ROW_METRIC_TOOLTIP_FIELD, label: rowMetricTitle });
+  }
+  return {
+    x,
+    y: value,
+    series: y,
+    seriesLabel: y,
+    colorField: value,
+    xType: "nominal",
+    rows: tooltipRows,
+    details,
+    valueFormat: {
+      format: component.props.format as ValueFormat | undefined,
+    },
+    ...(rowMetricResult && rowMetricTitle
+      ? {
+          rowMetric: {
+            field: ROW_METRIC_TOOLTIP_FIELD,
+            label: rowMetricTitle,
+            seriesField: y,
+          },
+        }
+      : {}),
+  };
+}
+
 async function renderHeatmap(
   element: HTMLElement,
   component: ComponentSpec,
   rows: QueryRow[],
 ): Promise<ChartHandle> {
-  return embedChart(element, heatmapSpec(component, rows));
+  return embedChart(
+    element,
+    heatmapSpec(component, rows),
+    heatmapTooltipConfig(component, rows),
+  );
 }
 
 export async function renderChart(
@@ -615,7 +720,7 @@ export async function renderChart(
         ...(color ? { series: color } : {}),
         xType,
         rows: chartRows,
-        details,
+        details: details.map((field) => ({ field })),
         ...(signedNormalization
           ? {
               normalizedField: signedNormalization.field,

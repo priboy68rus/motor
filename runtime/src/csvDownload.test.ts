@@ -80,7 +80,7 @@ test("signed normalized bar CSV uses the plotted gross and net calculations", ()
   assert.equal(net.rows[1]?.gmv_normalized, -0.2);
 });
 
-test("heatmap CSV includes row_metric but not hidden query columns", () => {
+test("heatmap CSV includes row_metric and details but not hidden query columns", () => {
   const data = componentCsvData(
     {
       id: "retention",
@@ -91,12 +91,28 @@ test("heatmap CSV includes row_metric but not hidden query columns", () => {
         y: "cohort",
         value: "retention",
         row_metric: "cohort_size",
+        details: "retained_users",
       },
     },
-    [{ cohort: "2026-01", cohort_size: 100, period: 0, retention: 1, hidden: 42 }],
+    [
+      {
+        cohort: "2026-01",
+        cohort_size: 100,
+        period: 0,
+        retained_users: 100,
+        retention: 1,
+        hidden: 42,
+      },
+    ],
   );
 
-  assert.deepEqual(data.columns, ["cohort", "cohort_size", "period", "retention"]);
+  assert.deepEqual(data.columns, [
+    "cohort",
+    "cohort_size",
+    "period",
+    "retained_users",
+    "retention",
+  ]);
   assert.equal("hidden" in (data.rows[0] ?? {}), false);
 });
 

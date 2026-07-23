@@ -120,7 +120,7 @@ declared for another component type also fails compilation.
 | [`Table`](#table) | `query` | `id`, `title`, `columns`, `download` |
 | [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction`, `download` |
 | [`BarChart`](#barchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `stack`, `bar_width`, `download` |
-| [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency`, `download` |
+| [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `details`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency`, `download` |
 
 ## `Filters`
 
@@ -356,7 +356,8 @@ returned by the query:
   is absent;
 - `LineChart` and `BarChart` export `x`, `y`, the effective `group` or `color`,
   and every `details` field;
-- `Heatmap` exports `x`, `y`, `value`, and `row_metric` when configured;
+- `Heatmap` exports `x`, `y`, `value`, `row_metric` when configured, and every
+  `details` field;
 - `BigValue` does not provide a download button.
 
 Rows retain SQL result order. A Table honors its explicit `columns` order;
@@ -569,6 +570,7 @@ Renders one rectangular cell per query row.
   row_metric_title="Cohort size"
   row_metric_format="number"
   row_metric_notation="standard"
+  details="retained_users,company_count"
   title="Retention heatmap"
 />
 ```
@@ -580,6 +582,7 @@ Renders one rectangular cell per query row.
 | `y` | result column | yes | — | Discrete cell row, sorted ascending. |
 | `value` | result column | yes | — | Quantitative color value. |
 | `title` | string | no | — | Card heading. |
+| `details` | comma-separated result columns | no | — | Extra fields shown as columns in the shared-X tooltip. Field-name labels replace `_` with spaces and capitalize the first character. |
 | `format` | enum | no | `number` | `number` or `percent`. Percent expects a fraction. |
 | `color_scheme` | non-empty string | no | `blues` | Vega sequential scheme used when all values are non-negative. |
 | `color_direction` | enum | no | `higher_is_darker` | Sequential-scale direction: `higher_is_darker` or `lower_is_darker`. |
@@ -594,8 +597,23 @@ Renders one rectangular cell per query row.
 
 The legend and tooltip use percent formatting when requested. Missing rows
 produce empty cells; a zero value remains a real colored cell. Cells have white
-borders and tooltips containing Y, X, and value. Unknown color schemes are
-reported as chart rendering errors inside a non-negative report.
+borders. Unknown color schemes are reported as chart rendering errors inside a
+non-negative report.
+
+Heatmap uses the same custom table tooltip as line and bar charts. Hovering a
+cell groups every query row with the same X value into one tooltip: the heading
+shows X, and the table contains the Y group, `value`, and every configured
+`details` field. The row under the cursor is highlighted while the remaining
+rows are muted without being reordered; table rows retain SQL result order.
+The swatch beside each Y group uses that cell's actual quantitative color.
+`format="percent"` also formats tooltip values as percentages. Detail headings
+are rendered once, missing or empty detail values render as `—`, and details do
+not affect axes, colors, cell layout, or query dependencies.
+
+When `row_metric` is configured, it is automatically added to the shared
+tooltip under `row_metric_title`; it does not need to be repeated in `details`.
+Hovering the separate row-metric column uses the same custom tooltip styling
+and shows that Y row's full metric value.
 
 When every finite value is non-negative, Heatmap uses the configured sequential
 `color_scheme` and `color_direction`. As soon as the result contains a negative
@@ -641,7 +659,7 @@ column between the Y-axis labels and the first colored cell and never affects
 the heatmap color domain or legend. The column is approximately 82 px wide;
 use compact notation when a full formatted value does not fit comfortably. Its
 row order is exactly the Heatmap Y order. The same full, non-compact value is
-also included in cell and row-metric tooltips.
+also included in the shared cell tooltip and row-metric tooltip.
 
 The query remains at the normal one-row-per-Y-and-X grain:
 

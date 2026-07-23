@@ -104,6 +104,7 @@ export function componentCsvData(
       String(component.props.y),
       String(component.props.value),
       component.props.row_metric == null ? undefined : String(component.props.row_metric),
+      ...commaSeparatedFields(component.props.details),
     ]);
     const columns = sourceOrderedColumns(rows, requested);
     return {

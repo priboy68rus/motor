@@ -8,7 +8,11 @@ import {
   ROW_METRIC_DISPLAY_FIELD,
   ROW_METRIC_TOOLTIP_FIELD,
 } from "./heatmapRowMetric";
-import { heatmapSpec } from "./vegaAdapter";
+import {
+  heatmapSpec,
+  heatmapTooltipConfig,
+  sharedTooltipBuckets,
+} from "./vegaAdapter";
 
 test("row metric accepts one repeated value per heatmap row", () => {
   const result = buildHeatmapRowMetric(
@@ -118,4 +122,62 @@ test("Vega renders a heatmap with the row metric layers", async () => {
       : {};
   assert.equal(markProperties.fontSize, 11);
   assert.equal(markProperties.fontWeight, "normal");
+});
+
+test("heatmap shared tooltip groups every Y row by X and includes details", () => {
+  const component = {
+    id: "retention",
+    type: "Heatmap" as const,
+    query: "retention",
+    props: {
+      x: "period",
+      y: "cohort",
+      value: "retention",
+      format: "percent",
+      row_metric: "size",
+      row_metric_title: "Cohort size",
+      details: "users, size",
+    },
+  };
+  const config = heatmapTooltipConfig(component, [
+    { cohort: "2026-01", period: 0, size: 100, users: 100, retention: 1 },
+    { cohort: "2026-02", period: 0, size: 80, users: 64, retention: 0.8 },
+  ]);
+
+  assert.equal(config.x, "period");
+  assert.equal(config.y, "retention");
+  assert.equal(config.series, "cohort");
+  assert.equal(config.colorField, "retention");
+  assert.equal(config.rows.length, 2);
+  assert.deepEqual(config.details, [
+    { field: "users" },
+    { field: ROW_METRIC_TOOLTIP_FIELD, label: "Cohort size" },
+  ]);
+  assert.equal(config.rows[1]?.[ROW_METRIC_TOOLTIP_FIELD], "80");
+  const period = sharedTooltipBuckets(config).get("number:0");
+  assert.deepEqual(
+    period?.entries.map((entry) => ({
+      series: entry.series,
+      value: entry.value,
+      details: entry.details,
+    })),
+    [
+      {
+        series: "2026-01",
+        value: 1,
+        details: [
+          { label: "Users", value: 100 },
+          { label: "Cohort size", value: "100" },
+        ],
+      },
+      {
+        series: "2026-02",
+        value: 0.8,
+        details: [
+          { label: "Users", value: 64 },
+          { label: "Cohort size", value: "80" },
+        ],
+      },
+    ],
+  );
 });
