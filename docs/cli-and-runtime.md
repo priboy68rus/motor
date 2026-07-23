@@ -28,6 +28,7 @@ non-zero exit code.
 
 ```bash
 motor build path/to/report.md --out path/to/report.html
+motor build path/to/report.md --out path/to/report.html --asset-mode cdn
 motor build path/to/report.md --out path/to/report.html --update-registry ~/.motor/update-registry
 ```
 
@@ -37,11 +38,19 @@ output directories are created. The HTML is written atomically through a
 temporary file and replacement, so a failed write does not intentionally leave a
 partial target.
 
+| Option / environment variable | Type | Required | Default | Allowed values / behavior |
+| --- | --- | --- | --- | --- |
+| `--asset-mode` | enum | no | `MOTOR_ASSET_MODE`, then `embedded` | `embedded` packages DuckDB into every HTML; `cdn` downloads pinned DuckDB files from jsDelivr and requires internet on a cache miss. |
+| `MOTOR_ASSET_MODE` | enum | no | — | Batch-build fallback for `--asset-mode`; `embedded` or `cdn`. An explicit CLI option takes precedence. Any other environment value stops the build. |
+| `--update-registry` | path | no | `MOTOR_UPDATE_REGISTRY` | Directory where latest-version metadata is written. |
+| `MOTOR_UPDATE_REGISTRY` | path | no | — | Fallback registry directory for `motor build` and `motor server`. |
+
 Success output includes:
 
 - output path;
 - artifact ID;
 - SHA-256 of the finished HTML.
+- effective asset mode.
 
 Validation/freshness warning messages are also printed to standard error.
 
@@ -140,7 +149,7 @@ reports return `404`; invalid slugs return `400`.
 
 ## Self-contained HTML artifact
 
-The generated file embeds:
+The default `asset_mode=embedded` file embeds:
 
 - report manifest and compiled report specification;
 - every complete source file, gzip-compressed and base64-encoded;
@@ -153,6 +162,40 @@ The generated file embeds:
 
 No CDN or application server is required. The report can be opened with a
 `file://` URL and queried interactively offline.
+
+### CDN asset mode
+
+`motor build --asset-mode cdn` produces a smaller connected artifact. It still
+embeds the complete source data, report specification, Vega libraries, XLSX
+support, favicon, CSS, and motor runtime, but omits DuckDB's WASM module and Web
+Worker. The browser downloads these exact version-pinned resources:
+
+```text
+https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/dist/duckdb-mvp.wasm
+https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/dist/duckdb-browser-mvp.worker.js
+```
+
+The CDN responses allow cross-origin requests and use long-lived immutable
+browser caching. Reports opened through `file://` can therefore load them. The
+first cache miss requires internet access; later reports using the same DuckDB
+version normally reuse the browser HTTP cache. Private browsing, cache
+eviction, clearing browser data, or a forced reload can cause another download.
+There is no embedded fallback in `cdn` mode because including one would remove
+the size benefit.
+
+Motor fetches the official worker source, adds the required Emscripten
+exception bindings such as `_setThrew` and `___cxa_can_catch`, and creates a
+same-origin Blob Worker. If the pinned worker layout no longer matches the
+expected patch point, initialization fails explicitly instead of silently
+running an incompatible worker. A failed CDN request displays a runtime error
+that identifies the URL and explains that the report requires internet.
+
+The selected mode is a packaging choice rather than report authoring syntax:
+it is configured by the builder, never in `report.md`. `build.asset_mode` in
+the manifest records `embedded` or `cdn`. It is excluded from artifact
+identity, so the two packaging modes built from identical report source, data,
+motor version, and runtime version share one artifact ID. Their finished HTML
+SHA-256 values differ.
 
 Because source files are embedded in full, anyone who receives the HTML can
 extract all source rows, including columns not selected by visible queries.
@@ -181,7 +224,8 @@ components when possible.
 When the page opens, motor:
 
 1. decodes and decompresses every embedded source file;
-2. creates the embedded DuckDB worker and database;
+2. reads embedded DuckDB assets or downloads the version-pinned CDN assets,
+   patches the worker bindings, and creates the worker and database;
 3. loads CSVs with header/type detection and Parquet files with `read_parquet`
    into `main` tables;
 4. reads distinct parameter options from source tables, including SQL `NULL`
@@ -218,7 +262,9 @@ The browser check is intentionally fail-soft:
 
 - network errors, timeouts, CORS failures, `404`, invalid JSON, and invalid
   payloads do not show an error;
-- the report remains fully usable offline;
+- update-check failure never interrupts an already initialized report;
+- an embedded report remains fully usable offline, while a CDN report needs
+  DuckDB to be available in its browser cache or from the network;
 - no time-based staleness rule is applied;
 - only a different `artifact_id` for the same `slug` shows the fixed top-right
   link to `distribution_url`.
@@ -234,11 +280,17 @@ The embedded manifest records:
 
 - report title, slug, specification version, and effective timezone;
 - artifact ID, canonical content SHA-256, and local status;
-- build timestamp, motor version, and runtime version;
+- build timestamp, motor version, runtime version, and effective asset mode;
 - aggregate freshness values and status;
 - source file name, size, row/column count, column names and inferred types,
   source SHA-256, timestamps, and freshness status;
 - every passed check and warning.
+
+Build packaging metadata:
+
+| Field | Type | Required | Default | Allowed values / behavior |
+| --- | --- | --- | --- | --- |
+| `build.asset_mode` | enum | yes for newly built artifacts | `embedded` when absent in an older artifact | `embedded` or `cdn`; records how DuckDB assets are delivered and does not affect artifact identity. |
 
 ## Artifact identity and reproducibility
 
@@ -259,6 +311,9 @@ content identity.
 The finished HTML SHA-256 printed by `motor build` can differ between builds
 because the HTML manifest contains build timestamps. Use artifact identity for
 logical report content and HTML SHA-256 for exact file-byte verification.
+Asset mode is also excluded from content identity: embedded and CDN packaging
+of the same logical report use the same artifact ID but have different HTML
+hashes.
 
 ## Warnings versus failures
 
@@ -271,7 +326,8 @@ Warnings currently include:
 
 Freshness and timezone warnings appear in the manifest and CLI output. The
 missing update-registry warning is build-output-only because the HTML artifact
-is still valid and self-contained. Warnings do not block building. Structural
+is still valid; the default embedded mode is also self-contained. Warnings do
+not block building. Structural
 configuration, source file, dependency, and syntax errors stop the command.
 
 ## Development commands

@@ -10,7 +10,7 @@ from typing import Any
 
 from motor.data_sources import compile_source
 from motor.errors import MotorError, ReportValidationError
-from motor.html import render_report_html
+from motor.html import ASSET_MODES, render_report_html
 from motor.manifest import build_manifest
 from motor.models import BuildResult, CheckResult, CompiledSource
 from motor.parser import parse_report
@@ -144,9 +144,25 @@ def publish_latest_version(manifest: dict[str, Any], registry: Path) -> Path:
     return output_path
 
 
-def build_report(report_path: Path, output_path: Path, *, update_registry: Path | None = None) -> BuildResult:
+def build_report(
+    report_path: Path,
+    output_path: Path,
+    *,
+    update_registry: Path | None = None,
+    asset_mode: str = "embedded",
+) -> BuildResult:
+    if asset_mode not in ASSET_MODES:
+        raise MotorError(
+            f"asset mode must be one of: {', '.join(sorted(ASSET_MODES))}"
+        )
     manifest, report_spec, sources = compile_report(report_path)
-    html = render_report_html(manifest, report_spec, sources)
+    manifest["build"]["asset_mode"] = asset_mode
+    html = render_report_html(
+        manifest,
+        report_spec,
+        sources,
+        asset_mode=asset_mode,
+    )
     encoded = html.encode("utf-8")
     output_path = output_path.resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)

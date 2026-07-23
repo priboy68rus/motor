@@ -390,7 +390,7 @@ inert string cells rather than executable formulas. XLSX creation happens
 entirely inside the browser and does not upload report data.
 
 The download projection is a convenience feature, not an access-control
-boundary. The self-contained artifact still embeds complete source files; see
+boundary. Every asset mode still embeds complete source files; see
 [CLI and runtime](cli-and-runtime.md#self-contained-html-artifact).
 
 ## Shared chart behavior

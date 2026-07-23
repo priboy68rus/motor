@@ -12,6 +12,8 @@ from motor.errors import MotorError
 from motor.inspect import inspect_artifact
 from motor.update_server import serve_update_registry
 
+_ASSET_MODES = ("embedded", "cdn")
+
 
 def _configured_registry(value: Path | None) -> Path | None:
     if value is not None:
@@ -22,13 +24,30 @@ def _configured_registry(value: Path | None) -> Path | None:
     return None
 
 
+def _configured_asset_mode(value: str | None) -> str:
+    configured = value or os.environ.get("MOTOR_ASSET_MODE") or "embedded"
+    if configured not in _ASSET_MODES:
+        raise MotorError(
+            f"MOTOR_ASSET_MODE must be one of: {', '.join(_ASSET_MODES)}"
+        )
+    return configured
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="motor", description="Build trusted portable BI artifacts")
     subcommands = parser.add_subparsers(dest="command", required=True)
 
-    build = subcommands.add_parser("build", help="build a self-contained HTML report")
+    build = subcommands.add_parser("build", help="build an HTML report artifact")
     build.add_argument("report", type=Path)
     build.add_argument("--out", type=Path, required=True)
+    build.add_argument(
+        "--asset-mode",
+        choices=_ASSET_MODES,
+        help=(
+            "DuckDB asset delivery: embedded (offline, default) or cdn "
+            "(smaller HTML, requires internet); defaults to MOTOR_ASSET_MODE when set"
+        ),
+    )
     build.add_argument(
         "--update-registry",
         type=Path,
@@ -63,6 +82,7 @@ def _print_manifest_summary(manifest: dict) -> None:
     print(f"Report: {manifest['report']['title']}")
     print(f"Artifact: {manifest['artifact']['id']}")
     print(f"Built: {manifest['build']['built_at']}")
+    print(f"Assets: {manifest['build'].get('asset_mode', 'embedded')}")
     print(f"Checks: {manifest['checks']['status']}")
     for source in manifest["sources"]:
         source_format = source.get("source_format", "csv")
@@ -76,14 +96,17 @@ def run(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         if args.command == "build":
+            asset_mode = _configured_asset_mode(args.asset_mode)
             result = build_report(
                 args.report,
                 args.out,
                 update_registry=_configured_registry(args.update_registry),
+                asset_mode=asset_mode,
             )
             print(f"Built {result.output_path}")
             print(f"Artifact: {result.artifact_id}")
             print(f"HTML sha256: {result.output_sha256}")
+            print(f"Assets: {asset_mode}")
             for warning in result.warnings:
                 print(f"Warning: {warning}", file=sys.stderr)
             return 0

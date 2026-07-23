@@ -241,7 +241,7 @@ The expected server JSON is written by `motor build --update-registry`:
   "artifact_id": "orders__abc123def456",
   "built_at": "2026-07-09T12:34:00+00:00",
   "tool_version": "0.1.0",
-  "runtime_version": "0.7.19-signed-stack-normalization"
+  "runtime_version": "0.7.20-cdn-duckdb-assets"
 }
 ```
 

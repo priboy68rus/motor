@@ -12,7 +12,8 @@ from urllib.request import Request, urlopen
 import pytest
 
 from motor.compiler import build_report, compile_report
-from motor.errors import ReportValidationError
+from motor.cli import run
+from motor.errors import MotorError, ReportValidationError
 from motor.html import _script_text
 from motor.inspect import inspect_artifact
 from motor.update_server import UpdateRegistryServer
@@ -239,8 +240,10 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert manifest["report"]["title"] == "Revenue Overview"
     assert manifest["sources"][0]["rows"] == 3
     assert 'data-encoding="base64+gzip+csv"' in html
+    assert '"mode": "embedded"' in html
     assert 'id="motor-duckdb-wasm"' in html
     assert 'id="motor-duckdb-worker"' in html
+    assert manifest["build"]["asset_mode"] == "embedded"
     favicon = html.split('href="data:image/png;base64,', 1)[1].split('"', 1)[0]
     favicon_bytes = (
         Path(__file__).parents[1] / "src" / "motor" / "static" / "motor-favicon.png"
@@ -285,6 +288,79 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert "Open latest" in html
     encoded = html.split('data-encoding="base64+gzip+csv">', 1)[1].split("</script>", 1)[0]
     assert gzip.decompress(b64decode(encoded.strip())).startswith(b"order_id,country")
+
+
+def test_cdn_asset_mode_builds_small_connected_artifact(tmp_path: Path) -> None:
+    output = tmp_path / "revenue-cdn.html"
+
+    result = build_report(EXAMPLE, output, asset_mode="cdn")
+    manifest = inspect_artifact(output)
+    html = output.read_text(encoding="utf-8")
+
+    assert manifest["build"]["asset_mode"] == "cdn"
+    assert result.artifact_id == manifest["artifact"]["id"]
+    assert '"mode": "cdn"' in html
+    assert (
+        "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/"
+        "dist/duckdb-mvp.wasm"
+    ) in html
+    assert (
+        "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/"
+        "dist/duckdb-browser-mvp.worker.js"
+    ) in html
+    assert 'id="motor-duckdb-wasm"' not in html
+    assert 'id="motor-duckdb-worker"' not in html
+    assert output.stat().st_size < 2 * 1024 * 1024
+
+
+def test_asset_mode_does_not_change_artifact_identity(tmp_path: Path) -> None:
+    embedded = build_report(EXAMPLE, tmp_path / "embedded.html")
+    cdn = build_report(EXAMPLE, tmp_path / "cdn.html", asset_mode="cdn")
+
+    assert embedded.artifact_id == cdn.artifact_id
+    assert embedded.output_sha256 != cdn.output_sha256
+
+
+def test_build_rejects_unknown_asset_mode(tmp_path: Path) -> None:
+    with pytest.raises(MotorError, match="asset mode must be one of"):
+        build_report(EXAMPLE, tmp_path / "report.html", asset_mode="portable")
+
+
+def test_cli_asset_mode_uses_environment_and_explicit_flag_wins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MOTOR_ASSET_MODE", "cdn")
+    from_environment = tmp_path / "environment.html"
+    explicit = tmp_path / "explicit.html"
+
+    assert run(["build", str(EXAMPLE), "--out", str(from_environment)]) == 0
+    assert (
+        run(
+            [
+                "build",
+                str(EXAMPLE),
+                "--out",
+                str(explicit),
+                "--asset-mode",
+                "embedded",
+            ]
+        )
+        == 0
+    )
+
+    assert inspect_artifact(from_environment)["build"]["asset_mode"] == "cdn"
+    assert inspect_artifact(explicit)["build"]["asset_mode"] == "embedded"
+
+
+def test_cli_rejects_unknown_asset_mode_environment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("MOTOR_ASSET_MODE", "portable")
+
+    assert run(["build", str(EXAMPLE), "--out", str(tmp_path / "report.html")]) == 2
+    assert "MOTOR_ASSET_MODE must be one of: embedded, cdn" in capsys.readouterr().err
 
 
 def test_theme_frontmatter_compiles_and_styles_report(tmp_path: Path) -> None:

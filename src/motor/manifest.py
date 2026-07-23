@@ -9,7 +9,7 @@ from motor import __version__
 from motor.models import CheckResult, ParsedReport, SourcePassport
 
 
-RUNTIME_VERSION = "0.7.19-signed-stack-normalization"
+RUNTIME_VERSION = "0.7.20-cdn-duckdb-assets"
 
 
 def _content_identity(parsed: ParsedReport, sources: list[SourcePassport]) -> tuple[str, str]:
@@ -54,6 +54,7 @@ def build_manifest(
             "tool_version": __version__,
             "runtime_version": RUNTIME_VERSION,
             "build_mode": "local",
+            "asset_mode": "embedded",
         },
         "freshness": {
             "status": overall_status,

@@ -10,6 +10,40 @@ type LoadEmbeddedReportOptions = {
   metrics?: RuntimeMetrics;
 };
 
+type RuntimeAssets =
+  | { mode: "embedded" }
+  | {
+      mode: "cdn";
+      duckdb: {
+        version: string;
+        wasm_url: string;
+        worker_url: string;
+      };
+    };
+
+const DUCKDB_RUNTIME_BINDING_MARKER =
+  "stackRestore=e=>__emscripten_stack_restore(e),createInvokeFunction=";
+const DUCKDB_RUNTIME_BINDINGS = [
+  ["___cxa_can_catch", "__cxa_can_catch"],
+  ["___cxa_decrement_exception_refcount", "__cxa_decrement_exception_refcount"],
+  ["___cxa_demangle", "__cxa_demangle"],
+  ["___cxa_get_exception_ptr", "__cxa_get_exception_ptr"],
+  ["___cxa_increment_exception_refcount", "__cxa_increment_exception_refcount"],
+  ["___errno_location", "__errno_location"],
+  ["___getTypeName", "__getTypeName"],
+  ["___get_exception_message", "__get_exception_message"],
+  ["_fileno", "fileno"],
+  ["_htonl", "htonl"],
+  ["_htons", "htons"],
+  ["_memcmp", "memcmp"],
+  ["_memcpy", "memcpy"],
+  ["_ntohs", "ntohs"],
+  ["_setThrew", "setThrew"],
+  ["_strerror", "strerror"],
+  ["_times", "times"],
+  ["_write", "write"],
+] as const;
+
 function requiredElement(id: string): HTMLElement {
   const element = document.getElementById(id);
   if (!element) throw new Error(`missing embedded payload: ${id}`);
@@ -66,6 +100,78 @@ function estimatedBase64Bytes(value: string): number {
   return Math.max(0, Math.floor((compact.length * 3) / 4) - padding);
 }
 
+function runtimeAssets(): RuntimeAssets {
+  const element = document.getElementById("motor-runtime-assets");
+  if (!element) return { mode: "embedded" };
+  const value = JSON.parse(element.textContent ?? "") as RuntimeAssets;
+  if (value.mode === "embedded") return value;
+  if (
+    value.mode === "cdn" &&
+    value.duckdb &&
+    typeof value.duckdb.version === "string" &&
+    typeof value.duckdb.wasm_url === "string" &&
+    typeof value.duckdb.worker_url === "string"
+  ) {
+    return value;
+  }
+  throw new Error("invalid motor runtime asset configuration");
+}
+
+export function patchDuckDBWorker(workerSource: string): string {
+  const missingBindings = DUCKDB_RUNTIME_BINDINGS.filter(
+    ([javascriptName]) =>
+      workerSource.includes(`${javascriptName}(`) &&
+      !workerSource.includes(`${javascriptName}=`) &&
+      !workerSource.includes(`function ${javascriptName}`),
+  );
+  if (missingBindings.length === 0) return workerSource;
+  if (!workerSource.includes(DUCKDB_RUNTIME_BINDING_MARKER)) {
+    throw new Error(
+      "cannot patch DuckDB worker: runtime binding insertion point changed",
+    );
+  }
+  const bindings = missingBindings
+    .map(
+      ([javascriptName, wasmName]) =>
+        `${javascriptName}=(...args)=>wasmExports.${wasmName}(...args)`,
+    )
+    .join(",");
+  return workerSource.replace(
+    DUCKDB_RUNTIME_BINDING_MARKER,
+    `stackRestore=e=>__emscripten_stack_restore(e),${bindings},createInvokeFunction=`,
+  );
+}
+
+async function downloadAsset<T>(
+  url: string,
+  label: string,
+  read: (response: Response) => Promise<T>,
+  metrics?: RuntimeMetrics,
+): Promise<T> {
+  const metric = metrics?.start(`Download ${label}`, url);
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
+    }
+    const result = await read(response);
+    const contentLength = Number(response.headers.get("content-length"));
+    metric?.end(
+      Number.isFinite(contentLength) && contentLength > 0
+        ? `${formatBytes(contentLength)} transferred or cached`
+        : "browser cache enabled",
+    );
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    metric?.fail(message);
+    throw new Error(
+      `failed to download ${label} from ${url}: ${message}. ` +
+        "This report was built with asset_mode=cdn and requires internet access.",
+    );
+  }
+}
+
 export async function loadEmbeddedReport(options: LoadEmbeddedReportOptions = {}): Promise<{
   manifest: Manifest;
   spec: ReportSpec;
@@ -114,16 +220,53 @@ export async function loadEmbeddedReport(options: LoadEmbeddedReportOptions = {}
   return { manifest, spec, sources };
 }
 
-export async function createEmbeddedDuckDBWorker(metrics?: RuntimeMetrics): Promise<{
+export async function createDuckDBWorker(metrics?: RuntimeMetrics): Promise<{
   worker: Worker;
   workerUrl: string;
 }> {
+  const assets = runtimeAssets();
+  const workerSourcePromise =
+    assets.mode === "cdn"
+      ? downloadAsset(
+          assets.duckdb.worker_url,
+          "DuckDB worker",
+          (response) => response.text(),
+          metrics,
+        )
+      : Promise.resolve(
+          new TextDecoder().decode(
+            decodeBase64(requiredElement("motor-duckdb-worker").textContent ?? ""),
+          ),
+        );
+  const wasmPromise =
+    assets.mode === "cdn"
+      ? downloadAsset(
+          assets.duckdb.wasm_url,
+          "DuckDB WASM",
+          (response) => response.arrayBuffer(),
+          metrics,
+        )
+      : (() => {
+          const wasmPayload = requiredElement("motor-duckdb-wasm").textContent ?? "";
+          const wasmMetric = metrics?.start("Decompress DuckDB WASM");
+          return decompressGzipBytes(wasmPayload)
+            .then((wasm) => {
+              wasmMetric?.end(formatBytes(wasm.byteLength));
+              return wasm;
+            })
+            .catch((error: unknown) => {
+              wasmMetric?.fail(error instanceof Error ? error.message : String(error));
+              throw error;
+            });
+        })();
+  const [downloadedWorkerSource, wasm] = await Promise.all([
+    workerSourcePromise,
+    wasmPromise,
+  ]);
   const workerMetric = metrics?.start("Prepare DuckDB worker");
   let wrapper: string;
   try {
-    const workerSource = new TextDecoder().decode(
-      decodeBase64(requiredElement("motor-duckdb-worker").textContent ?? ""),
-    );
+    const workerSource = patchDuckDBWorker(downloadedWorkerSource);
     wrapper = `
     let motorWasm;
     const motorNativeFetch = globalThis.fetch.bind(globalThis);
@@ -150,16 +293,6 @@ export async function createEmbeddedDuckDBWorker(metrics?: RuntimeMetrics): Prom
   const workerUrl = URL.createObjectURL(new Blob([wrapper], { type: "text/javascript" }));
   const worker = new Worker(workerUrl);
   workerMetric?.end();
-  const wasmPayload = requiredElement("motor-duckdb-wasm").textContent ?? "";
-  const wasmMetric = metrics?.start("Decompress DuckDB WASM");
-  let wasm: ArrayBuffer;
-  try {
-    wasm = await decompressGzipBytes(wasmPayload);
-    wasmMetric?.end(formatBytes(wasm.byteLength));
-  } catch (error) {
-    wasmMetric?.fail(error instanceof Error ? error.message : String(error));
-    throw error;
-  }
   const initMetric = metrics?.start("Initialize DuckDB worker");
   try {
     await new Promise<void>((resolve, reject) => {

@@ -2,10 +2,11 @@
 
 <img src="src/motor/static/motor-logo.png" alt="motor logo" width="160">
 
-motor compiles Markdown/YAML/SQL report specifications and CSV/Parquet data into one
-self-contained HTML artifact. The compiler validates a report's parameters,
-named SQL dependency graph, components, source identity, and freshness before
-packaging the source data.
+motor compiles Markdown/YAML/SQL report specifications and CSV/Parquet data
+into one interactive HTML artifact. Reports are self-contained by default; an
+optional smaller CDN build reuses browser-cached DuckDB assets. The compiler
+validates a report's parameters, named SQL dependency graph, components, source
+identity, and freshness before packaging the source data.
 
 ## Documentation
 
@@ -64,6 +65,32 @@ motor inspect report.html
 Open `report.html` directly in a modern browser. The generated report contains
 its runtime and data and does not require a server or network connection.
 
+For smaller reports when users have internet access, build DuckDB as
+version-pinned browser-cached CDN assets:
+
+```bash
+motor build path/to/report.md --out report.html --asset-mode cdn
+```
+
+The default `embedded` artifact includes DuckDB and works offline. The `cdn`
+artifact omits DuckDB WASM and its worker, normally reducing each HTML by about
+12 MiB. The first report downloads the pinned DuckDB 1.32.0 resources from
+jsDelivr; later reports reuse the browser HTTP cache. Source data, Vega, XLSX
+support, and the motor runtime remain embedded. For repeated builds:
+
+```bash
+export MOTOR_ASSET_MODE=cdn
+motor build first/report.md --out first.html
+motor build second/report.md --out second.html
+```
+
+An explicit `--asset-mode embedded` overrides the environment variable. Asset
+mode belongs to the build command, not report frontmatter, so the same
+`report.md` can produce both forms. Both forms share one artifact ID and record
+their effective mode in the manifest; their exact HTML SHA-256 values differ.
+See the complete caching, failure, and worker-patching contract in
+[CLI and runtime](docs/cli-and-runtime.md#cdn-asset-mode).
+
 To update an existing virtual-environment installation from `master`:
 
 ```bash
@@ -108,7 +135,9 @@ The browser requests `{endpoint}/reports/{slug}.json`. If the returned
 `artifact_id` differs from the current artifact ID, the badge links to
 `distribution_url`. This URL can point to a Mattermost channel, a Nextcloud
 folder or file, or any other distribution location. Server failures, CORS
-failures, and offline usage are ignored; there is no time-based staleness rule. See
+failures, and offline usage are ignored by the update check; independently,
+`cdn` asset mode requires DuckDB to be cached or reachable. There is no
+time-based staleness rule. See
 [`docs/cli-and-runtime.md`](docs/cli-and-runtime.md#update-notification-server)
 for the complete contract.
 

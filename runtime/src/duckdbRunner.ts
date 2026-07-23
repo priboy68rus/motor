@@ -1,7 +1,7 @@
 import * as duckdb from "@duckdb/duckdb-wasm";
 import { DataType, DateUnit, type Field } from "apache-arrow";
 
-import { createEmbeddedDuckDBWorker, type EmbeddedSource } from "./dataLoader";
+import { createDuckDBWorker, type EmbeddedSource } from "./dataLoader";
 import { renderQueryTemplate } from "./queryTemplates";
 import type { RuntimeMetrics } from "./runtimeMetrics";
 import type { ParamOptions, ParamValues, QueryResults, QueryRow, ReportSpec } from "./types";
@@ -138,7 +138,7 @@ export class DuckDBRunner {
     metrics?: RuntimeMetrics,
   ): Promise<void> {
     this.snapshotKey = snapshotKey;
-    const { worker, workerUrl } = await createEmbeddedDuckDBWorker(metrics);
+    const { worker, workerUrl } = await createDuckDBWorker(metrics);
     this.urls.push(workerUrl);
     this.database = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
     const instantiate = async (): Promise<void> => {

@@ -1,7 +1,13 @@
 export type Manifest = {
   report: { slug: string; title: string; timezone: string };
   artifact: { id: string; content_sha256: string };
-  build: { built_at: string; tool_name: string; tool_version: string; runtime_version: string };
+  build: {
+    built_at: string;
+    tool_name: string;
+    tool_version: string;
+    runtime_version: string;
+    asset_mode?: "embedded" | "cdn";
+  };
   freshness: { status: "passed" | "warning"; data_through: string | null; processed_at: string | null };
   sources: {
     name: string;
