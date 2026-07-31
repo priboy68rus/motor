@@ -632,11 +632,20 @@ export function scatterSpec(
   const reverseColors = component.props.color_direction === "lower_is_darker";
   const details = parseDetails(component.props.details);
   const percent = component.props.format === "percent";
+  const sampleX = rows.find((row) => row[x] != null)?.[x];
+  const dateOnly = typeof sampleX === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sampleX);
+  const xType =
+    typeof sampleX === "string" &&
+    /^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(sampleX) &&
+    !Number.isNaN(Date.parse(sampleX))
+      ? ("temporal" as const)
+      : ("quantitative" as const);
   const tooltip = [
     {
       field: x,
-      type: "quantitative" as const,
+      type: xType,
       title: x,
+      ...(dateOnly ? { format: "%Y-%m-%d" } : {}),
     },
     {
       field: y,
@@ -672,7 +681,12 @@ export function scatterSpec(
       opacity: 0.78,
     },
     encoding: {
-      x: { field: x, type: "quantitative", title: x },
+      x: {
+        field: x,
+        type: xType,
+        title: x,
+        ...(dateOnly ? { axis: { format: "%Y-%m-%d" } } : {}),
+      },
       y: {
         field: y,
         type: "quantitative",

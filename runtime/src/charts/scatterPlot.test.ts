@@ -49,3 +49,32 @@ test("Vega renders a quantitative scatter plot with point tooltip fields", async
   const svg = await new View(parse(compiled), { renderer: "none" }).toSVG();
   assert.match(svg, /Segment/);
 });
+
+test("scatter plot infers an ISO date X field as temporal", async () => {
+  const spec = scatterSpec(
+    {
+      id: "monthly_revenue",
+      type: "ScatterChart",
+      query: "monthly_revenue",
+      props: { x: "month_dt", y: "revenue" },
+    },
+    [
+      { month_dt: "2026-01-01", revenue: 10 },
+      { month_dt: "2026-02-01", revenue: 20 },
+    ],
+  );
+
+  const unitSpec = spec as unknown as {
+    encoding?: {
+      x?: { type?: string; axis?: { format?: string } };
+      y?: { type?: string };
+    };
+  };
+  assert.equal(unitSpec.encoding?.x?.type, "temporal");
+  assert.equal(unitSpec.encoding?.x?.axis?.format, "%Y-%m-%d");
+  assert.equal(unitSpec.encoding?.y?.type, "quantitative");
+
+  const compiled = compile(spec).spec;
+  const svg = await new View(parse(compiled), { renderer: "none" }).toSVG();
+  assert.match(svg, /2026-01-01/);
+});

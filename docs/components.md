@@ -414,12 +414,14 @@ boundary. Every asset mode still embeds complete source files; see
   format or scale values in SQL if needed.
 
 `ScatterChart` uses the same `group`/`color`, palette, formatting, details, and
-download conventions. Its X and Y fields are both quantitative, and every
-query row becomes one point. Unlike grouped line and bar charts, it does not
-connect points, stack them, offset them, or combine points with the same X in
-the tooltip. Tooltip values describe the point under the pointer. Non-numeric
-X or Y values are handled by Vega-Lite at render time and may be omitted or
-produce an in-report chart error.
+download conventions. Its Y field is quantitative; X may be quantitative or
+an ISO date/datetime. Every query row becomes one point. Unlike grouped line
+and bar charts, it does not connect points, stack them, offset them, or combine
+points with the same X in the tooltip. Tooltip values describe the point under
+the pointer. The X type is inferred from the first non-null value: ISO
+`YYYY-MM-DD` and ISO datetime strings use a temporal axis; other values use a
+quantitative axis. Date-only labels render as `YYYY-MM-DD`. Values incompatible
+with the inferred X type or with quantitative Y may be omitted by Vega-Lite.
 
 When `group` or `color` is configured, line and bar charts use a shared tooltip
 for the hovered X value. It lists every query row with that same X as
@@ -562,7 +564,8 @@ band width. `bar_width` overrides either behavior and must be greater than zero.
 
 ## `ScatterChart`
 
-Renders one filled point for each query row, using quantitative X and Y axes.
+Renders one filled point for each query row, using a quantitative or temporal X
+axis and a quantitative Y axis.
 
 ```md
 <ScatterChart
@@ -578,7 +581,7 @@ Renders one filled point for each query row, using quantitative X and Y axes.
 | Attribute | Type | Required | Default | Allowed values / behavior |
 | --- | --- | --- | --- | --- |
 | `query` | SQL block name | yes | — | Existing `kind=query`. |
-| `x` | result column | yes | — | Quantitative horizontal field. |
+| `x` | result column | yes | — | Horizontal field. ISO `YYYY-MM-DD` and ISO datetime strings use a temporal axis; other values use a quantitative axis. |
 | `y` | result column | yes | — | Quantitative vertical field. |
 | `title` | string | no | — | Card heading. |
 | `group` | result column | no | — | Categorical color and legend field. Takes precedence over `color`. |
