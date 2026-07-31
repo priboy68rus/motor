@@ -38,6 +38,34 @@ test("chart CSV keeps current visible fields in SQL column order", () => {
   });
 });
 
+test("scatter CSV exports point fields, color, and details", () => {
+  const data = componentCsvData(
+    {
+      id: "customers",
+      type: "ScatterChart",
+      query: "customers",
+      props: { x: "orders", y: "revenue", color: "segment", details: "country" },
+    },
+    [
+      {
+        hidden: "not exported",
+        segment: "SMB",
+        country: "DE",
+        orders: 4,
+        revenue: 120,
+      },
+    ],
+  );
+
+  assert.deepEqual(data.columns, ["segment", "country", "orders", "revenue"]);
+  assert.deepEqual(data.rows[0], {
+    segment: "SMB",
+    country: "DE",
+    orders: 4,
+    revenue: 120,
+  });
+});
+
 test("normalized bar CSV includes raw and plotted values", () => {
   const data = componentCsvData(
     {

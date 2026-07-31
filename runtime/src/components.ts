@@ -1253,6 +1253,7 @@ export class ReportRenderer {
         component.type === "Table" ||
         component.type === "LineChart" ||
         component.type === "BarChart" ||
+        component.type === "ScatterChart" ||
         component.type === "Heatmap"
       ) {
         attachDownloadControl(
@@ -1268,6 +1269,7 @@ export class ReportRenderer {
       else if (
         component.type === "LineChart" ||
         component.type === "BarChart" ||
+        component.type === "ScatterChart" ||
         component.type === "Heatmap"
       ) {
         const chart = document.createElement("div");

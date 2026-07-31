@@ -80,6 +80,7 @@ export type ComponentSpec = {
     | "Table"
     | "LineChart"
     | "BarChart"
+    | "ScatterChart"
     | "Heatmap";
   query?: string;
   props: Record<string, unknown>;

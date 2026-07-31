@@ -115,7 +115,11 @@ export function componentCsvData(
     };
   }
 
-  if (component.type === "LineChart" || component.type === "BarChart") {
+  if (
+    component.type === "LineChart" ||
+    component.type === "BarChart" ||
+    component.type === "ScatterChart"
+  ) {
     const x = String(component.props.x);
     const y = String(component.props.y);
     const series = component.props.group ?? component.props.color;

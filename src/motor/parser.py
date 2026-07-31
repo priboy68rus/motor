@@ -104,6 +104,23 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "download",
         },
     ),
+    "ScatterChart": (
+        {"query", "x", "y"},
+        {
+            "query",
+            "x",
+            "y",
+            "title",
+            "format",
+            "currency",
+            "group",
+            "color",
+            "details",
+            "color_scheme",
+            "color_direction",
+            "download",
+        },
+    ),
     "Heatmap": (
         {"query", "x", "y", "value"},
         {
@@ -653,28 +670,32 @@ def _extract_components(
                 attributes["bar_width"] = (
                     int(bar_width) if bar_width.is_integer() else bar_width
                 )
-        if component_type == "LineChart":
-            marker = attributes.setdefault("marker", "none")
-            if marker not in {"none", "point", "circle"}:
-                raise ReportValidationError(
-                    "LineChart marker must be one of: none, point, circle"
-                )
+        if component_type in {"LineChart", "ScatterChart"}:
+            if component_type == "LineChart":
+                marker = attributes.setdefault("marker", "none")
+                if marker not in {"none", "point", "circle"}:
+                    raise ReportValidationError(
+                        "LineChart marker must be one of: none, point, circle"
+                    )
             color_scheme = attributes.get("color_scheme")
             if color_scheme is not None:
                 if not str(color_scheme).strip():
                     raise ReportValidationError(
-                        "LineChart color_scheme must not be empty"
+                        f"{component_type} color_scheme must not be empty"
                     )
                 if not ({"group", "color"} & set(attributes)):
                     raise ReportValidationError(
-                        "LineChart color_scheme requires a group or color attribute"
+                        f"{component_type} color_scheme requires a group or color attribute"
                     )
                 attributes.setdefault("color_direction", "higher_is_darker")
             elif "color_direction" in attributes:
                 raise ReportValidationError(
-                    "LineChart color_direction requires color_scheme"
+                    f"{component_type} color_direction requires color_scheme"
                 )
-        if component_type in {"LineChart", "Heatmap"} and "color_direction" in attributes:
+        if (
+            component_type in {"LineChart", "ScatterChart", "Heatmap"}
+            and "color_direction" in attributes
+        ):
             if attributes["color_direction"] not in {
                 "higher_is_darker",
                 "lower_is_darker",
@@ -801,7 +822,13 @@ def _extract_components(
                         "BigValue direction must be one of: higher_is_better, "
                         "lower_is_better, neutral"
                     )
-        if component_type in {"Table", "LineChart", "BarChart", "Heatmap"}:
+        if component_type in {
+            "Table",
+            "LineChart",
+            "BarChart",
+            "ScatterChart",
+            "Heatmap",
+        }:
             download = attributes.setdefault("download", True)
             if not isinstance(download, bool):
                 raise ReportValidationError(

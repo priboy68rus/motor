@@ -252,6 +252,7 @@ class ComponentSpec(StrictModel):
         "Table",
         "LineChart",
         "BarChart",
+        "ScatterChart",
         "Heatmap",
     ]
     query: str | None = None

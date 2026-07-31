@@ -59,7 +59,7 @@ create a component entry in the compiled runtime specification:
 | Attribute | Type | Required | Default | Contract |
 | --- | --- | --- | --- | --- |
 | `name` | identifier | yes | — | Report-wide unique template name such as `cohort_line`. |
-| `component` | component type | yes | — | Target type: `Filters`, `Text`, `DataStatus`, `VersionBadge`, `LoadingMetrics`, `BigValue`, `Table`, `LineChart`, `BarChart`, or `Heatmap`. |
+| `component` | component type | yes | — | Target type: `Filters`, `Text`, `DataStatus`, `VersionBadge`, `LoadingMetrics`, `BigValue`, `Table`, `LineChart`, `BarChart`, `ScatterChart`, or `Heatmap`. |
 | target attributes | type-specific | no | — | Any attribute supported by the target component except `id`, `template`, and `unset`. Required target attributes may be deferred to each use. |
 
 Template names are global and declaration order does not matter, so a
@@ -120,6 +120,7 @@ declared for another component type also fails compilation.
 | [`Table`](#table) | `query` | `id`, `title`, `columns`, `download` |
 | [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction`, `download` |
 | [`BarChart`](#barchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `stack`, `bar_width`, `download` |
+| [`ScatterChart`](#scatterchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `color_scheme`, `color_direction`, `download` |
 | [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `details`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency`, `download` |
 
 ## `Filters`
@@ -330,7 +331,7 @@ renaming and presentation formatting should currently be done in SQL.
 
 ## Data downloads
 
-`Table`, `LineChart`, `BarChart`, and `Heatmap` show a small data-download
+`Table`, `LineChart`, `BarChart`, `ScatterChart`, and `Heatmap` show a small data-download
 button by default. Clicking it opens a format menu with `CSV` and
 `Excel (.xlsx)`. Set `download="false"` on an individual component to remove
 the button and both formats:
@@ -354,7 +355,7 @@ returned by the query:
 
 - `Table` exports configured `columns`, or every result column when `columns`
   is absent;
-- `LineChart` and `BarChart` export `x`, `y`, the effective `group` or `color`,
+- `LineChart`, `BarChart`, and `ScatterChart` export `x`, `y`, the effective `group` or `color`,
   and every `details` field;
 - `Heatmap` exports `x`, `y`, `value`, `row_metric` when configured, and every
   `details` field;
@@ -395,7 +396,7 @@ boundary. Every asset mode still embeds complete source files; see
 
 ## Shared chart behavior
 
-`LineChart` and `BarChart` share these concepts:
+`LineChart`, `BarChart`, and `ScatterChart` share these concepts:
 
 - `x` references the horizontal result column.
 - `y` references a quantitative result column.
@@ -408,9 +409,17 @@ boundary. Every asset mode still embeds complete source files; see
 - Tooltips show data under the pointer.
 - `format="percent"` treats Y values as fractions and formats the Y axis as
   percentages.
-- Other `format` strings and `currency` are currently accepted on line/bar
+- Other `format` strings and `currency` are currently accepted on line/bar/scatter
   charts but do not change rendering. Currency chart axes are not implemented;
   format or scale values in SQL if needed.
+
+`ScatterChart` uses the same `group`/`color`, palette, formatting, details, and
+download conventions. Its X and Y fields are both quantitative, and every
+query row becomes one point. Unlike grouped line and bar charts, it does not
+connect points, stack them, offset them, or combine points with the same X in
+the tooltip. Tooltip values describe the point under the pointer. Non-numeric
+X or Y values are handled by Vega-Lite at render time and may be omitted or
+produce an in-report chart error.
 
 When `group` or `color` is configured, line and bar charts use a shared tooltip
 for the hovered X value. It lists every query row with that same X as
@@ -550,6 +559,41 @@ them to ±100%.
 Without a series field, `zero` behaves as a normal single-series bar chart.
 Temporal X axes use a default width of 18 px. Nominal axes let Vega-Lite choose
 band width. `bar_width` overrides either behavior and must be greater than zero.
+
+## `ScatterChart`
+
+Renders one filled point for each query row, using quantitative X and Y axes.
+
+```md
+<ScatterChart
+  query="customers"
+  x="orders_count"
+  y="revenue"
+  color="segment"
+  details="country,company_name"
+  title="Orders vs revenue"
+/>
+```
+
+| Attribute | Type | Required | Default | Allowed values / behavior |
+| --- | --- | --- | --- | --- |
+| `query` | SQL block name | yes | — | Existing `kind=query`. |
+| `x` | result column | yes | — | Quantitative horizontal field. |
+| `y` | result column | yes | — | Quantitative vertical field. |
+| `title` | string | no | — | Card heading. |
+| `group` | result column | no | — | Categorical color and legend field. Takes precedence over `color`. |
+| `color` | result column | no | — | Categorical color field when `group` is absent. |
+| `details` | comma-separated result columns | no | — | Additional point fields shown in the tooltip. |
+| `color_scheme` | non-empty string | no | — | Vega ordinal scheme; requires `group` or `color`. |
+| `color_direction` | enum | conditional | `higher_is_darker` | Requires `color_scheme`; `higher_is_darker` or `lower_is_darker`. |
+| `format` | string | no | — | `percent` formats Y as a fraction percentage. Other values are accepted for consistency with line/bar charts. |
+| `currency` | string | no | — | Reserved; currently does not change chart axes. |
+| `download` | boolean | no | `true` | Shows the current-data CSV/XLSX menu. |
+
+Scatter points have a fixed visual size in the first version. The component
+does not currently support a size field, shape encoding, trend lines, log
+scales, zoom/brush, or cross-filtering. Query aggregation and any required
+numeric coercion should be done in SQL before rendering.
 
 ## `Heatmap`
 

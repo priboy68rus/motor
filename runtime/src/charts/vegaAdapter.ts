@@ -617,6 +617,88 @@ async function renderHeatmap(
   );
 }
 
+export function scatterSpec(
+  component: ComponentSpec,
+  rows: QueryRow[],
+  legendTitle?: string,
+): TopLevelSpec {
+  const x = String(component.props.x);
+  const y = String(component.props.y);
+  const group = component.props.group ? String(component.props.group) : undefined;
+  const color = group ?? (component.props.color ? String(component.props.color) : undefined);
+  const colorScheme = component.props.color_scheme
+    ? String(component.props.color_scheme)
+    : undefined;
+  const reverseColors = component.props.color_direction === "lower_is_darker";
+  const details = parseDetails(component.props.details);
+  const percent = component.props.format === "percent";
+  const tooltip = [
+    {
+      field: x,
+      type: "quantitative" as const,
+      title: x,
+    },
+    {
+      field: y,
+      type: "quantitative" as const,
+      title: y,
+      ...(percent ? { format: ".1%" } : {}),
+    },
+    ...(color
+      ? [
+          {
+            field: color,
+            type: "nominal" as const,
+            title: legendTitle ?? color,
+          },
+        ]
+      : []),
+    ...details.map((field) => ({
+      field,
+      type: "nominal" as const,
+      title: detailLabel(field),
+    })),
+  ];
+  return {
+    $schema: "https://vega.github.io/schema/vega-lite/v6.json",
+    width: "container",
+    height: 300,
+    autosize: { type: "fit", contains: "padding", resize: true },
+    data: { values: rows },
+    mark: {
+      type: "point",
+      filled: true,
+      size: 70,
+      opacity: 0.78,
+    },
+    encoding: {
+      x: { field: x, type: "quantitative", title: x },
+      y: {
+        field: y,
+        type: "quantitative",
+        title: y,
+        ...(percent ? { format: ".1%", axis: { format: ".0%" } } : {}),
+      },
+      ...(color
+        ? {
+            color: {
+              field: color,
+              type: colorScheme ? ("ordinal" as const) : ("nominal" as const),
+              ...(colorScheme
+                ? {
+                    sort: "ascending" as const,
+                    scale: { scheme: colorScheme as ColorScheme, reverse: reverseColors },
+                  }
+                : {}),
+              ...(legendTitle ? { title: legendTitle } : {}),
+            },
+          }
+        : {}),
+      tooltip,
+    },
+  };
+}
+
 export async function renderChart(
   element: HTMLElement,
   component: ComponentSpec,
@@ -624,6 +706,12 @@ export async function renderChart(
   legendTitle?: string,
 ): Promise<ChartHandle> {
   if (component.type === "Heatmap") return renderHeatmap(element, component, rows);
+  if (component.type === "ScatterChart") {
+    return embedChart(element, scatterSpec(component, rows, legendTitle));
+  }
+  if (component.type !== "LineChart" && component.type !== "BarChart") {
+    throw new Error(`unsupported chart component: ${component.type}`);
+  }
   const x = String(component.props.x);
   const y = String(component.props.y);
   const group = component.props.group ? String(component.props.group) : undefined;

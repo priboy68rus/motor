@@ -1347,6 +1347,58 @@ select cohort_month, period_number, retention, cohort_size, retained_users from 
     assert heatmap["props"]["details"] == "cohort_size, retained_users"
 
 
+def test_scatter_chart_is_compiled_with_color_and_download_options(tmp_path: Path) -> None:
+    data = tmp_path / "customers.csv"
+    data.write_text(
+        "orders_count,revenue,segment,country\n"
+        "2,0.25,SMB,DE\n"
+        "8,0.75,Enterprise,FR\n",
+        encoding="utf-8",
+    )
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  customers:
+    path: customers.csv
+---
+```sql name=customer_points kind=query
+select orders_count, revenue, segment, country from customers
+```
+<ScatterChart
+  query="customer_points"
+  x="orders_count"
+  y="revenue"
+  color="segment"
+  details="country"
+  format="percent"
+  color_scheme="viridis"
+  color_direction="lower_is_darker"
+  download="false"
+/>
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    scatter = next(item for item in spec["components"] if item["type"] == "ScatterChart")
+    assert scatter["query"] == "customer_points"
+    assert scatter["props"] == {
+        "x": "orders_count",
+        "y": "revenue",
+        "color": "segment",
+        "details": "country",
+        "format": "percent",
+        "color_scheme": "viridis",
+        "color_direction": "lower_is_darker",
+        "download": False,
+    }
+
+
 @pytest.mark.parametrize(
     ("stack", "group", "message"),
     [
