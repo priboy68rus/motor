@@ -589,14 +589,20 @@ axis and a quantitative Y axis.
 | `details` | comma-separated result columns | no | — | Additional point fields shown in the tooltip. |
 | `color_scheme` | non-empty string | no | — | Vega ordinal scheme; requires `group` or `color`. |
 | `color_direction` | enum | conditional | `higher_is_darker` | Requires `color_scheme`; `higher_is_darker` or `lower_is_darker`. |
-| `format` | string | no | — | `percent` formats Y as a fraction percentage. Other values are accepted for consistency with line/bar charts. |
-| `currency` | string | no | — | Reserved; currently does not change chart axes. |
+| `format` | string | no | — | `percent` formats the Y axis and tooltip as a fraction percentage; `currency` formats tooltip values. Other values use number formatting. |
+| `currency` | string | no | `USD` with `format="currency"` | Currency code used by the motor tooltip. It does not change the Y axis. |
 | `download` | boolean | no | `true` | Shows the current-data CSV/XLSX menu. |
 
 Scatter points have a fixed visual size in the first version. The component
 does not currently support a size field, shape encoding, trend lines, log
 scales, zoom/brush, or cross-filtering. Query aggregation and any required
 numeric coercion should be done in SQL before rendering.
+
+Hovering a point opens motor's table tooltip rather than Vega's default
+tooltip. The heading contains the point's X value. The table contains Y, the
+effective `group` or `color` with its chart swatch when configured, and every
+`details` field. Only the point under the pointer is shown, even when several
+rows have the same X value. Y values respect `format` and `currency`.
 
 ## `Heatmap`
 

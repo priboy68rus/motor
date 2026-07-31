@@ -25,7 +25,7 @@ declare const vegaEmbed: (
 
 export type ChartHandle = { finalize: () => void };
 
-type XType = "temporal" | "nominal";
+type XType = "temporal" | "nominal" | "quantitative";
 
 type SharedTooltipEntry = {
   series: unknown;
@@ -41,6 +41,7 @@ type SharedTooltipBucket = {
 };
 
 type SharedTooltipConfig = {
+  mode?: "shared-x" | "point";
   x: string;
   y: string;
   series?: string;
@@ -214,6 +215,93 @@ function mountSharedTooltip(
       (config.series != null && !(config.series in datum))
     ) {
       hide();
+      return;
+    }
+    if (config.mode === "point") {
+      const point = datum as QueryRow;
+      const pointValues = [
+        point[config.x],
+        point[config.y],
+        ...(config.series ? [point[config.series]] : []),
+        ...config.details.map((detail) => point[detail.field]),
+      ];
+      const renderKey = `point\u0000${pointValues
+        .map((value) => tooltipKey(value, "nominal"))
+        .join("\u0000")}`;
+      if (activeKey !== renderKey) {
+        const heading = document.createElement("div");
+        heading.className = "motor-chart-shared-tooltip-heading";
+        heading.textContent = `${config.x}: ${tooltipText(point[config.x])}`;
+        const colorScale = view.scale("color") as ((value: unknown) => unknown) | undefined;
+        const table = document.createElement("table");
+        table.className = "motor-chart-shared-tooltip-table";
+        const head = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        if (config.series) {
+          headRow.append(text("th", "", "motor-chart-shared-tooltip-swatch-heading"));
+          headRow.append(
+            text(
+              "th",
+              config.seriesLabel ?? config.series,
+              "motor-chart-shared-tooltip-series-heading",
+            ),
+          );
+        }
+        headRow.append(text("th", config.y, "motor-chart-shared-tooltip-value-heading"));
+        for (const detail of config.details) {
+          headRow.append(
+            text(
+              "th",
+              detail.label ?? detailLabel(detail.field),
+              "motor-chart-shared-tooltip-detail-heading",
+            ),
+          );
+        }
+        head.append(headRow);
+
+        const body = document.createElement("tbody");
+        const row = document.createElement("tr");
+        row.className = "is-hovered";
+        if (config.series) {
+          const swatchCell = document.createElement("td");
+          swatchCell.className = "motor-chart-shared-tooltip-swatch-cell";
+          const swatch = document.createElement("span");
+          swatch.className = "motor-chart-shared-tooltip-swatch";
+          const color = colorScale?.(point[config.series]);
+          if (color != null) swatch.style.backgroundColor = String(color);
+          swatchCell.append(swatch);
+          row.append(
+            swatchCell,
+            text(
+              "td",
+              tooltipText(point[config.series]),
+              "motor-chart-shared-tooltip-label",
+            ),
+          );
+        }
+        row.append(
+          text(
+            "td",
+            formatValue(point[config.y], config.valueFormat),
+            "motor-chart-shared-tooltip-value",
+          ),
+        );
+        for (const detail of config.details) {
+          row.append(
+            text(
+              "td",
+              formatValue(point[detail.field]),
+              "motor-chart-shared-tooltip-detail-value",
+            ),
+          );
+        }
+        body.append(row);
+        table.append(head, body);
+        tooltip.replaceChildren(heading, table);
+        activeKey = renderKey;
+      }
+      tooltip.hidden = false;
+      positionTooltip(tooltip, event);
       return;
     }
     const key = tooltipKey((datum as QueryRow)[config.x], config.xType);
@@ -617,6 +705,19 @@ async function renderHeatmap(
   );
 }
 
+function scatterXType(rows: QueryRow[], x: string): {
+  type: "temporal" | "quantitative";
+  dateOnly: boolean;
+} {
+  const sample = rows.find((row) => row[x] != null)?.[x];
+  const dateOnly = typeof sample === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sample);
+  const temporal =
+    typeof sample === "string" &&
+    /^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(sample) &&
+    !Number.isNaN(Date.parse(sample));
+  return { type: temporal ? "temporal" : "quantitative", dateOnly };
+}
+
 export function scatterSpec(
   component: ComponentSpec,
   rows: QueryRow[],
@@ -630,44 +731,8 @@ export function scatterSpec(
     ? String(component.props.color_scheme)
     : undefined;
   const reverseColors = component.props.color_direction === "lower_is_darker";
-  const details = parseDetails(component.props.details);
   const percent = component.props.format === "percent";
-  const sampleX = rows.find((row) => row[x] != null)?.[x];
-  const dateOnly = typeof sampleX === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sampleX);
-  const xType =
-    typeof sampleX === "string" &&
-    /^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(sampleX) &&
-    !Number.isNaN(Date.parse(sampleX))
-      ? ("temporal" as const)
-      : ("quantitative" as const);
-  const tooltip = [
-    {
-      field: x,
-      type: xType,
-      title: x,
-      ...(dateOnly ? { format: "%Y-%m-%d" } : {}),
-    },
-    {
-      field: y,
-      type: "quantitative" as const,
-      title: y,
-      ...(percent ? { format: ".1%" } : {}),
-    },
-    ...(color
-      ? [
-          {
-            field: color,
-            type: "nominal" as const,
-            title: legendTitle ?? color,
-          },
-        ]
-      : []),
-    ...details.map((field) => ({
-      field,
-      type: "nominal" as const,
-      title: detailLabel(field),
-    })),
-  ];
+  const xAxis = scatterXType(rows, x);
   return {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
     width: "container",
@@ -679,13 +744,14 @@ export function scatterSpec(
       filled: true,
       size: 70,
       opacity: 0.78,
+      tooltip: false,
     },
     encoding: {
       x: {
         field: x,
-        type: xType,
+        type: xAxis.type,
         title: x,
-        ...(dateOnly ? { axis: { format: "%Y-%m-%d" } } : {}),
+        ...(xAxis.dateOnly ? { axis: { format: "%Y-%m-%d" } } : {}),
       },
       y: {
         field: y,
@@ -708,7 +774,31 @@ export function scatterSpec(
             },
           }
         : {}),
-      tooltip,
+    },
+  };
+}
+
+export function scatterTooltipConfig(
+  component: ComponentSpec,
+  rows: QueryRow[],
+  legendTitle?: string,
+): SharedTooltipConfig {
+  const x = String(component.props.x);
+  const y = String(component.props.y);
+  const group = component.props.group ? String(component.props.group) : undefined;
+  const color = group ?? (component.props.color ? String(component.props.color) : undefined);
+  return {
+    mode: "point",
+    x,
+    y,
+    ...(color ? { series: color, seriesLabel: legendTitle ?? color } : {}),
+    xType: scatterXType(rows, x).type,
+    rows,
+    details: parseDetails(component.props.details).map((field) => ({ field })),
+    valueFormat: {
+      format: component.props.format as ValueFormat | undefined,
+      currency:
+        component.props.currency == null ? undefined : String(component.props.currency),
     },
   };
 }
@@ -721,7 +811,11 @@ export async function renderChart(
 ): Promise<ChartHandle> {
   if (component.type === "Heatmap") return renderHeatmap(element, component, rows);
   if (component.type === "ScatterChart") {
-    return embedChart(element, scatterSpec(component, rows, legendTitle));
+    return embedChart(
+      element,
+      scatterSpec(component, rows, legendTitle),
+      scatterTooltipConfig(component, rows, legendTitle),
+    );
   }
   if (component.type !== "LineChart" && component.type !== "BarChart") {
     throw new Error(`unsupported chart component: ${component.type}`);
