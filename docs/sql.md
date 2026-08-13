@@ -236,5 +236,8 @@ An affected component displays:
 - rendered SQL after helper expansion.
 
 If a dependency failed, downstream blocks are skipped and list the failed
-dependency names. Copy the rendered SQL into DuckDB when debugging value types,
-casts, aggregation, or dialect issues.
+dependency names. The affected component also shows the original DuckDB error,
+together with the kind and name of the root block (for example,
+`view daily_sales`), but does not repeat that block's rendered SQL. Copy the
+rendered SQL shown for a directly failing query into DuckDB when debugging value
+types, casts, aggregation, or dialect issues.

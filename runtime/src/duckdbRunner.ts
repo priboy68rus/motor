@@ -2,6 +2,7 @@ import * as duckdb from "@duckdb/duckdb-wasm";
 import { DataType, DateUnit, type Field } from "apache-arrow";
 
 import { createDuckDBWorker, type EmbeddedSource } from "./dataLoader";
+import { QueryFailures } from "./queryErrors";
 import { renderQueryTemplate } from "./queryTemplates";
 import type { RuntimeMetrics } from "./runtimeMetrics";
 import type { ParamOptions, ParamValues, QueryResults, QueryRow, ReportSpec } from "./types";
@@ -120,11 +121,6 @@ function errorDetail(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function queryError(name: string, error: unknown, sql: string): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return `Query: ${name}\n${message}\n\nRendered SQL:\n${sql}`;
-}
-
 export class DuckDBRunner {
   private database?: duckdb.AsyncDuckDB;
   private connection?: duckdb.AsyncDuckDBConnection;
@@ -225,6 +221,7 @@ export class DuckDBRunner {
     const results: QueryResults = {};
     const errors: Record<string, string> = {};
     const failed = new Set<string>();
+    const failures = new QueryFailures();
     for (const name of queryOrder(spec)) {
       if (queryNames && !queryNames.has(name)) continue;
       onProgress?.(name);
@@ -235,7 +232,7 @@ export class DuckDBRunner {
       );
       if (failedDependencies.length > 0) {
         failed.add(name);
-        errors[name] = `Query: ${name}\nSkipped because dependencies failed: ${failedDependencies.join(", ")}`;
+        errors[name] = failures.skip(name, failedDependencies);
         continue;
       }
       let sql = query.sql_template;
@@ -260,7 +257,7 @@ export class DuckDBRunner {
       } catch (error) {
         metric?.fail(errorDetail(error));
         failed.add(name);
-        errors[name] = queryError(name, error, sql);
+        errors[name] = failures.fail(name, query.kind, error, sql);
       }
     }
     return { results, errors };
