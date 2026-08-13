@@ -423,18 +423,20 @@ the pointer. The X type is inferred from the first non-null value: ISO
 quantitative axis. Date-only labels render as `YYYY-MM-DD`. Values incompatible
 with the inferred X type or with quantitative Y may be omitted by Vega-Lite.
 
-When `group` or `color` is configured, line and bar charts use a shared tooltip
-for the hovered X value. It lists every query row with that same X as
-`series: value`, with a swatch taken from the chart's actual color scale. This
-makes one month show all cohorts, channels, countries, or other series at once.
+Line and bar charts always use motor's table tooltip for the hovered X value.
+It lists every query row with that same X. Without `group` or `color`, the table
+shows Y and every configured `details` field. With `group` or `color`, it also
+shows each row as `series: value`, with a swatch taken from the chart's actual
+color scale. This makes one month show all cohorts, channels, countries, or
+other series at once.
 Tooltip values respect `format="percent"`; currency values use `currency` even
 though currency axis formatting is not yet implemented. Query results should
 contain at most one row per X/series pair to avoid duplicate series lines in
 the tooltip. The row belonging to the mark directly under the cursor is
 highlighted with a background and accent while other rows are slightly muted.
 This does not reorder the list: tooltip rows always retain their query-result
-order. Charts without `group`, `color`, or `details` retain the ordinary
-single-mark tooltip.
+order. Charts without `group`, `color`, or `details` use the same motor tooltip
+with just the Y column.
 
 Shared line/bar tooltips use the same table layout with or without `details`.
 When `details` is configured, detail labels are rendered once as extra column
@@ -469,7 +471,7 @@ Other values use a nominal axis.
 | `title` | string | no | — | Card heading. |
 | `group` | result column | no | — | Creates separate colored lines. |
 | `color` | result column | no | — | Categorical color field; ignored when `group` is set. |
-| `details` | comma-separated result columns | no | — | Extra fields displayed below each tooltip series row. |
+| `details` | comma-separated result columns | no | — | Extra fields displayed as tooltip columns, with or without `group`. |
 | `marker` | enum | no | `none` | `none`, `point`, or `circle`. |
 | `color_scheme` | non-empty string | no | — | Vega sequential scheme; requires `group` or `color`. |
 | `color_direction` | enum | conditional | `higher_is_darker` | Requires `color_scheme`; `higher_is_darker` or `lower_is_darker`. |
@@ -528,7 +530,7 @@ scheme becomes an in-report chart rendering error.
 | `title` | string | no | — | Card heading. |
 | `group` | result column | no | — | Series color; also controls side-by-side offset for `stack="none"`. |
 | `color` | result column | no | — | Series color without grouped-bar offset; ignored when `group` is set. |
-| `details` | comma-separated result columns | no | — | Extra fields displayed below each tooltip series row. |
+| `details` | comma-separated result columns | no | — | Extra fields displayed as tooltip columns, with or without `group`. |
 | `stack` | enum | no | `zero` | `zero`, `none`, `normalize`, `normalize_gross`, or `normalize_net`. |
 | `bar_width` | positive finite number | no | axis-specific | Explicit bar width in pixels. |
 | `format` | string | no | — | Only `percent` currently changes rendering. |

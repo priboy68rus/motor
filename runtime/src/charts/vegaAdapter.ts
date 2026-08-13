@@ -61,6 +61,11 @@ type TooltipDetailConfig = {
   label?: string;
 };
 
+type NormalizedTooltipConfig = {
+  field: string;
+  label: string;
+};
+
 function parseDetails(value: unknown): string[] {
   if (value == null) return [];
   return String(value)
@@ -114,6 +119,35 @@ export function sharedTooltipBuckets(
     });
   }
   return buckets;
+}
+
+export function lineBarTooltipConfig(
+  component: ComponentSpec,
+  rows: QueryRow[],
+  xType: XType,
+  normalized?: NormalizedTooltipConfig,
+): SharedTooltipConfig {
+  const color = component.props.group
+    ? String(component.props.group)
+    : component.props.color
+      ? String(component.props.color)
+      : undefined;
+  return {
+    x: String(component.props.x),
+    y: String(component.props.y),
+    ...(color ? { series: color } : {}),
+    xType,
+    rows,
+    details: parseDetails(component.props.details).map((field) => ({ field })),
+    ...(normalized
+      ? { normalizedField: normalized.field, normalizedLabel: normalized.label }
+      : {}),
+    valueFormat: {
+      format: component.props.format as ValueFormat | undefined,
+      currency:
+        component.props.currency == null ? undefined : String(component.props.currency),
+    },
+  };
 }
 
 function tooltipText(value: unknown): string {
@@ -830,7 +864,6 @@ export async function renderChart(
   const colorScheme = component.props.color_scheme
     ? String(component.props.color_scheme)
     : undefined;
-  const details = parseDetails(component.props.details);
   const reverseColors = component.props.color_direction === "lower_is_darker";
   const percent = component.props.format === "percent";
   const sampleX = rows.find((row) => row[x] != null)?.[x];
@@ -909,27 +942,12 @@ export async function renderChart(
     data: { values: chartRows },
     encoding,
   };
-  const sharedTooltip = color || details.length > 0
-    ? {
-        x,
-        y,
-        ...(color ? { series: color } : {}),
-        xType,
-        rows: chartRows,
-        details: details.map((field) => ({ field })),
-        ...(signedNormalization
-          ? {
-              normalizedField: signedNormalization.field,
-              normalizedLabel: signedNormalization.label,
-            }
-          : {}),
-        valueFormat: {
-          format: component.props.format as ValueFormat | undefined,
-          currency:
-            component.props.currency == null ? undefined : String(component.props.currency),
-        },
-      }
-    : undefined;
+  const sharedTooltip = lineBarTooltipConfig(
+    component,
+    chartRows,
+    xType,
+    signedNormalization,
+  );
   const spec: TopLevelSpec =
     component.type === "LineChart"
       ? {
