@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { lineBarTooltipConfig, sharedTooltipBuckets } from "./vegaAdapter";
+import {
+  lineBarTooltipConfig,
+  sharedTooltipBuckets,
+  tooltipColorScale,
+} from "./vegaAdapter";
 import type { ComponentSpec, QueryRow } from "../types";
 
 test("line and bar tooltips include details without a group", () => {
@@ -38,4 +42,21 @@ test("line and bar charts create a motor tooltip even without optional fields", 
 
   assert.equal(config.series, undefined);
   assert.deepEqual(config.details, []);
+});
+
+test("an ungrouped tooltip does not request a missing Vega color scale", () => {
+  const view = {
+    scale: () => {
+      throw new Error("Unrecognized scale name: color");
+    },
+  };
+
+  assert.equal(tooltipColorScale(view, undefined), undefined);
+});
+
+test("a grouped tooltip uses the Vega color scale", () => {
+  const colorScale = (value: unknown): unknown => `color:${String(value)}`;
+  const view = { scale: (name: string) => (name === "color" ? colorScale : undefined) };
+
+  assert.equal(tooltipColorScale(view, "country")?.("RU"), "color:RU");
 });

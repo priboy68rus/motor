@@ -150,6 +150,15 @@ export function lineBarTooltipConfig(
   };
 }
 
+export function tooltipColorScale(
+  view: Pick<View, "scale">,
+  series?: string,
+): ((value: unknown) => unknown) | undefined {
+  return series
+    ? (view.scale("color") as ((value: unknown) => unknown) | undefined)
+    : undefined;
+}
+
 function tooltipText(value: unknown): string {
   return value == null || String(value).trim() === "" ? "—" : String(value);
 }
@@ -266,7 +275,7 @@ function mountSharedTooltip(
         const heading = document.createElement("div");
         heading.className = "motor-chart-shared-tooltip-heading";
         heading.textContent = `${config.x}: ${tooltipText(point[config.x])}`;
-        const colorScale = view.scale("color") as ((value: unknown) => unknown) | undefined;
+        const colorScale = tooltipColorScale(view, config.series);
         const table = document.createElement("table");
         table.className = "motor-chart-shared-tooltip-table";
         const head = document.createElement("thead");
@@ -354,7 +363,7 @@ function mountSharedTooltip(
       const heading = document.createElement("div");
       heading.className = "motor-chart-shared-tooltip-heading";
       heading.textContent = `${config.x}: ${tooltipText(bucket.x)}`;
-      const colorScale = view.scale("color") as ((value: unknown) => unknown) | undefined;
+      const colorScale = tooltipColorScale(view, config.series);
       const table = document.createElement("table");
       table.className = "motor-chart-shared-tooltip-table";
       const head = document.createElement("thead");
