@@ -66,8 +66,9 @@ function normalizedRows(
   if (component.type !== "BarChart") return undefined;
   const stack = String(component.props.stack ?? "zero");
   const temporalX = temporalValues(rows, x);
+  const partitionFields = component.props.group ? [String(component.props.group)] : [];
   if (stack === "normalize") {
-    const normalized = normalizeStandardRows(rows, x, y, temporalX);
+    const normalized = normalizeStandardRows(rows, x, y, temporalX, partitionFields);
     return { rows: normalized.rows, sourceField: normalized.field };
   }
   if (stack === "normalize_gross" || stack === "normalize_net") {
@@ -77,6 +78,7 @@ function normalizedRows(
       y,
       temporalX,
       stack as SignedNormalization,
+      partitionFields,
     );
     return { rows: normalized.rows, sourceField: normalized.field };
   }
@@ -122,11 +124,14 @@ export function componentCsvData(
   ) {
     const x = String(component.props.x);
     const y = String(component.props.y);
-    const series = component.props.group ?? component.props.color;
+    const seriesFields =
+      component.type === "ScatterChart"
+        ? [component.props.group ?? component.props.color]
+        : [component.props.group, component.props.color, component.props.line_style];
     const requested = unique([
       x,
       y,
-      series == null ? undefined : String(series),
+      ...seriesFields.map((field) => (field == null ? undefined : String(field))),
       ...commaSeparatedFields(component.props.details),
     ]);
     const columns = sourceOrderedColumns(rows, requested);

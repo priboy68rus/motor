@@ -28,7 +28,8 @@ export type ChartHandle = { finalize: () => void };
 type XType = "temporal" | "nominal" | "quantitative";
 
 type SharedTooltipEntry = {
-  series: unknown;
+  seriesKey: string;
+  seriesValues: { field: string; label: string; value: unknown }[];
   colorValue: unknown;
   value: unknown;
   normalizedValue?: unknown;
@@ -44,8 +45,7 @@ type SharedTooltipConfig = {
   mode?: "shared-x" | "point";
   x: string;
   y: string;
-  series?: string;
-  seriesLabel?: string;
+  seriesFields?: TooltipDetailConfig[];
   colorField?: string;
   xType: XType;
   rows: QueryRow[];
@@ -101,13 +101,17 @@ export function sharedTooltipBuckets(
       bucket = { x: xValue, entries: [] };
       buckets.set(key, bucket);
     }
+    const seriesValues = (config.seriesFields ?? []).map((series) => ({
+      field: series.field,
+      label: series.label ?? series.field,
+      value: row[series.field],
+    }));
     bucket.entries.push({
-      series: config.series ? row[config.series] : row[config.y],
+      seriesKey: tooltipSeriesKey(row, config),
+      seriesValues,
       colorValue: config.colorField
         ? row[config.colorField]
-        : config.series
-          ? row[config.series]
-          : row[config.y],
+        : row[config.y],
       value: row[config.y],
       ...(config.normalizedField
         ? { normalizedValue: row[config.normalizedField] }
@@ -121,21 +125,47 @@ export function sharedTooltipBuckets(
   return buckets;
 }
 
+function tooltipSeriesKey(row: QueryRow, config: SharedTooltipConfig): string {
+  const fields = config.seriesFields ?? [];
+  if (fields.length === 0) return tooltipKey(row[config.y], "nominal");
+  return fields
+    .map((series) => `${series.field}:${tooltipKey(row[series.field], "nominal")}`)
+    .join("\u0000");
+}
+
+function uniqueFields(fields: Array<string | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const field of fields) {
+    if (!field || seen.has(field)) continue;
+    seen.add(field);
+    result.push(field);
+  }
+  return result;
+}
+
 export function lineBarTooltipConfig(
   component: ComponentSpec,
   rows: QueryRow[],
   xType: XType,
   normalized?: NormalizedTooltipConfig,
+  legendTitles: Record<string, string> = {},
 ): SharedTooltipConfig {
-  const color = component.props.group
-    ? String(component.props.group)
-    : component.props.color
-      ? String(component.props.color)
+  const group = component.props.group ? String(component.props.group) : undefined;
+  const color = component.props.color ? String(component.props.color) : undefined;
+  const lineStyle =
+    component.type === "LineChart" && component.props.line_style
+      ? String(component.props.line_style)
       : undefined;
+  const seriesFields = uniqueFields([group, color, lineStyle]).map((field) => ({
+    field,
+    label: legendTitles[field] ?? field,
+  }));
   return {
     x: String(component.props.x),
     y: String(component.props.y),
-    ...(color ? { series: color } : {}),
+    ...(seriesFields.length > 0 ? { seriesFields } : {}),
+    ...(color ? { colorField: color } : {}),
     xType,
     rows,
     details: parseDetails(component.props.details).map((field) => ({ field })),
@@ -192,6 +222,7 @@ function mountSharedTooltip(
   tooltip.setAttribute("role", "tooltip");
   tooltip.hidden = true;
   document.body.append(tooltip);
+  const seriesFields = config.seriesFields ?? [];
 
   let activeKey: string | undefined;
   const hide = (): void => {
@@ -255,7 +286,7 @@ function mountSharedTooltip(
       !datum ||
       typeof datum !== "object" ||
       !(config.x in datum) ||
-      (config.series != null && !(config.series in datum))
+      seriesFields.some((series) => !(series.field in datum))
     ) {
       hide();
       return;
@@ -265,7 +296,7 @@ function mountSharedTooltip(
       const pointValues = [
         point[config.x],
         point[config.y],
-        ...(config.series ? [point[config.series]] : []),
+        ...seriesFields.map((series) => point[series.field]),
         ...config.details.map((detail) => point[detail.field]),
       ];
       const renderKey = `point\u0000${pointValues
@@ -275,19 +306,17 @@ function mountSharedTooltip(
         const heading = document.createElement("div");
         heading.className = "motor-chart-shared-tooltip-heading";
         heading.textContent = `${config.x}: ${tooltipText(point[config.x])}`;
-        const colorScale = tooltipColorScale(view, config.series);
+        const colorScale = tooltipColorScale(view, config.colorField);
         const table = document.createElement("table");
         table.className = "motor-chart-shared-tooltip-table";
         const head = document.createElement("thead");
         const headRow = document.createElement("tr");
-        if (config.series) {
+        if (config.colorField) {
           headRow.append(text("th", "", "motor-chart-shared-tooltip-swatch-heading"));
+        }
+        for (const series of seriesFields) {
           headRow.append(
-            text(
-              "th",
-              config.seriesLabel ?? config.series,
-              "motor-chart-shared-tooltip-series-heading",
-            ),
+            text("th", series.label ?? series.field, "motor-chart-shared-tooltip-series-heading"),
           );
         }
         headRow.append(text("th", config.y, "motor-chart-shared-tooltip-value-heading"));
@@ -305,21 +334,19 @@ function mountSharedTooltip(
         const body = document.createElement("tbody");
         const row = document.createElement("tr");
         row.className = "is-hovered";
-        if (config.series) {
+        if (config.colorField) {
           const swatchCell = document.createElement("td");
           swatchCell.className = "motor-chart-shared-tooltip-swatch-cell";
           const swatch = document.createElement("span");
           swatch.className = "motor-chart-shared-tooltip-swatch";
-          const color = colorScale?.(point[config.series]);
+          const color = colorScale?.(point[config.colorField]);
           if (color != null) swatch.style.backgroundColor = String(color);
           swatchCell.append(swatch);
+          row.append(swatchCell);
+        }
+        for (const series of seriesFields) {
           row.append(
-            swatchCell,
-            text(
-              "td",
-              tooltipText(point[config.series]),
-              "motor-chart-shared-tooltip-label",
-            ),
+            text("td", tooltipText(point[series.field]), "motor-chart-shared-tooltip-label"),
           );
         }
         row.append(
@@ -348,10 +375,7 @@ function mountSharedTooltip(
       return;
     }
     const key = tooltipKey((datum as QueryRow)[config.x], config.xType);
-    const hoveredSeriesKey = tooltipKey(
-      config.series ? (datum as QueryRow)[config.series] : (datum as QueryRow)[config.y],
-      "nominal",
-    );
+    const hoveredSeriesKey = tooltipSeriesKey(datum as QueryRow, config);
     const renderKey = `${key}\u0000${hoveredSeriesKey}`;
     const bucket = buckets.get(key);
     if (!bucket) {
@@ -363,19 +387,17 @@ function mountSharedTooltip(
       const heading = document.createElement("div");
       heading.className = "motor-chart-shared-tooltip-heading";
       heading.textContent = `${config.x}: ${tooltipText(bucket.x)}`;
-      const colorScale = tooltipColorScale(view, config.series);
+      const colorScale = tooltipColorScale(view, config.colorField);
       const table = document.createElement("table");
       table.className = "motor-chart-shared-tooltip-table";
       const head = document.createElement("thead");
       const headRow = document.createElement("tr");
-      if (config.series) {
+      if (config.colorField) {
         headRow.append(text("th", "", "motor-chart-shared-tooltip-swatch-heading"));
+      }
+      for (const series of seriesFields) {
         headRow.append(
-          text(
-            "th",
-            config.seriesLabel ?? config.series,
-            "motor-chart-shared-tooltip-series-heading",
-          ),
+          text("th", series.label ?? series.field, "motor-chart-shared-tooltip-series-heading"),
         );
       }
       headRow.append(text("th", config.y, "motor-chart-shared-tooltip-value-heading"));
@@ -402,9 +424,8 @@ function mountSharedTooltip(
       const body = document.createElement("tbody");
       for (const entry of bucket.entries) {
         const row = document.createElement("tr");
-        row.className =
-          tooltipKey(entry.series, "nominal") === hoveredSeriesKey ? "is-hovered" : "is-muted";
-        if (config.series) {
+        row.className = entry.seriesKey === hoveredSeriesKey ? "is-hovered" : "is-muted";
+        if (config.colorField) {
           const swatchCell = document.createElement("td");
           swatchCell.className = "motor-chart-shared-tooltip-swatch-cell";
           const swatch = document.createElement("span");
@@ -412,9 +433,11 @@ function mountSharedTooltip(
           const color = colorScale?.(entry.colorValue);
           if (color != null) swatch.style.backgroundColor = String(color);
           swatchCell.append(swatch);
+          row.append(swatchCell);
+        }
+        for (const series of entry.seriesValues) {
           row.append(
-            swatchCell,
-            text("td", tooltipText(entry.series), "motor-chart-shared-tooltip-label"),
+            text("td", tooltipText(series.value), "motor-chart-shared-tooltip-label"),
           );
         }
         row.append(
@@ -715,8 +738,7 @@ export function heatmapTooltipConfig(
   return {
     x,
     y: value,
-    series: y,
-    seriesLabel: y,
+    seriesFields: [{ field: y, label: y }],
     colorField: value,
     xType: "nominal",
     rows: tooltipRows,
@@ -834,7 +856,9 @@ export function scatterTooltipConfig(
     mode: "point",
     x,
     y,
-    ...(color ? { series: color, seriesLabel: legendTitle ?? color } : {}),
+    ...(color
+      ? { seriesFields: [{ field: color, label: legendTitle ?? color }], colorField: color }
+      : {}),
     xType: scatterXType(rows, x).type,
     rows,
     details: parseDetails(component.props.details).map((field) => ({ field })),
@@ -846,27 +870,67 @@ export function scatterTooltipConfig(
   };
 }
 
-export async function renderChart(
-  element: HTMLElement,
+const LINE_STYLE_PATTERNS: number[][] = [
+  [1, 0],
+  [8, 4],
+  [8, 4, 2, 4],
+  [2, 3],
+  [12, 4],
+  [8, 3, 2, 3, 2, 3],
+];
+
+function orderedDomain(rows: QueryRow[], field: string): unknown[] {
+  const seen = new Set<string>();
+  const result: unknown[] = [];
+  for (const row of rows) {
+    const value = row[field];
+    const key = tooltipKey(value, "nominal");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(value);
+  }
+  return result;
+}
+
+function uniqueInternalField(rows: QueryRow[], base: string): string {
+  let field = base;
+  while (rows.some((row) => Object.hasOwn(row, field))) field += "_";
+  return field;
+}
+
+function compositeOffsetRows(
+  rows: QueryRow[],
+  fields: string[],
+): { rows: QueryRow[]; field: string } {
+  if (fields.length === 1) return { rows, field: fields[0]! };
+  const field = uniqueInternalField(rows, "__motor_bar_offset");
+  return {
+    field,
+    rows: rows.map((row) => ({
+      ...row,
+      [field]: fields
+        .map((source) => `${source}:${tooltipKey(row[source], "nominal")}`)
+        .join("\u0000"),
+    })),
+  };
+}
+
+export function lineBarSpec(
   component: ComponentSpec,
   rows: QueryRow[],
-  legendTitle?: string,
-): Promise<ChartHandle> {
-  if (component.type === "Heatmap") return renderHeatmap(element, component, rows);
-  if (component.type === "ScatterChart") {
-    return embedChart(
-      element,
-      scatterSpec(component, rows, legendTitle),
-      scatterTooltipConfig(component, rows, legendTitle),
-    );
-  }
+  legendTitles: Record<string, string> = {},
+): { spec: TopLevelSpec; tooltip: SharedTooltipConfig } {
   if (component.type !== "LineChart" && component.type !== "BarChart") {
-    throw new Error(`unsupported chart component: ${component.type}`);
+    throw new Error(`unsupported line/bar component: ${component.type}`);
   }
   const x = String(component.props.x);
   const y = String(component.props.y);
   const group = component.props.group ? String(component.props.group) : undefined;
-  const color = group ?? (component.props.color ? String(component.props.color) : undefined);
+  const color = component.props.color ? String(component.props.color) : undefined;
+  const lineStyle =
+    component.type === "LineChart" && component.props.line_style
+      ? String(component.props.line_style)
+      : undefined;
   const stack = component.type === "BarChart" ? String(component.props.stack ?? "zero") : "none";
   const marker =
     component.type === "LineChart" ? String(component.props.marker ?? "none") : "none";
@@ -877,20 +941,39 @@ export async function renderChart(
   const percent = component.props.format === "percent";
   const sampleX = rows.find((row) => row[x] != null)?.[x];
   const dateOnly = typeof sampleX === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sampleX);
-  const groupedBars = component.type === "BarChart" && Boolean(group) && stack === "none";
+  const offsetFields =
+    component.type === "BarChart"
+      ? stack === "none"
+        ? uniqueFields([group, color])
+        : uniqueFields([group])
+      : [];
   const xType: XType =
-    !groupedBars &&
+    offsetFields.length === 0 &&
     typeof sampleX === "string" &&
     /^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(sampleX) &&
     !Number.isNaN(Date.parse(sampleX))
       ? "temporal"
       : "nominal";
   if (stack === "normalize") validateStandardNormalize(rows, x, y);
+  const partitionFields = group ? [group] : [];
   const signedNormalization =
     stack === "normalize_gross" || stack === "normalize_net"
-      ? normalizeSignedRows(rows, x, y, xType === "temporal", stack)
+      ? normalizeSignedRows(
+          rows,
+          x,
+          y,
+          xType === "temporal",
+          stack,
+          partitionFields,
+        )
       : undefined;
-  const chartRows = signedNormalization?.rows ?? rows;
+  let chartRows = signedNormalization?.rows ?? rows;
+  let offsetField: string | undefined;
+  if (offsetFields.length > 0) {
+    const offset = compositeOffsetRows(chartRows, offsetFields);
+    chartRows = offset.rows;
+    offsetField = offset.field;
+  }
   const yField = signedNormalization?.field ?? y;
   const normalizedStack = stack === "normalize" || signedNormalization != null;
   const configuredBarWidth = component.props.bar_width;
@@ -900,6 +983,8 @@ export async function renderChart(
         ? 18
         : undefined
       : Number(configuredBarWidth);
+  const colorDomain = color ? orderedDomain(chartRows, color) : [];
+  const lineStyleDomain = lineStyle ? orderedDomain(chartRows, lineStyle) : [];
   const yEncoding = {
     field: yField,
     type: "quantitative" as const,
@@ -924,23 +1009,47 @@ export async function renderChart(
       ...(dateOnly && xType === "temporal" ? { axis: { format: "%Y-%m-%d" } } : {}),
     },
     y: yEncoding,
+    ...(component.type === "LineChart" && group
+      ? { detail: { field: group, type: "nominal" as const } }
+      : {}),
     ...(color
       ? {
           color: {
             field: color,
             type: colorScheme ? ("ordinal" as const) : ("nominal" as const),
-            ...(colorScheme
-              ? {
-                  sort: "ascending" as const,
-                  scale: { scheme: colorScheme as ColorScheme, reverse: reverseColors },
-                }
-              : {}),
-            ...(legendTitle ? { title: legendTitle } : {}),
+            scale: {
+              domain: colorDomain,
+              ...(colorScheme
+                ? { scheme: colorScheme as ColorScheme, reverse: reverseColors }
+                : {}),
+            },
+            ...(legendTitles[color] ? { title: legendTitles[color] } : {}),
           },
         }
       : {}),
-    ...(groupedBars && group
-      ? { xOffset: { field: group, type: "nominal" as const } }
+    ...(lineStyle
+      ? {
+          strokeDash: {
+            field: lineStyle,
+            type: "nominal" as const,
+            scale: {
+              domain: lineStyleDomain,
+              range: lineStyleDomain.map(
+                (_, index) => LINE_STYLE_PATTERNS[index % LINE_STYLE_PATTERNS.length],
+              ),
+            },
+            ...(legendTitles[lineStyle] ? { title: legendTitles[lineStyle] } : {}),
+          },
+        }
+      : {}),
+    ...(offsetField
+      ? {
+          xOffset: {
+            field: offsetField,
+            type: "nominal" as const,
+            sort: orderedDomain(chartRows, offsetField),
+          },
+        }
       : {}),
   };
   const baseSpec = {
@@ -951,11 +1060,12 @@ export async function renderChart(
     data: { values: chartRows },
     encoding,
   };
-  const sharedTooltip = lineBarTooltipConfig(
+  const tooltip = lineBarTooltipConfig(
     component,
     chartRows,
     xType,
     signedNormalization,
+    legendTitles,
   );
   const spec: TopLevelSpec =
     component.type === "LineChart"
@@ -970,7 +1080,7 @@ export async function renderChart(
                     mark: {
                       type: marker as "point" | "circle",
                       size: 70,
-                      tooltip: !sharedTooltip,
+                      tooltip: false,
                     },
                   },
                 ]),
@@ -979,7 +1089,7 @@ export async function renderChart(
                 type: "point",
                 size: 400,
                 opacity: 0,
-                tooltip: !sharedTooltip,
+                tooltip: false,
               },
             },
           ],
@@ -988,9 +1098,33 @@ export async function renderChart(
           ...baseSpec,
           mark: {
             type: "bar",
-            tooltip: !sharedTooltip,
+            tooltip: false,
             ...(barWidth == null ? {} : { width: barWidth }),
           },
         };
-  return embedChart(element, spec, sharedTooltip);
+  return { spec, tooltip };
+}
+
+export async function renderChart(
+  element: HTMLElement,
+  component: ComponentSpec,
+  rows: QueryRow[],
+  legendTitles: Record<string, string> = {},
+): Promise<ChartHandle> {
+  if (component.type === "Heatmap") return renderHeatmap(element, component, rows);
+  if (component.type === "ScatterChart") {
+    const group = component.props.group ? String(component.props.group) : undefined;
+    const color = group ?? (component.props.color ? String(component.props.color) : undefined);
+    const legendTitle = color ? legendTitles[color] : undefined;
+    return embedChart(
+      element,
+      scatterSpec(component, rows, legendTitle),
+      scatterTooltipConfig(component, rows, legendTitle),
+    );
+  }
+  if (component.type !== "LineChart" && component.type !== "BarChart") {
+    throw new Error(`unsupported chart component: ${component.type}`);
+  }
+  const chart = lineBarSpec(component, rows, legendTitles);
+  return embedChart(element, chart.spec, chart.tooltip);
 }

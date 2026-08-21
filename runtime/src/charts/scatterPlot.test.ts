@@ -46,8 +46,7 @@ test("Vega renders a quantitative scatter plot with point tooltip fields", async
     false,
   );
   assert.equal(tooltipConfig.mode, "point");
-  assert.equal(tooltipConfig.series, "segment");
-  assert.equal(tooltipConfig.seriesLabel, "Segment");
+  assert.deepEqual(tooltipConfig.seriesFields, [{ field: "segment", label: "Segment" }]);
   assert.deepEqual(tooltipConfig.details, [{ field: "country" }]);
 
   const compiled = compile(spec).spec;

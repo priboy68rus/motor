@@ -1186,26 +1186,34 @@ export class ReportRenderer {
     }
   }
 
-  private dimensionLegendTitle(
+  private dimensionLegendTitles(
     component: ComponentSpec,
     values: ParamValues,
-  ): string | undefined {
-    if (!component.query) return undefined;
-    const resultField = component.props.group ?? component.props.color;
-    if (!resultField) return undefined;
-    const paramName = this.spec.queries[component.query]?.dimension_bindings[String(resultField)];
-    if (!paramName) return undefined;
-    const param = this.spec.params[paramName];
-    if (!param || param.type !== "dimension") return undefined;
-    const value = values[paramName];
-    const choiceLabel =
-      value === "none"
-        ? "Nothing"
-        : typeof value === "string"
-          ? (param.choices?.[value]?.label ?? param.choices?.[value]?.field)
-          : undefined;
-    if (!choiceLabel) return undefined;
-    return `${param.label ?? paramLabel(paramName)}: ${choiceLabel}`;
+  ): Record<string, string> {
+    if (!component.query) return {};
+    const resultFields =
+      component.type === "LineChart" || component.type === "BarChart"
+        ? [component.props.color, component.props.line_style]
+        : [component.props.group ?? component.props.color];
+    const titles: Record<string, string> = {};
+    for (const resultField of resultFields) {
+      if (!resultField) continue;
+      const field = String(resultField);
+      const paramName = this.spec.queries[component.query]?.dimension_bindings[field];
+      if (!paramName) continue;
+      const param = this.spec.params[paramName];
+      if (!param || param.type !== "dimension") continue;
+      const value = values[paramName];
+      const choiceLabel =
+        value === "none"
+          ? "Nothing"
+          : typeof value === "string"
+            ? (param.choices?.[value]?.label ?? param.choices?.[value]?.field)
+            : undefined;
+      if (!choiceLabel) continue;
+      titles[field] = `${param.label ?? paramLabel(paramName)}: ${choiceLabel}`;
+    }
+    return titles;
   }
 
   private async renderComponent(
@@ -1276,10 +1284,10 @@ export class ReportRenderer {
         chart.className = "motor-chart";
         element.append(chart);
         try {
-          const legendTitle = this.dimensionLegendTitle(component, values);
+          const legendTitles = this.dimensionLegendTitles(component, values);
           this.chartHandles.set(
             component.id,
-            await renderChart(chart, component, rows, legendTitle),
+            await renderChart(chart, component, rows, legendTitles),
           );
         } catch (error) {
           element.className = "motor-card motor-component-error";

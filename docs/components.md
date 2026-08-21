@@ -41,7 +41,7 @@ create a component entry in the compiled runtime specification:
   component="LineChart"
   query="cohorts_costs"
   x="period_number"
-  group="cohort_month"
+  color="cohort_month"
   color_scheme="blues"
   color_direction="higher_is_darker"
   details="cohort_size,company_count"
@@ -118,7 +118,7 @@ declared for another component type also fails compilation.
 | [`LoadingMetrics`](#loadingmetrics) | — | `id`, `title`, `placement` |
 | [`BigValue`](#bigvalue) | `query`, `value` | `id`, `title`, `format`, `currency`, `notation`, `compare_value`, `delta`, `delta_label`, `direction` |
 | [`Table`](#table) | `query` | `id`, `title`, `columns`, `download` |
-| [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `marker`, `color_scheme`, `color_direction`, `download` |
+| [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `line_style`, `details`, `marker`, `color_scheme`, `color_direction`, `download` |
 | [`BarChart`](#barchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `stack`, `bar_width`, `download` |
 | [`ScatterChart`](#scatterchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `color_scheme`, `color_direction`, `download` |
 | [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `details`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency`, `download` |
@@ -355,8 +355,12 @@ returned by the query:
 
 - `Table` exports configured `columns`, or every result column when `columns`
   is absent;
-- `LineChart`, `BarChart`, and `ScatterChart` export `x`, `y`, the effective `group` or `color`,
-  and every `details` field;
+- `LineChart` exports `x`, `y`, every configured `group`, `color`, and
+  `line_style` field, and every `details` field;
+- `BarChart` exports `x`, `y`, both configured `group` and `color` fields, and
+  every `details` field;
+- `ScatterChart` exports `x`, `y`, the effective `group` or `color`, and every
+  `details` field;
 - `Heatmap` exports `x`, `y`, `value`, `row_metric` when configured, and every
   `details` field;
 - `BigValue` does not provide a download button.
@@ -400,9 +404,11 @@ boundary. Every asset mode still embeds complete source files; see
 
 - `x` references the horizontal result column.
 - `y` references a quantitative result column.
-- `group` splits observations into series and colors each series.
-- `color` assigns categorical color without all layout semantics of `group`.
-- If both `group` and `color` are set, `group` takes precedence.
+- `group` and `color` reference categorical result columns.
+- On line and bar charts they are independent and may be used together.
+- On line and bar charts, result order controls the first-seen order of `group`, `color`, and
+  `line_style` categories. Use a final SQL `ORDER BY` for stable drawing,
+  offset, palette, pattern, legend, and tooltip order.
 - `details` is a comma-separated list of additional result columns shown only
   in the tooltip.
 - Charts are responsive, container-width, 300 px high, and use SVG.
@@ -413,9 +419,11 @@ boundary. Every asset mode still embeds complete source files; see
   charts but do not change rendering. Currency chart axes are not implemented;
   format or scale values in SQL if needed.
 
-`ScatterChart` uses the same `group`/`color`, palette, formatting, details, and
-download conventions. Its Y field is quantitative; X may be quantitative or
-an ISO date/datetime. Every query row becomes one point. Unlike grouped line
+`ScatterChart` retains its point-specific `group`/`color` behavior: either field
+colors points, and `group` takes precedence when both are configured. It uses
+the same palette, formatting, details, and download conventions. Its Y field is
+quantitative; X may be quantitative or an ISO date/datetime. Every query row
+becomes one point. Unlike grouped line
 and bar charts, it does not connect points, stack them, offset them, or combine
 points with the same X in the tooltip. Tooltip values describe the point under
 the pointer. The X type is inferred from the first non-null value: ISO
@@ -424,31 +432,31 @@ quantitative axis. Date-only labels render as `YYYY-MM-DD`. Values incompatible
 with the inferred X type or with quantitative Y may be omitted by Vega-Lite.
 
 Line and bar charts always use motor's table tooltip for the hovered X value.
-It lists every query row with that same X. Without `group` or `color`, the table
-shows Y and every configured `details` field. With `group` or `color`, it also
-shows each row as `series: value`, with a swatch taken from the chart's actual
-color scale. This makes one month show all cohorts, channels, countries, or
-other series at once.
+It lists every query row with that same X. Without a series channel, the table
+shows Y and every configured `details` field. With `group`, `color`, or
+`line_style`, it adds one column for each configured field. A color swatch is
+shown only when `color` is configured. This makes one month show every
+country/gender/scenario combination at once.
 Tooltip values respect `format="percent"`; currency values use `currency` even
 though currency axis formatting is not yet implemented. Query results should
-contain at most one row per X/series pair to avoid duplicate series lines in
-the tooltip. The row belonging to the mark directly under the cursor is
+contain at most one row per X and composite-series key to avoid duplicate marks
+in the tooltip. The row belonging to the mark directly under the cursor is
 highlighted with a background and accent while other rows are slightly muted.
 This does not reorder the list: tooltip rows always retain their query-result
-order. Charts without `group`, `color`, or `details` use the same motor tooltip
-with just the Y column.
+order. Charts without `group`, `color`, `line_style`, or `details` use the same
+motor tooltip with just the Y column.
 
 Shared line/bar tooltips use the same table layout with or without `details`.
 When `details` is configured, detail labels are rendered once as extra column
 headers, and each series row contains only the corresponding values. The fields
-are read from the query result. They do not affect grouping, color, stacking,
-axes, or query dependencies. Labels are generated from field names, for example
+are read from the query result. They do not affect grouping, color, line style,
+stacking, axes, or query dependencies. Labels are generated from field names, for example
 `cohort_size` becomes `Cohort size`. Missing or empty values render as `—`.
 
 X-axis type is inferred from the first non-null X value. ISO `YYYY-MM-DD` and
-ISO datetime strings use a temporal axis, except side-by-side grouped bars,
-which use a discrete axis. Date-only temporal labels render as `YYYY-MM-DD`.
-Other values use a nominal axis.
+ISO datetime strings use a temporal axis, except bar charts with a side-by-side
+offset, which use a discrete axis. Date-only temporal labels render as
+`YYYY-MM-DD`. Other values use a nominal axis.
 
 ## `LineChart`
 
@@ -458,6 +466,8 @@ Other values use a nominal axis.
   x="day"
   y="revenue"
   group="country"
+  color="gender"
+  line_style="scenario"
   marker="circle"
   title="Revenue by day"
 />
@@ -469,11 +479,12 @@ Other values use a nominal axis.
 | `x` | result column | yes | — | Horizontal field. |
 | `y` | result column | yes | — | Quantitative vertical field. |
 | `title` | string | no | — | Card heading. |
-| `group` | result column | no | — | Creates separate colored lines. |
-| `color` | result column | no | — | Categorical color field; ignored when `group` is set. |
-| `details` | comma-separated result columns | no | — | Extra fields displayed as tooltip columns, with or without `group`. |
+| `group` | result column | no | — | Splits lines without changing their color or dash pattern. |
+| `color` | result column | no | — | Splits lines and assigns category colors in first-seen result order. Works independently from `group` and `line_style`. |
+| `line_style` | result column | no | — | Splits lines and assigns dash patterns in first-seen result order. Works independently from `group` and `color`. |
+| `details` | comma-separated result columns | no | — | Extra fields displayed as tooltip columns, with or without series channels. |
 | `marker` | enum | no | `none` | `none`, `point`, or `circle`. |
-| `color_scheme` | non-empty string | no | — | Vega sequential scheme; requires `group` or `color`. |
+| `color_scheme` | non-empty string | no | — | Vega sequential scheme; requires `color`. |
 | `color_direction` | enum | conditional | `higher_is_darker` | Requires `color_scheme`; `higher_is_darker` or `lower_is_darker`. |
 | `format` | string | no | — | Only `percent` currently changes rendering. |
 | `currency` | string | no | — | Reserved; currently no chart effect. |
@@ -489,6 +500,14 @@ Markers:
 - On a grouped line chart, hitting any series point opens the shared tooltip
   containing all series at that X, not only the nearest series.
 
+`line_style` assigns this fixed pattern cycle to distinct field values in
+first-seen result order: solid, dashed, dash-dot, dotted, long-dash, then
+dash-dot-dot. The cycle repeats after six values. These are stroke patterns;
+the independent `marker` attribute still applies the same observation-marker
+mode to every line. The complete line identity is the combination of all
+configured `group`, `color`, and `line_style` values. Missing combinations are
+not generated.
+
 Sequential color is useful for cohorts:
 
 ```md
@@ -496,15 +515,16 @@ Sequential color is useful for cohorts:
   query="retention"
   x="period_number"
   y="retention"
-  group="cohort_month"
+  color="cohort_month"
   format="percent"
   color_scheme="blues"
   color_direction="higher_is_darker"
 />
 ```
 
-Color fields are sorted ascending before applying the scheme. Reversing the
-direction reverses the scale. Any Vega scheme name may be supplied, including
+Color values retain their first-seen SQL result order when applying the scheme.
+Reversing the direction reverses the scale without changing category or legend
+order. Any Vega scheme name may be supplied, including
 `blues`, `greens`, `viridis`, `magma`, `inferno`, and `cividis`; an unknown
 scheme becomes an in-report chart rendering error.
 
@@ -516,6 +536,7 @@ scheme becomes an in-report chart rendering error.
   x="day"
   y="revenue"
   group="country"
+  color="gender"
   stack="zero"
   bar_width="24"
   title="Revenue by day"
@@ -528,9 +549,9 @@ scheme becomes an in-report chart rendering error.
 | `x` | result column | yes | — | Horizontal field. |
 | `y` | result column | yes | — | Quantitative vertical field. |
 | `title` | string | no | — | Card heading. |
-| `group` | result column | no | — | Series color; also controls side-by-side offset for `stack="none"`. |
-| `color` | result column | no | — | Series color without grouped-bar offset; ignored when `group` is set. |
-| `details` | comma-separated result columns | no | — | Extra fields displayed as tooltip columns, with or without `group`. |
+| `group` | result column | no | — | Outer side-by-side bar group without a color change. |
+| `color` | result column | no | — | Colored stack segment or, with `stack="none"`, colored side-by-side bar. Works independently from `group`. |
+| `details` | comma-separated result columns | no | — | Extra fields displayed as tooltip columns, with or without series channels. |
 | `stack` | enum | no | `zero` | `zero`, `none`, `normalize`, `normalize_gross`, or `normalize_net`. |
 | `bar_width` | positive finite number | no | axis-specific | Explicit bar width in pixels. |
 | `format` | string | no | — | Only `percent` currently changes rendering. |
@@ -541,11 +562,11 @@ Stack modes:
 
 | Value | Behavior |
 | --- | --- |
-| `zero` | Ordinary stacking from zero. Series values accumulate and total bar height is their sum. Default. |
-| `none` | No stacking. With `group`, series bars are placed side by side using a discrete X axis. With only `color`, same-X bars can overlap. |
-| `normalize` | Standard non-negative composition. Stacks series and normalizes each X category to 100%. Negative Y values produce a chart error. Requires `group` or `color`. |
-| `normalize_gross` | Signed gross share: `value / sum(abs(value))` within each X. Positive series stack above zero and negative series below it; the total absolute span is 100%. Requires `group` or `color`. |
-| `normalize_net` | Signed contribution to the net result: `value / abs(sum(value))` within each X. Positive series stack above zero and negative series below it. Contributions can exceed 100%; a zero net sum produces a chart error. Requires `group` or `color`. |
+| `zero` | Stacks `color` categories from zero. With `group`, group bars are offset side by side and each color stack is calculated inside its group. Default. |
+| `none` | No stacking. Every existing `group`/`color` combination is placed side by side using a discrete X axis. |
+| `normalize` | Non-negative composition of `color` categories. Each X/group stack is normalized independently to 100%. Negative Y values produce a chart error. Requires `color`. |
+| `normalize_gross` | Signed gross share within each X/group: `value / sum(abs(value))`. Positive colors stack above zero and negative colors below it; the total absolute span is 100%. Requires `color`. |
+| `normalize_net` | Signed contribution within each X/group: `value / abs(sum(value))`. Positive colors stack above zero and negative colors below it. Contributions can exceed 100%; a zero net sum produces a chart error. Requires `color`. |
 
 All normalization modes automatically format the Y axis as percentages. For
 `normalize_gross` and `normalize_net`, the shared tooltip keeps the original Y
@@ -555,12 +576,19 @@ remain empty. An all-zero gross stack renders at zero height; a net-normalized
 stack whose signed sum is zero cannot be defined and reports an error suggesting
 `normalize_gross` or `zero`.
 
+When both fields are configured, bar layout is nested: `group` selects the
+outer side-by-side position and `color` selects the stack segment. With
+`stack="none"`, motor instead offsets every existing group/color combination
+side by side while preserving the same color for a color value across all
+groups. Missing combinations are not generated.
+
 `normalize_net` answers how each series contributes to the signed net result.
 For example, `+120` and `-20` become `+120%` and `-20%`. If the net is close to
 zero, percentages can become very large; the axis expands rather than clipping
 them to ±100%.
 
-Without a series field, `zero` behaves as a normal single-series bar chart.
+Without `group` or `color`, `zero` behaves as a normal single-series bar chart.
+With `group` but no `color`, it renders same-colored group bars side by side.
 Temporal X axes use a default width of 18 px. Nominal axes let Vega-Lite choose
 band width. `bar_width` overrides either behavior and must be greater than zero.
 
@@ -746,9 +774,11 @@ For `LineChart` and `BarChart`, motor updates a legend title when all these
 conditions hold:
 
 1. the query uses `{{ dimension(parameter) }} AS stable_alias`;
-2. the chart's effective `group` or `color` equals `stable_alias`;
+2. the chart's `color` or `line_style` equals `stable_alias`;
 3. the selected parameter value resolves to a declared choice or `none`.
 
 The title is `<parameter label>: <choice label>`, for example `Group by:
 Country`. For `none`, the choice label is `Nothing`. This behavior needs no
-separate `color_param` attribute.
+separate legend-title attribute. `group` has no legend because it does not
+encode a visible style. Scatter charts retain their effective `group`/`color`
+legend behavior.

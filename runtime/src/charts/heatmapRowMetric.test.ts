@@ -146,7 +146,7 @@ test("heatmap shared tooltip groups every Y row by X and includes details", () =
 
   assert.equal(config.x, "period");
   assert.equal(config.y, "retention");
-  assert.equal(config.series, "cohort");
+  assert.deepEqual(config.seriesFields, [{ field: "cohort", label: "cohort" }]);
   assert.equal(config.colorField, "retention");
   assert.equal(config.rows.length, 2);
   assert.deepEqual(config.details, [
@@ -157,7 +157,7 @@ test("heatmap shared tooltip groups every Y row by X and includes details", () =
   const period = sharedTooltipBuckets(config).get("number:0");
   assert.deepEqual(
     period?.entries.map((entry) => ({
-      series: entry.series,
+      series: entry.seriesValues[0]?.value,
       value: entry.value,
       details: entry.details,
     })),

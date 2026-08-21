@@ -105,7 +105,7 @@ The sidebar exists only if at least one component uses sidebar placement.
         query="daily"
         x="day"
         y="revenue"
-        group="breakdown"
+        color="breakdown"
       />
     </Row>
   </Tab>

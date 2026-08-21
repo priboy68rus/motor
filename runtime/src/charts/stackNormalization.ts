@@ -19,6 +19,18 @@ function rowKey(value: unknown, temporal: boolean): string {
   return `json:${JSON.stringify(value)}`;
 }
 
+function stackKey(
+  row: StackRow,
+  x: string,
+  temporalX: boolean,
+  partitionFields: string[],
+): string {
+  return [
+    rowKey(row[x], temporalX),
+    ...partitionFields.map((field) => `${field}:${rowKey(row[field], false)}`),
+  ].join("\u0000");
+}
+
 function displayValue(value: unknown): string {
   return value == null || String(value).trim() === "" ? "—" : String(value);
 }
@@ -47,6 +59,7 @@ export function normalizeStandardRows(
   x: string,
   y: string,
   temporalX: boolean,
+  partitionFields: string[] = [],
 ): { rows: StackRow[]; field: string; label: string } {
   validateStandardNormalize(rows, x, y);
   const field = internalFieldName(rows, "__motor_normalized_value");
@@ -54,7 +67,7 @@ export function normalizeStandardRows(
   for (const row of rows) {
     const value = numericValue(row[y]);
     if (value == null) continue;
-    const key = rowKey(row[x], temporalX);
+    const key = stackKey(row, x, temporalX, partitionFields);
     totals.set(key, (totals.get(key) ?? 0) + value);
   }
   return {
@@ -62,7 +75,7 @@ export function normalizeStandardRows(
     label: "Share",
     rows: rows.map((row) => {
       const value = numericValue(row[y]);
-      const total = totals.get(rowKey(row[x], temporalX));
+      const total = totals.get(stackKey(row, x, temporalX, partitionFields));
       return {
         ...row,
         [field]: value == null ? null : total ? value / total : 0,
@@ -77,13 +90,14 @@ export function normalizeSignedRows(
   y: string,
   temporalX: boolean,
   mode: SignedNormalization,
+  partitionFields: string[] = [],
 ): { rows: StackRow[]; field: string; label: string } {
   const field = internalFieldName(rows, "__motor_normalized_value");
   const totals = new Map<string, { net: number; gross: number }>();
   for (const row of rows) {
     const value = numericValue(row[y]);
     if (value == null) continue;
-    const key = rowKey(row[x], temporalX);
+    const key = stackKey(row, x, temporalX, partitionFields);
     const total = totals.get(key) ?? { net: 0, gross: 0 };
     total.net += value;
     total.gross += Math.abs(value);
@@ -94,7 +108,7 @@ export function normalizeSignedRows(
     for (const row of rows) {
       const value = numericValue(row[y]);
       if (value == null) continue;
-      const total = totals.get(rowKey(row[x], temporalX));
+      const total = totals.get(stackKey(row, x, temporalX, partitionFields));
       if (!total || total.net === 0) {
         throw new Error(
           `BarChart stack='normalize_net' cannot normalize ${x}=${displayValue(row[x])}: ` +
@@ -109,7 +123,7 @@ export function normalizeSignedRows(
     label: mode === "normalize_gross" ? "Gross share" : "Net contribution",
     rows: rows.map((row) => {
       const value = numericValue(row[y]);
-      const total = totals.get(rowKey(row[x], temporalX));
+      const total = totals.get(stackKey(row, x, temporalX, partitionFields));
       const denominator = mode === "normalize_gross" ? total?.gross : Math.abs(total?.net ?? 0);
       const normalized = value == null ? null : denominator ? value / denominator : 0;
       return { ...row, [field]: normalized };

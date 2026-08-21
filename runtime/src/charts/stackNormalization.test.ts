@@ -52,3 +52,19 @@ test("standard normalization returns each value's positive stack share", () => {
   assert.equal(result.rows[0]![result.field], 0.8);
   assert.equal(result.rows[1]![result.field], 0.2);
 });
+
+test("normalization partitions color stacks by group", () => {
+  const groupedRows = [
+    { period: "2026-01", country: "RU", kind: "first", value: 80 },
+    { period: "2026-01", country: "RU", kind: "second", value: 20 },
+    { period: "2026-01", country: "US", kind: "first", value: 30 },
+    { period: "2026-01", country: "US", kind: "second", value: 70 },
+  ];
+
+  const result = normalizeStandardRows(groupedRows, "period", "value", false, ["country"]);
+
+  assert.deepEqual(
+    result.rows.map((row) => row[result.field]),
+    [0.8, 0.2, 0.3, 0.7],
+  );
+});

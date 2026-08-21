@@ -16,12 +16,21 @@ test("chart CSV keeps current visible fields in SQL column order", () => {
       id: "revenue",
       type: "LineChart",
       query: "revenue",
-      props: { x: "month", y: "gmv", group: "channel", details: "orders" },
+      props: {
+        x: "month",
+        y: "gmv",
+        group: "country",
+        color: "channel",
+        line_style: "scenario",
+        details: "orders",
+      },
     },
     [
       {
         hidden: "not exported",
+        country: "DE",
         channel: "app",
+        scenario: "actual",
         month: "2026-01-01",
         orders: 3,
         gmv: 120,
@@ -29,9 +38,11 @@ test("chart CSV keeps current visible fields in SQL column order", () => {
     ],
   );
 
-  assert.deepEqual(data.columns, ["channel", "month", "orders", "gmv"]);
+  assert.deepEqual(data.columns, ["country", "channel", "scenario", "month", "orders", "gmv"]);
   assert.deepEqual(data.rows[0], {
+    country: "DE",
     channel: "app",
+    scenario: "actual",
     month: "2026-01-01",
     orders: 3,
     gmv: 120,
@@ -72,18 +83,28 @@ test("normalized bar CSV includes raw and plotted values", () => {
       id: "share",
       type: "BarChart",
       query: "share",
-      props: { x: "month", y: "gmv", group: "channel", stack: "normalize" },
+      props: {
+        x: "month",
+        y: "gmv",
+        group: "country",
+        color: "channel",
+        stack: "normalize",
+      },
     },
     [
-      { month: "2026-01", channel: "app", gmv: 80 },
-      { month: "2026-01", channel: "web", gmv: 20 },
+      { month: "2026-01", country: "RU", channel: "app", gmv: 80 },
+      { month: "2026-01", country: "RU", channel: "web", gmv: 20 },
+      { month: "2026-01", country: "US", channel: "app", gmv: 30 },
+      { month: "2026-01", country: "US", channel: "web", gmv: 70 },
     ],
   );
 
-  assert.deepEqual(data.columns, ["month", "channel", "gmv", "gmv_normalized"]);
+  assert.deepEqual(data.columns, ["month", "country", "channel", "gmv", "gmv_normalized"]);
   assert.equal(data.rows[0]?.gmv, 80);
   assert.equal(data.rows[0]?.gmv_normalized, 0.8);
   assert.equal(data.rows[1]?.gmv_normalized, 0.2);
+  assert.equal(data.rows[2]?.gmv_normalized, 0.3);
+  assert.equal(data.rows[3]?.gmv_normalized, 0.7);
 });
 
 test("signed normalized bar CSV uses the plotted gross and net calculations", () => {
@@ -91,7 +112,7 @@ test("signed normalized bar CSV uses the plotted gross and net calculations", ()
     id: stack,
     type: "BarChart" as const,
     query: "share",
-    props: { x: "month", y: "gmv", group: "channel", stack },
+    props: { x: "month", y: "gmv", color: "channel", stack },
   });
   const gross = componentCsvData(component("normalize_gross"), [
     { month: "2026-01", channel: "app", gmv: 80 },

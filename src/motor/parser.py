@@ -80,6 +80,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "currency",
             "group",
             "color",
+            "line_style",
             "details",
             "marker",
             "color_scheme",
@@ -656,9 +657,9 @@ def _extract_components(
                     "BarChart stack must be one of: none, zero, normalize, "
                     "normalize_gross, normalize_net"
                 )
-            if stack in normalized_stacks and not ({"group", "color"} & set(attributes)):
+            if stack in normalized_stacks and "color" not in attributes:
                 raise ReportValidationError(
-                    f"BarChart stack={stack!r} requires a group or color attribute"
+                    f"BarChart stack={stack!r} requires a color attribute"
                 )
             if "bar_width" in attributes:
                 try:
@@ -683,9 +684,19 @@ def _extract_components(
                     raise ReportValidationError(
                         f"{component_type} color_scheme must not be empty"
                     )
-                if not ({"group", "color"} & set(attributes)):
+                color_fields = (
+                    {"color"}
+                    if component_type == "LineChart"
+                    else {"group", "color"}
+                )
+                if not (color_fields & set(attributes)):
+                    required_color = (
+                        "a color attribute"
+                        if component_type == "LineChart"
+                        else "a group or color attribute"
+                    )
                     raise ReportValidationError(
-                        f"{component_type} color_scheme requires a group or color attribute"
+                        f"{component_type} color_scheme requires {required_color}"
                     )
                 attributes.setdefault("color_direction", "higher_is_darker")
             elif "color_direction" in attributes:

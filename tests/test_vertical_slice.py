@@ -482,7 +482,7 @@ def test_compiles_query_graph_and_components() -> None:
     assert spec["queries"]["revenue_by_day"]["dimension_bindings"] == {
         "breakdown": "breakdown"
     }
-    assert chart["props"]["group"] == "breakdown"
+    assert chart["props"]["color"] == "breakdown"
     assert chart["props"]["stack"] == "zero"
     line_chart = next(item for item in spec["components"] if item["type"] == "LineChart")
     assert line_chart["props"]["marker"] == "circle"
@@ -1318,6 +1318,7 @@ select cohort_month, period_number, retention, cohort_size, retained_users from 
   x="period_number"
   y="retention"
   group="cohort_month"
+  line_style="cohort_month"
   details="cohort_size, retained_users"
 />
 <BarChart
@@ -1343,6 +1344,7 @@ select cohort_month, period_number, retention, cohort_size, retained_users from 
     bar = next(item for item in spec["components"] if item["type"] == "BarChart")
     heatmap = next(item for item in spec["components"] if item["type"] == "Heatmap")
     assert line["props"]["details"] == "cohort_size, retained_users"
+    assert line["props"]["line_style"] == "cohort_month"
     assert bar["props"]["details"] == "cohort_size"
     assert heatmap["props"]["details"] == "cohort_size, retained_users"
 
@@ -1403,9 +1405,9 @@ select orders_count, revenue, segment, country from customers
     ("stack", "group", "message"),
     [
         ("center", ' group="country"', "stack must be one of"),
-        ("normalize", "", "requires a group or color attribute"),
-        ("normalize_gross", "", "requires a group or color attribute"),
-        ("normalize_net", "", "requires a group or color attribute"),
+        ("normalize", "", "requires a color attribute"),
+        ("normalize_gross", "", "requires a color attribute"),
+        ("normalize_net", "", "requires a color attribute"),
     ],
 )
 def test_bar_chart_stack_is_validated(
@@ -1480,7 +1482,7 @@ data:
 ```sql name=summary kind=query
 select period, kind, value from events
 ```
-<BarChart query="summary" x="period" y="value" group="kind" stack="{stack}" />
+<BarChart query="summary" x="period" y="value" color="kind" stack="{stack}" />
 """,
         encoding="utf-8",
     )
@@ -1515,7 +1517,7 @@ select cohort_month, period_number, cohort_size, retention from cohorts
   query="retention"
   x="period_number"
   y="retention"
-  group="cohort_month"
+  color="cohort_month"
   color_scheme="viridis"
   color_direction="lower_is_darker"
 />
@@ -1597,7 +1599,7 @@ select x, y, value from values
         (
             '<LineChart query="retention" x="period_number" y="retention" '
             'color_scheme="blues" />',
-            "requires a group or color attribute",
+            "requires a color attribute",
         ),
         (
             '<LineChart query="retention" x="period_number" y="retention" '
@@ -1916,7 +1918,7 @@ select period, cohort, value, cohort_size from cohorts
   component="LineChart"
   query="cohort_values"
   x="period"
-  group="cohort"
+  color="cohort"
   color_scheme="blues"
   color_direction="higher_is_darker"
   details="cohort_size"
