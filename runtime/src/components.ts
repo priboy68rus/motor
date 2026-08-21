@@ -1192,9 +1192,11 @@ export class ReportRenderer {
   ): Record<string, string> {
     if (!component.query) return {};
     const resultFields =
-      component.type === "LineChart" || component.type === "BarChart"
-        ? [component.props.color, component.props.line_style]
-        : [component.props.group ?? component.props.color];
+      component.type === "LineChart"
+        ? [component.props.group, component.props.color, component.props.line_style]
+        : component.type === "BarChart"
+          ? [component.props.color]
+          : [component.props.group ?? component.props.color];
     const titles: Record<string, string> = {};
     for (const resultField of resultFields) {
       if (!resultField) continue;

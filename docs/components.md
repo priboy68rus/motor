@@ -479,7 +479,7 @@ offset, which use a discrete axis. Date-only temporal labels render as
 | `x` | result column | yes | — | Horizontal field. |
 | `y` | result column | yes | — | Quantitative vertical field. |
 | `title` | string | no | — | Card heading. |
-| `group` | result column | no | — | Splits lines without changing their color or dash pattern. |
+| `group` | result column | no | — | Splits lines without changing their color or dash pattern and creates a group legend in first-seen result order. |
 | `color` | result column | no | — | Splits lines and assigns category colors in first-seen result order. Works independently from `group` and `line_style`. |
 | `line_style` | result column | no | — | Splits lines and assigns dash patterns in first-seen result order. Works independently from `group` and `color`. |
 | `details` | comma-separated result columns | no | — | Extra fields displayed as tooltip columns, with or without series channels. |
@@ -774,11 +774,12 @@ For `LineChart` and `BarChart`, motor updates a legend title when all these
 conditions hold:
 
 1. the query uses `{{ dimension(parameter) }} AS stable_alias`;
-2. the chart's `color` or `line_style` equals `stable_alias`;
+2. a `LineChart` uses `stable_alias` in `group`, `color`, or `line_style`, or a
+   `BarChart` uses it in `color`;
 3. the selected parameter value resolves to a declared choice or `none`.
 
 The title is `<parameter label>: <choice label>`, for example `Group by:
 Country`. For `none`, the choice label is `Nothing`. This behavior needs no
-separate legend-title attribute. `group` has no legend because it does not
-encode a visible style. Scatter charts retain their effective `group`/`color`
-legend behavior.
+separate legend-title attribute. A line-chart `group` legend uses identical line
+symbols because grouping does not change color or dash pattern. Scatter charts
+retain their effective `group`/`color` legend behavior.

@@ -984,6 +984,7 @@ export function lineBarSpec(
         : undefined
       : Number(configuredBarWidth);
   const colorDomain = color ? orderedDomain(chartRows, color) : [];
+  const groupDomain = group ? orderedDomain(chartRows, group) : [];
   const lineStyleDomain = lineStyle ? orderedDomain(chartRows, lineStyle) : [];
   const yEncoding = {
     field: yField,
@@ -1010,7 +1011,15 @@ export function lineBarSpec(
     },
     y: yEncoding,
     ...(component.type === "LineChart" && group
-      ? { detail: { field: group, type: "nominal" as const } }
+      ? {
+          detail: { field: group, type: "nominal" as const },
+          strokeWidth: {
+            field: group,
+            type: "ordinal" as const,
+            scale: { domain: groupDomain, range: groupDomain.map(() => 2) },
+            ...(legendTitles[group] ? { title: legendTitles[group] } : {}),
+          },
+        }
       : {}),
     ...(color
       ? {

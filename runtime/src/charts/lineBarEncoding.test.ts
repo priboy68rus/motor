@@ -33,6 +33,10 @@ test("LineChart applies group, color, and line_style as independent ordered chan
   const chartEncoding = encoding(result.spec);
 
   assert.deepEqual(chartEncoding.detail, { field: "country", type: "nominal" });
+  assert.deepEqual(chartEncoding.strokeWidth.scale, {
+    domain: ["RU", "US"],
+    range: [2, 2],
+  });
   assert.deepEqual(chartEncoding.color.scale.domain, ["female", "male"]);
   assert.deepEqual(chartEncoding.strokeDash.scale.domain, ["actual", "plan", "forecast"]);
   assert.deepEqual(chartEncoding.strokeDash.scale.range, [
@@ -42,6 +46,33 @@ test("LineChart applies group, color, and line_style as independent ordered chan
   ]);
   const svg = await new View(parse(compile(result.spec).spec), { renderer: "none" }).toSVG();
   assert.match(svg, /stroke-dasharray/);
+  assert.match(svg, />RU</);
+  assert.match(svg, />US</);
+});
+
+test("LineChart renders a group legend without a color channel", async () => {
+  const component: ComponentSpec = {
+    id: "countries",
+    type: "LineChart",
+    query: "countries",
+    props: { x: "day", y: "value", group: "country" },
+  };
+  const rows: QueryRow[] = [
+    { day: "2026-01-01", country: "RU", value: 12 },
+    { day: "2026-01-02", country: "RU", value: 13 },
+    { day: "2026-01-01", country: "US", value: 15 },
+    { day: "2026-01-02", country: "US", value: 16 },
+  ];
+
+  const result = lineBarSpec(component, rows, { country: "Country" });
+  const chartEncoding = encoding(result.spec);
+  const svg = await new View(parse(compile(result.spec).spec), { renderer: "none" }).toSVG();
+
+  assert.equal(chartEncoding.color, undefined);
+  assert.equal(chartEncoding.strokeWidth.title, "Country");
+  assert.match(svg, />Country</);
+  assert.match(svg, />RU</);
+  assert.match(svg, />US</);
 });
 
 test("stacked BarChart offsets groups and stacks colors within each group", () => {
