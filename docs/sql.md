@@ -170,10 +170,23 @@ from orders
 group by month, breakdown
 ```
 
-The alias must be unique among dimension helpers in that SQL block. Components
-always reference this stable alias rather than the currently selected source
-field. When a chart uses it in `group` or `color`, motor can derive a dynamic
-legend title from the parameter and selected choice.
+An alias may be repeated among dimension helpers in the same SQL block when
+every occurrence uses the same dimension parameter. This supports matching
+result columns in separate CTEs or `UNION ALL` branches:
+
+```sql
+select {{ dimension(breakdown) }} as breakdown, revenue
+from actuals
+union all
+select {{ dimension(breakdown) }} as breakdown, revenue
+from forecast
+```
+
+The same alias cannot be shared by different dimension parameters in one SQL
+block because its parameter binding would be ambiguous. Components always
+reference this stable alias rather than the currently selected source field.
+When a chart uses it in `group` or `color`, motor can derive a dynamic legend
+title from the parameter and selected choice.
 
 ## Explicit filter scope
 

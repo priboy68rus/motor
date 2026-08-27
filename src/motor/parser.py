@@ -322,9 +322,11 @@ def _template_params(
                     f"dimension in SQL block {query_name!r} must be followed by AS alias"
                 )
             alias = alias_match.group("alias")
-            if alias in dimension_bindings:
+            bound_param = dimension_bindings.get(alias)
+            if bound_param is not None and bound_param != param:
                 raise ReportValidationError(
-                    f"SQL block {query_name!r} has duplicate dimension alias {alias!r}"
+                    f"SQL block {query_name!r} maps dimension alias {alias!r} "
+                    f"to both {bound_param!r} and {param!r}"
                 )
             dimension_bindings[alias] = param
         params.add(param)

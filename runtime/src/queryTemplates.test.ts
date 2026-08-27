@@ -61,3 +61,34 @@ test("include_null false treats null as an empty selection", () => {
     'select * from events where "country" IN (\'DE\')',
   );
 });
+
+test("dimension renders repeated aliases in union branches", () => {
+  const dimensionQuery: QuerySpec = {
+    kind: "query",
+    sql_template:
+      "select {{ dimension(breakdown) }} as breakdown from first_source " +
+      "union all " +
+      "select {{ dimension(breakdown) }} as breakdown from second_source",
+    depends_on: {
+      sources: ["first_source", "second_source"],
+      params: ["breakdown"],
+      queries: [],
+    },
+    dimension_bindings: { breakdown: "breakdown" },
+  };
+  const dimensionParam: ParamSpec = {
+    type: "dimension",
+    default: "country",
+    choices: { country: { field: "country" } },
+  };
+
+  assert.equal(
+    renderQueryTemplate(
+      dimensionQuery,
+      { breakdown: dimensionParam },
+      { breakdown: "country" },
+    ),
+    'select "country" as breakdown from first_source ' +
+      'union all select "country" as breakdown from second_source',
+  );
+});

@@ -1293,6 +1293,101 @@ group by 1
         compile_report(report)
 
 
+def test_dimension_sql_allows_repeated_alias_for_same_parameter(tmp_path: Path) -> None:
+    actuals = tmp_path / "actuals.csv"
+    actuals.write_text("country,value\nDE,10\n", encoding="utf-8")
+    forecast = tmp_path / "forecast.csv"
+    forecast.write_text("country,value\nDE,12\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  actuals:
+    path: actuals.csv
+  forecast:
+    path: forecast.csv
+params:
+  breakdown:
+    type: dimension
+    default: country
+    choices:
+      country:
+        field: country
+---
+```sql name=combined kind=query
+select {{ dimension(breakdown) }} as breakdown, value
+from actuals
+union all
+select {{ dimension(breakdown) }} as breakdown, value
+from forecast
+```
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert spec["queries"]["combined"]["dimension_bindings"] == {
+        "breakdown": "breakdown"
+    }
+    assert spec["queries"]["combined"]["depends_on"]["sources"] == [
+        "actuals",
+        "forecast",
+    ]
+
+
+def test_dimension_sql_rejects_alias_shared_by_different_parameters(
+    tmp_path: Path,
+) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("country,value\nDE,10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+params:
+  first_breakdown:
+    type: dimension
+    default: country
+    choices:
+      country:
+        field: country
+  second_breakdown:
+    type: dimension
+    default: country
+    choices:
+      country:
+        field: country
+---
+```sql name=combined kind=query
+select {{ dimension(first_breakdown) }} as breakdown, value
+from events
+union all
+select {{ dimension(second_breakdown) }} as breakdown, value
+from events
+```
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ReportValidationError,
+        match=(
+            "maps dimension alias 'breakdown' to both "
+            "'first_breakdown' and 'second_breakdown'"
+        ),
+    ):
+        compile_report(report)
+
+
 def test_chart_details_are_compiled(tmp_path: Path) -> None:
     data = tmp_path / "cohorts.csv"
     data.write_text(
