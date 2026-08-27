@@ -264,6 +264,7 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert ".motor-loading-metrics { display: grid;" in html
     assert "motor-loading-status-list" in html
     assert "__motorLoadingMetrics" in html
+    assert "motorDebug" in html
     assert "Intl.DateTimeFormat" in html
     assert "width: 240px; max-width: 100%;" in html
     assert ".motor-multiselect-panel { box-sizing: border-box; position: absolute;" in html

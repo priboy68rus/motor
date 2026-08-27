@@ -254,3 +254,41 @@ together with the kind and name of the root block (for example,
 `view daily_sales`), but does not repeat that block's rendered SQL. Copy the
 rendered SQL shown for a directly failing query into DuckDB when debugging value
 types, casts, aggregation, or dialect issues.
+
+## Browser SQL debugging
+
+After the report finishes loading, it exposes `window.motorDebug` in the
+browser developer console. The API uses a separate DuckDB connection to the
+same in-memory database as the report.
+
+| Method | Argument | Return value | Behavior |
+| --- | --- | --- | --- |
+| `sql(sql)` | non-empty SQL string | `Promise<Array<Record<string, unknown>>>` | Executes SQL against the loaded report database and returns normalized result rows. The promise rejects with the DuckDB error when execution fails. |
+| `querySql(name)` | declared SQL-block name | string | Returns that block's SQL body after expanding helpers with the current parameter values. An unknown name throws an error. |
+| `params()` | none | parameter-name/value mapping | Returns a clone of the report's current parameter values. Changing the returned object does not change the report. |
+| `queries()` | none | array of `{name, kind}` records | Lists every declared SQL block in report order; `kind` is `view` or `query`. |
+
+Browser consoles with top-level `await` can inspect arbitrary results directly:
+
+```js
+console.table(await motorDebug.sql(`
+  select breakdown, count(*) as rows
+  from promo_decision_activity
+  group by 1
+  order by rows desc
+`))
+
+motorDebug.querySql("promo_decision_activity")
+motorDebug.params()
+console.table(motorDebug.queries())
+```
+
+Source tables are available immediately after initialization. A Motor view is
+available after its dependency closure has executed; a view used only by a
+hidden tab may therefore require opening that tab first. Views are not
+materialized, so selecting from one executes its current definition.
+
+The debug connection is separate, but it shares database objects with the
+report. Statements that modify or drop tables and views can break the running
+report until the page is reloaded. They never change the source files or the
+HTML artifact.

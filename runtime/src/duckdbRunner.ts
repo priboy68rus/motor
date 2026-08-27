@@ -124,6 +124,7 @@ function errorDetail(error: unknown): string {
 export class DuckDBRunner {
   private database?: duckdb.AsyncDuckDB;
   private connection?: duckdb.AsyncDuckDBConnection;
+  private debugConnection?: Promise<duckdb.AsyncDuckDBConnection>;
   private urls: string[] = [];
   private snapshotKey = "";
   private queryCache = new Map<string, QueryRow[]>();
@@ -263,9 +264,21 @@ export class DuckDBRunner {
     return { results, errors };
   }
 
+  async debugSql(sql: string): Promise<QueryRow[]> {
+    if (!this.database) throw new Error("DuckDB is not initialized");
+    if (sql.trim() === "") throw new Error("debug SQL must not be empty");
+    this.debugConnection ??= this.database.connect();
+    const connection = await this.debugConnection;
+    return tableRows(await connection.query(sql));
+  }
+
   async close(): Promise<void> {
-    await this.connection?.close();
-    await this.database?.terminate();
-    for (const url of this.urls) URL.revokeObjectURL(url);
+    try {
+      await (await this.debugConnection)?.close();
+    } finally {
+      await this.connection?.close();
+      await this.database?.terminate();
+      for (const url of this.urls) URL.revokeObjectURL(url);
+    }
   }
 }

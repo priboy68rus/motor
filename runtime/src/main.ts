@@ -1,5 +1,6 @@
 import { ReportRenderer } from "./components";
 import { loadEmbeddedReport } from "./dataLoader";
+import { createMotorDebugApi } from "./debugApi";
 import { DuckDBRunner } from "./duckdbRunner";
 import { RuntimeMetrics } from "./runtimeMetrics";
 import type { RuntimeMetricsSnapshot } from "./runtimeMetrics";
@@ -64,7 +65,20 @@ async function start(): Promise<void> {
     }, metrics);
     await controller.initialize();
     startUpdateCheck(manifest, spec);
-    window.addEventListener("pagehide", () => void runner.close(), { once: true });
+    const initializedController = controller;
+    window.motorDebug = createMotorDebugApi(
+      runner,
+      spec,
+      () => initializedController.debugParamValues(),
+    );
+    window.addEventListener(
+      "pagehide",
+      () => {
+        delete window.motorDebug;
+        void runner.close();
+      },
+      { once: true },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (status) {

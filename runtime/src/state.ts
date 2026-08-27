@@ -88,6 +88,10 @@ export class ReportController {
     await this.renderer.updateRuntimeMetrics();
   }
 
+  debugParamValues(): ParamValues {
+    return structuredClone(this.values);
+  }
+
   updateParam(name: string, value: unknown, sourceComponentId?: string): void {
     if (!(name in this.spec.params) || sameValue(this.values[name], value)) return;
     this.values[name] = value;
