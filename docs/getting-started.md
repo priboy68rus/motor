@@ -3,7 +3,6 @@
 ## Requirements
 
 - Python 3.11 or newer.
-- Git when installing directly from GitHub.
 - A modern browser with Web Workers, WebAssembly, and `DecompressionStream`.
 
 Node.js is needed only when changing the browser runtime itself. It is not
@@ -11,18 +10,19 @@ needed to install motor or build reports.
 
 ## Install
 
-Create an isolated environment and install the package from GitHub:
+Create an isolated environment and install the package from PyPI:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install "git+https://github.com/priboy68rus/motor.git@master"
+python -m pip install motor-reports
 motor --help
 ```
 
-For reproducible builds, replace `master` with a commit SHA. The distribution
-name is `motor-reports`; the installed command is `motor`.
+For reproducible installations, pin the version with
+`python -m pip install "motor-reports==0.1.0"`. The distribution name is
+`motor-reports`; the installed command is `motor`.
 
 ## Minimal report
 
