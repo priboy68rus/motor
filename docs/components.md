@@ -411,7 +411,8 @@ boundary. Every asset mode still embeds complete source files; see
   offset, palette, pattern, legend, and tooltip order.
 - `details` is a comma-separated list of additional result columns shown only
   in the tooltip.
-- Charts are responsive, container-width, 300 px high, and use SVG.
+- Charts are responsive, container-width, 360 px high, and use SVG. Heatmaps
+  keep their independent content-driven height with a 300 px minimum.
 - Tooltips show data under the pointer.
 - `format="percent"` treats Y values as fractions and formats the Y axis as
   percentages.

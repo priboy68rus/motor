@@ -20,10 +20,13 @@ Avoid pasting or reading huge logs unless the concise output is insufficient.
 
 ## Project Workflow
 
+- Start every new task from an up-to-date `origin/master` in its own topic
+  branch. Never implement a task directly on `master`.
 - After every meaningful code change, run build/packaging.
 - Before committing intended source/configuration changes, run tests.
-- Commit the intended source/configuration changes with a short, descriptive message.
-- Push the commit to GitHub, normally `origin master` unless working on another branch.
+- After each user prompt, commit the resulting changes with a short,
+  descriptive message and push the current branch to GitHub.
+- Open a pull request only when the user explicitly requests one.
 
 ## Publishing a release
 

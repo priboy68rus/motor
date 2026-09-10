@@ -15,6 +15,8 @@ import {
   ROW_METRIC_TOOLTIP_FIELD,
 } from "./heatmapRowMetric";
 
+const STANDARD_CHART_HEIGHT = 360;
+
 const HEATMAP_LABEL_FIELD = "__motor_heatmap_label";
 
 export const MOTOR_VEGA_CONFIG = {
@@ -829,7 +831,7 @@ export function scatterSpec(
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
     config: MOTOR_VEGA_CONFIG,
     width: "container",
-    height: 300,
+    height: STANDARD_CHART_HEIGHT,
     autosize: { type: "fit", contains: "padding", resize: true },
     data: { values: rows },
     mark: {
@@ -1093,7 +1095,7 @@ export function lineBarSpec(
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
     config: MOTOR_VEGA_CONFIG,
     width: "container" as const,
-    height: 300,
+    height: STANDARD_CHART_HEIGHT,
     autosize: { type: "fit" as const, contains: "padding" as const, resize: true },
     data: { values: chartRows },
     encoding,

@@ -21,6 +21,22 @@ test("charts use the warm paper Vega theme", () => {
   assert.equal(MOTOR_VEGA_CONFIG.axis.gridColor, "#ece6dc");
 });
 
+test("line and bar charts use the taller standard height", () => {
+  const rows = [{ day: "2026-01-01", value: 12 }];
+  for (const type of ["LineChart", "BarChart"] as const) {
+    const result = lineBarSpec(
+      {
+        id: type.toLocaleLowerCase(),
+        type,
+        query: "daily",
+        props: { x: "day", y: "value" },
+      },
+      rows,
+    );
+    assert.equal((result.spec as { height?: number }).height, 360);
+  }
+});
+
 test("LineChart applies group, color, and line_style as independent ordered channels", async () => {
   const component: ComponentSpec = {
     id: "comparison",
