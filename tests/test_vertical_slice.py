@@ -1973,6 +1973,67 @@ data:
         compile_report(report)
 
 
+def test_spacer_preserves_an_empty_row_column(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("value\n10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+```sql name=summary kind=query
+select value from events
+```
+<Row>
+  <BigValue query="summary" value="value" />
+  <Spacer />
+</Row>
+""",
+        encoding="utf-8",
+    )
+
+    _, spec, _ = compile_report(report)
+
+    assert spec["components"][1] == {
+        "id": "component_002",
+        "type": "Spacer",
+        "props": {},
+    }
+    assert spec["layout"] == [
+        {
+            "type": "row",
+            "components": ["component_001", "component_002"],
+        }
+    ]
+
+
+def test_spacer_must_be_inside_row(tmp_path: Path) -> None:
+    data = tmp_path / "data.csv"
+    data.write_text("value\n10\n", encoding="utf-8")
+    report = tmp_path / "report.md"
+    report.write_text(
+        """---
+title: Test
+slug: test
+timezone: UTC
+data:
+  events:
+    path: data.csv
+---
+<Spacer />
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReportValidationError, match="Spacer must be placed inside Row"):
+        compile_report(report)
+
+
 def test_component_templates_expand_with_overrides_unset_and_forward_references(
     tmp_path: Path,
 ) -> None:
