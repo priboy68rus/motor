@@ -35,7 +35,7 @@
     body { margin: 0; }
     body::before { content: ""; display: block; height: 4px; background: var(--motor-accent); }
     ::selection { color: var(--motor-on-accent); background: var(--motor-accent); }
-    main { max-width: 1180px; margin: 0 auto; padding: 44px 24px 48px; }
+    main { box-sizing: border-box; width: 100%; max-width: 1600px; margin: 0 auto; padding: 44px 24px 48px; }
     h1 { font-size: 1.625rem; font-weight: 600; letter-spacing: -.01em; margin: 0 0 24px; }
     h2 { font-size: .875rem; font-weight: 600; margin: 0 0 16px; }
     .motor-card { background: #fffdf9; border: 1px solid #e8e2d7; border-radius: 10px; padding: 20px; margin: 16px 0; box-shadow: none; overflow-x: auto; }
@@ -122,6 +122,7 @@
     .motor-sidebar .motor-card { box-sizing: border-box; width: 100%; min-width: 0; margin: 0; }
     .motor-sidebar .motor-filter-list, .motor-sidebar .motor-filter, .motor-sidebar .motor-filter-controls { min-width: 0; max-width: 100%; }
     .motor-sidebar .motor-filter { width: 100%; }
+    .motor-sidebar .motor-radio-controls { flex-direction: column; align-items: flex-start; }
     .motor-sidebar .motor-multiselect-dropdown { width: 100%; max-width: 100%; }
     .motor-text-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
     .motor-report-content { min-width: 0; }

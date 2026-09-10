@@ -672,6 +672,8 @@ function renderSelect(
     details = dropdown.details;
     summary = dropdown.summary;
     optionList = dropdown.optionList;
+  } else {
+    controls.classList.add("motor-radio-controls");
   }
   const groupName = `motor-select-${name}-${radioGroupSequence++}`;
   const all = param.allow_all === false ? undefined : radio("All", groupName);
