@@ -392,6 +392,9 @@ data:
     assert 'body data-motor-accent="samokat"' in html
     assert 'body[data-motor-accent="samokat"] { --motor-accent: #ff3b65;' in html
     assert 'body[data-motor-accent="kuper"] { --motor-accent: #61f67a;' in html
+    assert 'body[data-motor-accent="terracotta"] { --motor-accent: #c15f36;' in html
+    assert 'body[data-motor-accent="eucalyptus"] { --motor-accent: #2c7f6b;' in html
+    assert 'family=IBM+Plex+Sans' in html
 
 
 def test_theme_defaults_to_blue(tmp_path: Path) -> None:

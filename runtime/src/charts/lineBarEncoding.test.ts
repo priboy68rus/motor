@@ -3,12 +3,23 @@ import test from "node:test";
 import { parse, View } from "vega";
 import { compile } from "vega-lite";
 
-import { lineBarSpec } from "./vegaAdapter";
+import { lineBarSpec, MOTOR_VEGA_CONFIG } from "./vegaAdapter";
 import type { ComponentSpec, QueryRow } from "../types";
 
 function encoding(spec: unknown): Record<string, any> {
   return (spec as { encoding: Record<string, any> }).encoding;
 }
+
+test("charts use the warm paper Vega theme", () => {
+  assert.equal(MOTOR_VEGA_CONFIG.font, "IBM Plex Sans");
+  assert.deepEqual(MOTOR_VEGA_CONFIG.range.category, [
+    "#3b5b8c",
+    "#c9873b",
+    "#5f8f7a",
+    "#a5606f",
+  ]);
+  assert.equal(MOTOR_VEGA_CONFIG.axis.gridColor, "#ece6dc");
+});
 
 test("LineChart applies group, color, and line_style as independent ordered channels", async () => {
   const component: ComponentSpec = {

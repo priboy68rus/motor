@@ -163,7 +163,7 @@ with multiple sources expose each source's actual freshness separately.
 
 | Field | Type | Required | Default | Supported values | Contract |
 | --- | --- | --- | --- | --- | --- |
-| `accent` | string | no | `blue` | `blue`, `violet`, `teal`, `green`, `amber`, `coral`, `rose`, `graphite`, `samokat`, `kuper` | Selects the accent preset used by motor's report interface. |
+| `accent` | string | no | `blue` | `blue`, `violet`, `teal`, `green`, `amber`, `coral`, `rose`, `graphite`, `samokat`, `kuper`, `terracotta`, `eucalyptus` | Selects the accent preset used by motor's report interface. |
 
 Example:
 
@@ -176,7 +176,7 @@ Preset primary colors:
 
 | Preset | Primary color |
 | --- | --- |
-| `blue` | `#3b6eea` |
+| `blue` | `#3b5b8c` |
 | `violet` | `#7c3aed` |
 | `teal` | `#0d9488` |
 | `green` | `#22c55e` |
@@ -186,16 +186,24 @@ Preset primary colors:
 | `graphite` | `#475467` |
 | `samokat` | `#ff3b65` |
 | `kuper` | `#61f67a` |
+| `terracotta` | `#c15f36` |
+| `eucalyptus` | `#2c7f6b` |
 
 The preset colors the top accent rail, active tabs, filter selection controls,
 focus states, runtime loading state, `VersionBadge`, and the optional update
-badge. Neutral backgrounds, cards, and text remain white/gray. Semantic success,
-warning, and error colors remain stable so their meaning does not depend on the
-chosen theme.
+badge. Neutral backgrounds, cards, and text use the report's warm paper palette.
+Semantic success, warning, and error colors remain stable so their meaning does
+not depend on the chosen theme.
 
 Chart category palettes, heatmap gradients, cohort palettes, and tooltip group
 swatches are independent of `theme`. Changing `theme.accent` therefore does not
 change data encoding. Custom HEX colors are not currently accepted.
+
+The default chart theme uses warm neutral guides and the categorical sequence
+`#3b5b8c`, `#c9873b`, `#5f8f7a`, `#a5606f`. Report HTML requests IBM Plex Sans
+and IBM Plex Mono from Google Fonts; when those web fonts are unavailable, the
+browser uses the declared system font fallbacks and the embedded report remains
+functional offline.
 
 ## Update checks
 

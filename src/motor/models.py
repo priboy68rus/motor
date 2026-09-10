@@ -63,6 +63,8 @@ ThemeAccent = Literal[
     "graphite",
     "samokat",
     "kuper",
+    "terracotta",
+    "eucalyptus",
 ]
 
 
