@@ -76,4 +76,8 @@ jobs:
 
       - name: Verify committed runtime bundle
         working-directory: .
-        run: git diff --exit-code -- src/motor/static
+        run: |
+          gzip -cd src/motor/static/duckdb-mvp.wasm.gz |
+            cmp - runtime/node_modules/@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm
+          git diff --exit-code -- src/motor/static \
+            ':(exclude)src/motor/static/duckdb-mvp.wasm.gz'
