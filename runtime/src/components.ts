@@ -2,6 +2,7 @@ import { renderChart } from "./charts/vegaAdapter";
 import type { ChartHandle } from "./charts/vegaAdapter";
 import { downloadComponentCsv, downloadComponentXlsx } from "./csvDownload";
 import type { RuntimeMetrics, RuntimeMetricsSnapshot } from "./runtimeMetrics";
+import { trackSidebarViewportHeight } from "./sidebarViewport";
 import {
   formatSignedPercent,
   formatSignedValue,
@@ -886,6 +887,7 @@ export class ReportRenderer {
   private latestOptions: ParamOptions = {};
   private sidebarResetButton?: HTMLButtonElement;
   private sidebarResetParamNames: string[] = [];
+  private stopSidebarViewportTracking?: () => void;
 
   constructor(
     private root: HTMLElement,
@@ -907,6 +909,8 @@ export class ReportRenderer {
     this.latestErrors = errors;
     this.latestValues = values;
     this.latestOptions = options;
+    this.stopSidebarViewportTracking?.();
+    this.stopSidebarViewportTracking = undefined;
     this.elements.clear();
     this.componentTabs.clear();
     this.activeTabs.clear();
@@ -952,6 +956,7 @@ export class ReportRenderer {
       contentRoot.className = "motor-report-content";
       shell.append(sidebarContainer, contentRoot);
       this.root.append(shell);
+      this.stopSidebarViewportTracking = trackSidebarViewportHeight(sidebarContainer);
     }
     const createComponent = (
       parent: HTMLElement,

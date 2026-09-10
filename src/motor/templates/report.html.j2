@@ -116,7 +116,7 @@
     .motor-multiselect-options .motor-filter-option[hidden] { display: none; }
     .motor-date-separator { color: #8c857a; }
     .motor-report-shell { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 20px; align-items: start; }
-    .motor-sidebar-container { box-sizing: border-box; position: sticky; top: 16px; min-width: 0; max-width: 100%; max-height: calc(100vh - 32px); overflow-x: hidden; overflow-y: auto; }
+    .motor-sidebar-container { box-sizing: border-box; position: sticky; top: 16px; min-width: 0; max-width: 100%; max-height: var(--motor-sidebar-max-height, calc(100vh - 32px)); overflow-x: hidden; overflow-y: auto; }
     .motor-sidebar-container > summary { display: none; }
     .motor-sidebar { display: grid; width: 100%; min-width: 0; gap: 12px; }
     .motor-sidebar-actions { display: flex; justify-content: flex-end; min-width: 0; }

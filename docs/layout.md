@@ -93,7 +93,10 @@ Contract:
 - All sidebar components are collected into one sidebar in source order even
   when content declarations appear between them.
 - On desktop the sidebar remains visible while content scrolls and has its own
-  vertical overflow area.
+  vertical overflow area. Its scroll area fits between its current viewport
+  position and the bottom page gutter, then expands as it reaches the sticky
+  position, so its final controls remain reachable without first scrolling the
+  report body.
 - Sidebar cards and controls are constrained to its available inner width;
   horizontal overflow is clipped, so a vertical scrollbar never creates a
   secondary horizontal scrollbar.
