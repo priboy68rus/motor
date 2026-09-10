@@ -1,23 +1,38 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  pull_request_target:
+    branches:
+      - master
+    types:
+      - closed
 
-permissions:
-  contents: read
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
 
 jobs:
   build:
     name: Test and build distribution
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.release-version.outputs.version }}
+      tag: ${{ steps.release-version.outputs.tag }}
 
     steps:
-      - name: Check out repository
+      - name: Check out repository and tags
         uses: actions/checkout@v6
         with:
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Select merged commit
+        env:
+          MERGE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
+        run: git checkout --detach "$MERGE_COMMIT"
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -25,48 +40,40 @@ jobs:
           python-version: "3.11"
           cache: pip
 
+      - name: Select patch version
+        id: release-version
+        run: python scripts/next_patch_version.py --github-output "$GITHUB_OUTPUT"
+
       - name: Install build dependencies
+        env:
+          SETUPTOOLS_SCM_PRETEND_VERSION: ${{ steps.release-version.outputs.version }}
         run: |
           python -m pip install --upgrade pip
           python -m pip install ".[dev]" twine
 
-      - name: Validate release version
-        run: |
-          python - <<'PY'
-          import os
-          import tomllib
-          from pathlib import Path
-
-          import motor
-
-          tag = os.environ["GITHUB_REF_NAME"]
-          project_version = tomllib.loads(
-              Path("pyproject.toml").read_text(encoding="utf-8")
-          )["project"]["version"]
-          package_version = motor.__version__
-
-          if project_version != package_version:
-              raise SystemExit(
-                  "Version mismatch: "
-                  f"pyproject.toml has {project_version}, "
-                  f"motor.__version__ has {package_version}"
-              )
-
-          expected_tag = f"v{project_version}"
-          if tag != expected_tag:
-              raise SystemExit(
-                  f"Release tag must be {expected_tag}, got {tag}"
-              )
-          PY
+      - name: Validate installed version
+        env:
+          RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
+        run: >-
+          python -c "import motor, os;
+          assert motor.__version__ == os.environ['RELEASE_VERSION'],
+          (motor.__version__, os.environ['RELEASE_VERSION'])"
 
       - name: Run tests
         run: python -m pytest
 
       - name: Build wheel and source distribution
+        env:
+          SETUPTOOLS_SCM_PRETEND_VERSION: ${{ steps.release-version.outputs.version }}
         run: python -m build
 
       - name: Check distribution metadata
-        run: python -m twine check dist/*
+        env:
+          RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
+        run: |
+          python -m twine check dist/*
+          test -f "dist/motor_reports-${RELEASE_VERSION}-py3-none-any.whl"
+          test -f "dist/motor_reports-${RELEASE_VERSION}.tar.gz"
 
       - name: Store distribution packages
         uses: actions/upload-artifact@v7
@@ -75,15 +82,48 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+  tag:
+    name: Tag merged commit
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository and tags
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create release tag
+        env:
+          MERGE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Invalid release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          existing_commit="$(git rev-list -n 1 "$RELEASE_TAG" 2>/dev/null || true)"
+          if [ -n "$existing_commit" ]; then
+            test "$existing_commit" = "$MERGE_COMMIT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" "$MERGE_COMMIT" -m "Release $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
   publish:
     name: Publish distribution to PyPI
-    needs: build
+    needs:
+      - build
+      - tag
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/motor-reports
     permissions:
-      contents: read
       id-token: write
 
     steps:
@@ -98,7 +138,9 @@ jobs:
 
   github-release:
     name: Create GitHub Release
-    needs: publish
+    needs:
+      - build
+      - publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -112,11 +154,12 @@ jobs:
 
       - name: Create GitHub Release
         run: >-
-          gh release create "$GITHUB_REF_NAME"
+          gh release create "$RELEASE_TAG"
           dist/*
           --verify-tag
           --generate-notes
-          --title "$GITHUB_REF_NAME"
+          --title "$RELEASE_TAG"
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
