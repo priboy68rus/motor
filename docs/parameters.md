@@ -72,7 +72,9 @@ Control modes:
 | `auto` | Visible radio buttons for at most 8 source options (inline in content and vertical in the sidebar); dropdown for 9 or more. |
 
 Opening any select, multiselect, or dimension dropdown closes every other open
-filter dropdown in the report. Clicking outside the dropdown closes it.
+filter dropdown in the report. Clicking outside the dropdown closes it. Long
+option labels wrap within their own rows, and overflowing option lists scroll
+without shrinking or overlapping those rows.
 
 With the default `allow_all: true`, `All` is offered and sets the runtime value
 to `all`, disabling an `in_filter` predicate. Set `allow_all: false` to hide

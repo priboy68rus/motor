@@ -648,7 +648,7 @@ export function heatmapSpec(
               data: { values: rowMetricResult.rows },
               mark: {
                 type: "rect" as const,
-                color: "#faf7f2",
+                color: "#faf8f5",
                 stroke: "#fffdf9",
                 strokeWidth: 1,
                 tooltip: false,

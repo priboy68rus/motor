@@ -13,7 +13,7 @@
       color-scheme: light;
       font-family: "IBM Plex Sans", system-ui, sans-serif;
       color: #262220;
-      background: #faf7f2;
+      background: #faf8f5;
       --motor-accent: #3b5b8c;
       --motor-accent-hover: #33507c;
       --motor-accent-strong: #2b4269;
@@ -111,7 +111,8 @@
     .motor-multiselect-dropdown.drop-up .motor-multiselect-panel { top: auto; bottom: 100%; border-top: 1px solid #d6cec0; border-bottom: 0; border-radius: 7px 7px 0 0; box-shadow: 0 -10px 24px #2622201a; }
     .motor-multiselect-search { box-sizing: border-box; width: 100%; min-height: 34px; border: 1px solid #d6cec0; border-radius: 6px; padding: 5px 8px; color: inherit; background: #fffdf9; }
     .motor-multiselect-options { display: flex; flex-direction: column; gap: 7px; max-height: 220px; margin-top: 8px; overflow-y: auto; }
-    .motor-multiselect-options .motor-filter-option { min-height: 24px; }
+    .motor-multiselect-options .motor-filter-option { box-sizing: border-box; flex: 0 0 auto; width: 100%; min-width: 0; min-height: 24px; align-items: flex-start; line-height: 1.35; overflow-wrap: anywhere; }
+    .motor-multiselect-options .motor-filter-option input { flex: 0 0 auto; margin-top: .2em; }
     .motor-multiselect-options .motor-filter-option[hidden] { display: none; }
     .motor-date-separator { color: #8c857a; }
     .motor-report-shell { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 20px; align-items: start; }
