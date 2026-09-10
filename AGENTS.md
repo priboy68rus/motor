@@ -51,17 +51,23 @@ Avoid pasting or reading huge logs unless the concise output is insufficient.
 
 ## Publishing a release
 
-PyPI releases are published by `.github/workflows/release.yml` through Trusted
-Publishing. Treat publication as irreversible.
+PyPI releases are prepared by `.github/workflows/prepare-release.yml` and
+published by `.github/workflows/release.yml` through Trusted Publishing. Treat
+publication as irreversible.
 
 - Do not edit a static package version. `setuptools-scm` derives the installed
   version from `vX.Y.Z` tags; `pyproject.toml` contains only the initial fallback.
 - Do not manually create or push patch-release tags and do not publish locally
   during normal feature work.
-- Every pull request merged into `master` starts the release workflow. It reruns
-  tests, increments the patch component of the highest `vX.Y.Z` tag, tags the
-  merged commit, builds that exact version, publishes it to PyPI, and creates a
-  GitHub Release with the wheel and source distribution.
+- Every code pull request merged into `master` starts the preparation workflow.
+  It increments the patch component of the highest `vX.Y.Z` tag, tags the merged
+  commit, and dispatches the separate trusted-publishing workflow. That workflow
+  reruns tests, builds the exact tagged version, publishes it to PyPI, and creates
+  a GitHub Release with the wheel and source distribution.
+- Pull requests that change only `.github/**` and/or `AGENTS.md` do not create a
+  package release.
+- Keep PyPI publication in the `workflow_dispatch` workflow. PyPI Trusted
+  Publishing does not accept jobs invoked by `pull_request_target`.
 - Concurrent merges are serialized. A rerun for an already-tagged merged commit
   reuses its tag instead of incrementing the version again.
 - The `pypi` GitHub Environment intentionally has no required reviewers, so no
