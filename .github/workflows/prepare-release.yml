@@ -1,0 +1,66 @@
+name: Prepare patch release
+
+on:
+  pull_request_target:
+    branches:
+      - master
+    types:
+      - closed
+    paths-ignore:
+      - .github/**
+      - AGENTS.md
+
+concurrency:
+  group: prepare-release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  tag-and-dispatch:
+    name: Tag merged commit and start release
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+
+    steps:
+      - name: Check out merged commit and tags
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Select patch version
+        id: release-version
+        run: python scripts/next_patch_version.py --github-output "$GITHUB_OUTPUT"
+
+      - name: Create release tag
+        env:
+          MERGE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
+          RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Invalid release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          existing_commit="$(git rev-list -n 1 "$RELEASE_TAG" 2>/dev/null || true)"
+          if [ -n "$existing_commit" ]; then
+            test "$existing_commit" = "$MERGE_COMMIT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" "$MERGE_COMMIT" -m "Release $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
+      - name: Start trusted publishing workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
+        run: gh workflow run release.yml --ref master -f tag="$RELEASE_TAG"
