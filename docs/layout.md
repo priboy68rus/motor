@@ -38,6 +38,16 @@ Direct child components share one line in equal-width columns:
 <Table query="countries" />
 ```
 
+Use `Spacer` to keep an intentionally empty column, for example when the final
+item in a two-column arrangement must not stretch to the full row width:
+
+```md
+<Row>
+  <LineChart query="daily" x="day" y="revenue" />
+  <Spacer />
+</Row>
+```
+
 Contract:
 
 - `Row` accepts no attributes.
@@ -49,12 +59,14 @@ Contract:
 - `placement="sidebar"` components cannot be placed in a row.
 - All child columns receive equal available width; there is no per-column span
   or explicit width attribute.
+- `Spacer` is allowed only inside a row. It occupies an empty column without a
+  visible card or content.
 
 Responsive behavior:
 
 - desktop: the row uses as many equal columns as it has components;
 - below 900 px: at most two columns;
-- below 600 px: one column.
+- below 600 px: one column; `Spacer` components are hidden.
 
 ## Sticky sidebar
 
@@ -171,6 +183,7 @@ global, reference it in the shared upstream view used by all relevant queries.
 | Child | Top level | `Row` | `Tabs` | `Tab` |
 | --- | --- | --- | --- | --- |
 | content component | yes | yes | no | yes |
+| `Spacer` | no | yes | no | no |
 | sidebar `Filters` / `Text` | yes | no | no | no |
 | `Row` | yes | no | no | yes |
 | `Tabs` | yes | no | no | no |

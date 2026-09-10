@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=77"]
+requires = ["setuptools>=77", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "motor-reports"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Compiler for trusted portable BI artifacts"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -37,6 +37,9 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 motor = ["templates/*.j2", "static/*"]
+
+[tool.setuptools_scm]
+fallback_version = "0.1.1"
 
 [tool.pytest.ini_options]
 addopts = "-q"

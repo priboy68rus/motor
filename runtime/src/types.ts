@@ -71,6 +71,7 @@ export type QuerySpec = {
 export type ComponentSpec = {
   id: string;
   type:
+    | "Spacer"
     | "Filters"
     | "Text"
     | "DataStatus"

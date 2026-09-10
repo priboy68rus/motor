@@ -1234,10 +1234,14 @@ export class ReportRenderer {
     this.chartHandles.delete(component.id);
     element.replaceChildren();
     element.removeAttribute("aria-busy");
+    element.removeAttribute("aria-hidden");
     if (component.props.title && component.type !== "Filters") {
       element.append(text("h2", String(component.props.title)));
     }
-    if (component.type === "DataStatus") renderDataStatus(element, this.manifest);
+    if (component.type === "Spacer") {
+      element.className = "motor-spacer";
+      element.setAttribute("aria-hidden", "true");
+    } else if (component.type === "DataStatus") renderDataStatus(element, this.manifest);
     else if (component.type === "VersionBadge") renderVersionBadge(element, this.manifest);
     else if (component.type === "LoadingMetrics") {
       renderLoadingMetrics(element, this.runtimeMetrics?.snapshot());

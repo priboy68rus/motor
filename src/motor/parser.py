@@ -48,6 +48,7 @@ _TABS_START = re.compile(r"</?Tabs\b")
 _TAB_TAG = re.compile(r"<(?P<closing>/)?Tab(?P<attrs>\s+[^>]*)?\s*>")
 _TAB_START = re.compile(r"</?Tab\b")
 _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
+    "Spacer": (set(), set()),
     "Filters": ({"params"}, {"params", "title", "placement"}),
     "Text": ({"text"}, {"text", "title", "placement"}),
     "DataStatus": (set(), set()),
@@ -898,6 +899,12 @@ def _extract_components(
             row_end,
             LayoutItem(type="row", components=child_ids),
         )
+
+    if any(
+        component.type == "Spacer" and component.id not in row_component_ids
+        for _match, component in records
+    ):
+        raise ReportValidationError("Spacer must be placed inside Row")
 
     layout_records: list[tuple[int, LayoutItem]] = []
     rows_in_tabs: set[int] = set()

@@ -245,6 +245,7 @@ class QuerySpec(StrictModel):
 class ComponentSpec(StrictModel):
     id: str
     type: Literal[
+        "Spacer",
         "Filters",
         "Text",
         "DataStatus",

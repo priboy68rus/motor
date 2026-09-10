@@ -59,7 +59,7 @@ create a component entry in the compiled runtime specification:
 | Attribute | Type | Required | Default | Contract |
 | --- | --- | --- | --- | --- |
 | `name` | identifier | yes | — | Report-wide unique template name such as `cohort_line`. |
-| `component` | component type | yes | — | Target type: `Filters`, `Text`, `DataStatus`, `VersionBadge`, `LoadingMetrics`, `BigValue`, `Table`, `LineChart`, `BarChart`, `ScatterChart`, or `Heatmap`. |
+| `component` | component type | yes | — | Target type: `Spacer`, `Filters`, `Text`, `DataStatus`, `VersionBadge`, `LoadingMetrics`, `BigValue`, `Table`, `LineChart`, `BarChart`, `ScatterChart`, or `Heatmap`. |
 | target attributes | type-specific | no | — | Any attribute supported by the target component except `id`, `template`, and `unset`. Required target attributes may be deferred to each use. |
 
 Template names are global and declaration order does not matter, so a
@@ -111,6 +111,7 @@ declared for another component type also fails compilation.
 
 | Component | Required attributes | Optional attributes |
 | --- | --- | --- |
+| [`Spacer`](#spacer) | — | `id` |
 | [`Filters`](#filters) | `params` | `id`, `title`, `placement` |
 | [`Text`](#text) | `text` | `id`, `title`, `placement` |
 | [`DataStatus`](#datastatus) | — | `id` |
@@ -122,6 +123,21 @@ declared for another component type also fails compilation.
 | [`BarChart`](#barchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `stack`, `bar_width`, `download` |
 | [`ScatterChart`](#scatterchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `color_scheme`, `color_direction`, `download` |
 | [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `details`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency`, `download` |
+
+## `Spacer`
+
+Reserves an empty column inside a `Row` without rendering a card or content:
+
+```md
+<Row>
+  <LineChart query="daily" x="day" y="revenue" />
+  <Spacer />
+</Row>
+```
+
+It accepts only the common optional `id` and must be declared inside a `Row`.
+At the single-column responsive breakpoint (600 px and below), it is hidden so
+it does not create an empty row. See [Layout](layout.md#row).
 
 ## `Filters`
 
