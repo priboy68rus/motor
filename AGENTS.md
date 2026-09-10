@@ -20,45 +20,55 @@ Avoid pasting or reading huge logs unless the concise output is insufficient.
 
 ## Project Workflow
 
-- After every meaningful code change, run build/packaging.
-- Before committing intended source/configuration changes, run tests.
-- Commit the intended source/configuration changes with a short, descriptive message.
-- Push the commit to GitHub, normally `origin master` unless working on another branch.
+- Never implement a feature directly on `master`.
+- Before changing files, inspect `git status` and preserve all pre-existing user
+  changes. Do not include unrelated changes in a commit or pull request.
+- Start each independent change from an up-to-date `origin/master` in its own
+  branch. Use `feature/<short-name>`, `fix/<short-name>`, or
+  `chore/<short-name>`.
+- Keep one logical feature or fix per branch and add or update tests with it.
+- After every meaningful code change, run Python tests and packaging:
+
+  ```bash
+  .venv/bin/python -m pytest
+  .venv/bin/python -m build
+  ```
+
+- For runtime changes, also run:
+
+  ```bash
+  cd runtime
+  npm run check
+  npm test
+  npm run build
+  ```
+
+- Commit the intended changes with a short descriptive message, push the topic
+  branch, and open a pull request targeting `master`.
+- Never merge the pull request. The repository owner performs the final manual
+  merge after CI passes. An approving review is not required for this solo-owner
+  workflow; the manual merge itself is the approval gate.
 
 ## Publishing a release
 
 PyPI releases are published by `.github/workflows/release.yml` through Trusted
-Publishing. Treat publication as irreversible: do not create or push a release
-tag unless the user explicitly requests publication of that exact version.
+Publishing. Treat publication as irreversible.
 
-For a new version `X.Y.Z`:
-
-1. Start from a clean, up-to-date `master` branch and confirm that neither the
-   `vX.Y.Z` Git tag nor `motor-reports==X.Y.Z` already exists remotely.
-2. Update the version in both `pyproject.toml` and
-   `src/motor/__init__.py`. Update version-specific documentation when needed.
-3. Run the release checks locally:
-
-   ```bash
-   .venv/bin/python -m pytest
-   .venv/bin/python -m build
-   ```
-
-   Do not proceed if tests or packaging fail. The release workflow repeats the
-   tests, builds the wheel and sdist, and validates them with `twine check`.
-4. Commit the release changes and push `master` before tagging the exact commit:
-
-   ```bash
-   git push origin master
-   git tag -a "vX.Y.Z" -m "Release X.Y.Z"
-   git push origin "vX.Y.Z"
-   ```
-
-5. Monitor the `Release` GitHub Actions workflow. After the build succeeds,
-   approve the protected `pypi` environment deployment. A successful run
-   publishes to PyPI and creates a GitHub Release containing the wheel and
-   source distribution.
-6. Verify the public release in a fresh virtual environment:
+- Do not edit a static package version. `setuptools-scm` derives the installed
+  version from `vX.Y.Z` tags; `pyproject.toml` contains only the initial fallback.
+- Do not manually create or push patch-release tags and do not publish locally
+  during normal feature work.
+- Every pull request merged into `master` starts the release workflow. It reruns
+  tests, increments the patch component of the highest `vX.Y.Z` tag, tags the
+  merged commit, builds that exact version, publishes it to PyPI, and creates a
+  GitHub Release with the wheel and source distribution.
+- Concurrent merges are serialized. A rerun for an already-tagged merged commit
+  reuses its tag instead of incrementing the version again.
+- The `pypi` GitHub Environment intentionally has no required reviewers, so no
+  second approval is needed after the owner manually merges the feature PR.
+- Minor and major releases are exceptional and must be coordinated explicitly
+  before merge; the normal workflow always increments patch.
+- After publication, verify the public release in a fresh virtual environment:
 
    ```bash
    release_check_dir=$(mktemp -d /tmp/motor-release-check.XXXXXX)
@@ -69,8 +79,7 @@ For a new version `X.Y.Z`:
 
 Never overwrite, delete, or reuse a version already published to PyPI. If a
 workflow fails after the PyPI upload succeeds, inspect the remote state before
-retrying; rerunning the upload for the same files will fail because PyPI release
-files are immutable.
+retrying; PyPI release files are immutable.
 
 ## Documentation
 
