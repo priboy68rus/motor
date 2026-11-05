@@ -40,22 +40,74 @@ try {
     content: bundled.outputFiles[0].text,
     type: "module",
   });
-  await page.waitForFunction(() => !!window.fixture, undefined, { timeout: 30000 });
+  await page.waitForFunction(() => !!window.fixture, undefined, {
+    timeout: 30000,
+  });
   assert.deepEqual(errors, []);
-  assert.equal(await page.locator(".motor-chart-filter-button").count(), 4);
+  assert.equal(await page.locator(".motor-chart-filter-button").count(), 6);
   assert.equal(
     await page.locator("#scatter .motor-download-control").count(),
     0,
   );
   assert.equal(
-    await page
-      .locator(
-        "#table .motor-chart-filter-button,#big .motor-chart-filter-button",
-      )
-      .count(),
+    await page.locator("#table .motor-chart-filter-button").count(),
     0,
   );
   const panel = page.locator(".motor-chart-filter-tooltip");
+  const metric = page.locator("#big .motor-chart-filter-button");
+  assert.equal(await page.locator("#big .motor-download-control").count(), 0);
+  const originalMetric = await page
+    .locator("#big .motor-big-value")
+    .textContent();
+  await metric.hover();
+  assert.equal(await panel.isVisible(), false);
+  await metric.click();
+  assert.deepEqual(
+    await panel.locator(".motor-filter-context-heading").allTextContents(),
+    ["Breakdown", "Filters", "Not applied"],
+  );
+  assert.equal(
+    await page.locator("#big .motor-big-value").textContent(),
+    originalMetric,
+  );
+  await page.evaluate(() => window.fixture.loading());
+  assert.match(await panel.textContent(), /Updating/);
+  await page.evaluate(() => window.fixture.finish());
+  assert.equal(await panel.isVisible(), true);
+  assert.equal(
+    await panel.locator(".motor-filter-context-updating").count(),
+    0,
+  );
+  await page.evaluate(() => window.fixture.update("country", ["Italy"]));
+  await page.evaluate(() => window.fixture.finish());
+  assert.equal(
+    await panel.locator('[data-param="country"] summary').textContent(),
+    "Italy",
+  );
+  assert.equal(
+    await panel
+      .locator('[data-param="country"] .motor-filter-context-default')
+      .textContent(),
+    "",
+  );
+  await page.evaluate(() => window.fixture.fail());
+  assert.match(await panel.textContent(), /Metric unavailable/);
+  await page.evaluate(async () => {
+    await window.fixture.update(
+      "country",
+      window.fixture.spec.params.country.default,
+    );
+    await window.fixture.finish();
+  });
+  await metric.click();
+  assert.equal(await panel.isVisible(), false);
+  await page.locator("#big_all .motor-chart-filter-button").click();
+  assert.equal(
+    await panel.textContent(),
+    "Filters and breakdown do not apply to this metric.",
+  );
+  await page.keyboard.press("Escape");
+  await page.locator("h1").click();
   const tooltipStyle = (element) => {
     const style = getComputedStyle(element);
     return [
@@ -305,7 +357,7 @@ try {
   assert.equal(await panel.isVisible(), false);
   assert.deepEqual(errors, []);
   console.log(
-    "Browser checks passed: all chart types, grouping, sources, defaults, overflow, click/keyboard, hover stays closed, updates/errors/tabs, mobile, remount.",
+    "Browser checks passed: all chart types and BigValue, grouping, sources, defaults, overflow, click/keyboard, hover stays closed, updates/errors/tabs, mobile, remount.",
   );
 } finally {
   await browser.close();

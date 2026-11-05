@@ -258,6 +258,10 @@ for debugging as `window.__motorLoadingMetrics`.
 Displays one value from the first query row and optionally compares it with
 another column in the same row.
 
+The header includes the same [filter-context button](#chart-filter-context) as
+charts, including cards without a title. It opens on click, tap, or Enter/Space
+and shows the parameters used by the metric's query.
+
 ```md
 <BigValue
   query="revenue_kpi"
@@ -347,10 +351,13 @@ renaming and presentation formatting should currently be done in SQL.
 
 ## Chart filter context
 
-`LineChart`, `BarChart`, `ScatterChart`, and `Heatmap` always show a funnel button
-with a flat bottom in the card header, including charts without a `title` or with
-`download="false"`. This is automatic; there is no configuration attribute.
-`Table` and `BigValue` do not show this icon.
+`LineChart`, `BarChart`, `ScatterChart`, `Heatmap`, and `BigValue` always show a
+funnel button with a flat bottom in the card header, including cards without a
+`title`. On charts, `download="false"` does not hide the funnel button.
+This is automatic; there is no configuration attribute.
+`Table` does not show this icon. `BigValue` uses the same sections, values,
+source icons, default marks, and update behavior as charts; it still has no
+data-download button.
 
 The button uses the same neutral color and opacity as the data-download button.
 Clicking, tapping, or activating it with Enter/Space opens a panel using the
@@ -379,7 +386,8 @@ filter scope.
 
 If the query depends on no parameters, the panel shows only
 `Filters and breakdown do not apply to this chart.` It does not list every
-unused parameter. A query depending only on a dimension still shows the sections.
+unused parameter. `BigValue` uses the equivalent message ending with
+`this metric.` A query depending only on a dimension still shows the sections.
 
 Each parameter appears once, with the following information:
 
@@ -394,9 +402,9 @@ Each parameter appears once, with the following information:
 Values update when any report parameter changes, including parameters in
 `Not applied`. During an affected query update, the panel displays `Updating…`
 and identifies values as the current selection, rather than claiming that the
-previous chart already reflects them. Failed charts retain the funnel icon
-and identify the chart as unavailable. Switching tabs closes a panel whose
-chart becomes hidden.
+previous chart or metric already reflects them. Failed charts and metrics
+retain the funnel icon and identify the component as unavailable. Switching
+tabs closes a panel whose component becomes hidden.
 
 ## Data downloads
 
