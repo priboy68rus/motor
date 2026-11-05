@@ -6,6 +6,11 @@ motor compiles a Markdown/YAML/SQL report and its CSV/Parquet sources into an
 interactive HTML artifact. Reports run reactive SQL in the browser with
 DuckDB-Wasm.
 
+Reports support line, bar, area, scatter, and heatmap charts. See the
+[AreaChart reference](docs/components.md#areachart) for stacked areas and the
+same percentage and signed-normalization modes as bar charts.
+An [area-chart example](examples/area/report.md) demonstrates all five modes.
+
 The default artifact is self-contained and works without a server or network
 connection. An optional smaller CDN build reuses browser-cached DuckDB assets.
 

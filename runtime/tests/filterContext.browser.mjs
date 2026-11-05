@@ -40,9 +40,11 @@ try {
     content: bundled.outputFiles[0].text,
     type: "module",
   });
-  await page.waitForFunction(() => !!window.fixture, undefined, { timeout: 30000 });
+  await page.waitForFunction(() => !!window.fixture, undefined, {
+    timeout: 30000,
+  });
   assert.deepEqual(errors, []);
-  assert.equal(await page.locator(".motor-chart-filter-button").count(), 4);
+  assert.equal(await page.locator(".motor-chart-filter-button").count(), 5);
   assert.equal(
     await page.locator("#scatter .motor-download-control").count(),
     0,
@@ -56,6 +58,56 @@ try {
     0,
   );
   const panel = page.locator(".motor-chart-filter-tooltip");
+  const areaPath = page.locator("#area g.mark-area path").first();
+  await areaPath.scrollIntoViewIfNeeded();
+  const boundsArea = await areaPath.boundingBox();
+  const sharedTooltip = page.locator(
+    ".motor-chart-shared-tooltip:not([hidden])",
+  );
+  await page.mouse.move(
+    boundsArea.x + boundsArea.width * 0.1,
+    boundsArea.y + boundsArea.height * 0.95,
+  );
+  await sharedTooltip.waitFor({ state: "visible" });
+  assert.match(await sharedTooltip.textContent(), /2026-06-01/);
+  await page.mouse.move(
+    boundsArea.x + boundsArea.width * 0.9,
+    boundsArea.y + boundsArea.height * 0.95,
+  );
+  assert.match(await sharedTooltip.textContent(), /2026-07-01/);
+  assert.equal(
+    await page.locator("#area .motor-download-data").isEnabled(),
+    true,
+  );
+  await page.locator("#area .motor-chart-filter-button").click();
+  assert.deepEqual(
+    await panel.locator(".motor-filter-context-heading").allTextContents(),
+    ["Breakdown", "Filters", "Not applied"],
+  );
+  await page.keyboard.press("Escape");
+  await page.locator("h1").click();
+  await page.evaluate(async () => {
+    delete window.fixture.spec.components.find(
+      (component) => component.id === "area",
+    ).props.color;
+    await window.fixture.finish();
+  });
+  await areaPath.scrollIntoViewIfNeeded();
+  const uncoloredBounds = await areaPath.boundingBox();
+  await page.mouse.move(
+    uncoloredBounds.x + uncoloredBounds.width * 0.9,
+    uncoloredBounds.y + uncoloredBounds.height * 0.95,
+  );
+  await sharedTooltip.waitFor({ state: "visible" });
+  assert.match(await sharedTooltip.textContent(), /2026-07-01/);
+  assert.equal(await sharedTooltip.locator("tr.is-hovered").count(), 1);
+  await page.evaluate(async () => {
+    window.fixture.spec.components.find(
+      (component) => component.id === "area",
+    ).props.color = "group";
+    await window.fixture.finish();
+  });
+  await page.locator("h1").click();
   const tooltipStyle = (element) => {
     const style = getComputedStyle(element);
     return [

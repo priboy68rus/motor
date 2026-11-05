@@ -26,9 +26,13 @@ export type FilterContextGroup = {
 };
 
 export function isChart(component: ComponentSpec): boolean {
-  return ["LineChart", "BarChart", "ScatterChart", "Heatmap"].includes(
-    component.type,
-  );
+  return [
+    "LineChart",
+    "BarChart",
+    "AreaChart",
+    "ScatterChart",
+    "Heatmap",
+  ].includes(component.type);
 }
 
 export function paramValueIsDefault(param: ParamSpec, value: unknown): boolean {

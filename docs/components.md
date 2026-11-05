@@ -59,7 +59,7 @@ create a component entry in the compiled runtime specification:
 | Attribute | Type | Required | Default | Contract |
 | --- | --- | --- | --- | --- |
 | `name` | identifier | yes | — | Report-wide unique template name such as `cohort_line`. |
-| `component` | component type | yes | — | Target type: `Spacer`, `Filters`, `Text`, `DataStatus`, `VersionBadge`, `LoadingMetrics`, `BigValue`, `Table`, `LineChart`, `BarChart`, `ScatterChart`, or `Heatmap`. |
+| `component` | component type | yes | — | Target type: `Spacer`, `Filters`, `Text`, `DataStatus`, `VersionBadge`, `LoadingMetrics`, `BigValue`, `Table`, `LineChart`, `BarChart`, `AreaChart`, `ScatterChart`, or `Heatmap`. |
 | target attributes | type-specific | no | — | Any attribute supported by the target component except `id`, `template`, and `unset`. Required target attributes may be deferred to each use. |
 
 Template names are global and declaration order does not matter, so a
@@ -121,6 +121,7 @@ declared for another component type also fails compilation.
 | [`Table`](#table) | `query` | `id`, `title`, `columns`, `download` |
 | [`LineChart`](#linechart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `line_style`, `details`, `marker`, `color_scheme`, `color_direction`, `download` |
 | [`BarChart`](#barchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `stack`, `bar_width`, `download` |
+| [`AreaChart`](#areachart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `color`, `details`, `stack`, `interpolate`, `download` |
 | [`ScatterChart`](#scatterchart) | `query`, `x`, `y` | `id`, `title`, `format`, `currency`, `group`, `color`, `details`, `color_scheme`, `color_direction`, `download` |
 | [`Heatmap`](#heatmap) | `query`, `x`, `y`, `value` | `id`, `title`, `details`, `format`, `color_scheme`, `color_direction`, `show_values`, `show_percent_sign`, `row_metric`, `row_metric_title`, `row_metric_format`, `row_metric_notation`, `row_metric_currency`, `download` |
 
@@ -347,7 +348,7 @@ renaming and presentation formatting should currently be done in SQL.
 
 ## Chart filter context
 
-`LineChart`, `BarChart`, `ScatterChart`, and `Heatmap` always show a funnel button
+`LineChart`, `BarChart`, `AreaChart`, `ScatterChart`, and `Heatmap` always show a funnel button
 with a flat bottom in the card header, including charts without a `title` or with
 `download="false"`. This is automatic; there is no configuration attribute.
 `Table` and `BigValue` do not show this icon.
@@ -400,7 +401,7 @@ chart becomes hidden.
 
 ## Data downloads
 
-`Table`, `LineChart`, `BarChart`, `ScatterChart`, and `Heatmap` show a small data-download
+`Table`, `LineChart`, `BarChart`, `AreaChart`, `ScatterChart`, and `Heatmap` show a small data-download
 button by default. Clicking it opens a format menu with `CSV` and
 `Excel (.xlsx)`. Set `download="false"` on an individual component to remove
 the button and both formats:
@@ -428,6 +429,7 @@ returned by the query:
   `line_style` field, and every `details` field;
 - `BarChart` exports `x`, `y`, both configured `group` and `color` fields, and
   every `details` field;
+- `AreaChart` exports `x`, `y`, the configured `color`, and every `details` field;
 - `ScatterChart` exports `x`, `y`, the effective `group` or `color`, and every
   `details` field;
 - `Heatmap` exports `x`, `y`, `value`, `row_metric` when configured, and every
@@ -441,7 +443,7 @@ columns are not exported. Values remain machine-readable query values: for
 example, a fraction displayed as `42.5%` is written as `0.425`, and compact
 notation is not applied.
 
-For `BarChart stack="normalize"`, `normalize_gross`, or `normalize_net`, the
+For `BarChart` or `AreaChart` with `stack="normalize"`, `normalize_gross`, or `normalize_net`, the
 file contains both the raw Y column and an adjacent `<y>_normalized` column
 holding the value actually plotted. If that derived name already exists,
 underscores are appended until it is unique.
@@ -469,15 +471,17 @@ boundary. Every asset mode still embeds complete source files; see
 
 ## Shared chart behavior
 
-`LineChart`, `BarChart`, and `ScatterChart` share these concepts:
+`LineChart`, `BarChart`, `AreaChart`, and `ScatterChart` share these concepts:
 
 - `x` references the horizontal result column.
 - `y` references a quantitative result column.
-- `group` and `color` reference categorical result columns.
+- `color` references a categorical result column. Line, bar, and scatter charts
+  also support `group`.
 - On line and bar charts they are independent and may be used together.
 - On line and bar charts, result order controls the first-seen order of `group`, `color`, and
   `line_style` categories. Use a final SQL `ORDER BY` for stable drawing,
   offset, palette, pattern, legend, and tooltip order.
+- On area charts, result order controls the first-seen color and tooltip order.
 - `details` is a comma-separated list of additional result columns shown only
   in the tooltip.
 - Charts are responsive, container-width, 360 px high, and use SVG. Heatmaps
@@ -485,7 +489,7 @@ boundary. Every asset mode still embeds complete source files; see
 - Tooltips show data under the pointer.
 - `format="percent"` treats Y values as fractions and formats the Y axis as
   percentages.
-- Other `format` strings and `currency` are currently accepted on line/bar/scatter
+- Other `format` strings and `currency` are currently accepted on line/bar/area/scatter
   charts but do not change rendering. Currency chart axes are not implemented;
   format or scale values in SQL if needed.
 
@@ -501,7 +505,7 @@ the pointer. The X type is inferred from the first non-null value: ISO
 quantitative axis. Date-only labels render as `YYYY-MM-DD`. Values incompatible
 with the inferred X type or with quantitative Y may be omitted by Vega-Lite.
 
-Line and bar charts always use motor's table tooltip for the hovered X value.
+Line, bar, and area charts always use motor's table tooltip for the hovered X value.
 It lists every query row with that same X. Without a series channel, the table
 shows Y and every configured `details` field. With `group`, `color`, or
 `line_style`, it adds one column for each configured field. A color swatch is
@@ -516,7 +520,7 @@ This does not reorder the list: tooltip rows always retain their query-result
 order. Charts without `group`, `color`, `line_style`, or `details` use the same
 motor tooltip with just the Y column.
 
-Shared line/bar tooltips use the same table layout with or without `details`.
+Shared line/bar/area tooltips use the same table layout with or without `details`.
 When `details` is configured, detail labels are rendered once as extra column
 headers, and each series row contains only the corresponding values. The fields
 are read from the query result. They do not affect grouping, color, line style,
@@ -661,6 +665,69 @@ Without `group` or `color`, `zero` behaves as a normal single-series bar chart.
 With `group` but no `color`, it renders same-colored group bars side by side.
 Temporal X axes use a default width of 18 px. Nominal axes let Vega-Lite choose
 band width. `bar_width` overrides either behavior and must be greater than zero.
+
+## `AreaChart`
+
+Renders a filled area, or multiple colored areas, on the same axes. Stack modes
+use the same normalization rules as `BarChart`. The unstacked mode overlays
+areas rather than offsetting them side by side.
+
+```md
+<AreaChart
+  query="revenue_by_day"
+  x="day"
+  y="revenue"
+  color="channel"
+  stack="normalize"
+  interpolate="monotone"
+  details="orders"
+  title="Revenue share by channel"
+/>
+```
+
+| Attribute | Type | Required | Default | Allowed values / behavior |
+| --- | --- | --- | --- | --- |
+| `query` | SQL block name | yes | — | Existing `kind=query`. |
+| `x` | result column | yes | — | ISO date/datetime values use a temporal axis; other values use a nominal axis. |
+| `y` | result column | yes | — | Quantitative vertical field. Aggregate to one row per X/color in SQL. |
+| `title` | string | no | — | Card heading. |
+| `color` | result column | no | — | Splits areas into series and supplies category colors. Required by all normalization modes. |
+| `details` | comma-separated result columns | no | — | Extra tooltip columns; does not affect area geometry or stacking. |
+| `stack` | enum | no | `zero` | Exactly `zero`, `none`, `normalize`, `normalize_gross`, or `normalize_net`. |
+| `interpolate` | enum | no | `linear` | `linear`, `linear-closed`, `step`, `step-before`, `step-after`, `basis`, `basis-open`, `basis-closed`, `cardinal`, `cardinal-open`, `cardinal-closed`, or `monotone`. Controls the area boundary in every stack mode. |
+| `format` | string | no | — | `percent` formats Y as a fraction. Other strings use ordinary axes; `currency` formats tooltip values. |
+| `currency` | string | no | `USD` for currency tooltips | Currency code used when `format="currency"`; axes are not formatted as currency. |
+| `download` | boolean | no | `true` | Shows the current-data CSV/XLSX menu, including raw and normalized values where relevant. |
+
+| Stack value | Behavior |
+| --- | --- |
+| `zero` | Stacks colored areas from zero; positive and negative values are on opposite sides. Without `color`, renders a single area. |
+| `none` | Overlays unstacked areas with 55% opacity, using the same X positions for every series. |
+| `normalize` | Non-negative shares at each X summing to 100%. Negative values produce a chart error. Requires `color`. |
+| `normalize_gross` | Signed share `value / sum(abs(value))` at each X; positive and negative areas stack separately. An all-zero denominator produces zero shares. Requires `color`. |
+| `normalize_net` | Signed contribution `value / abs(sum(value))` at each X. Contributions may exceed 100%; a zero net denominator produces a chart error. Requires `color`. |
+
+All normalization modes use a percentage Y axis. Signed normalization retains
+the raw Y tooltip column and adds `Gross share` or `Net contribution` as a
+separate percentage column. CSV/XLSX downloads include `<y>_normalized` beside
+the raw Y column, following the same collision rules as bar-chart downloads.
+
+The chart uses straight segments by default. Use `interpolate="monotone"` for
+smooth boundaries or `step`, `step-before`, or `step-after` for stepped areas.
+Open/closed spline variants follow Vega semantics; open splines may omit end
+points, and smoothing can overshoot sample values. `bundle` is not supported:
+the bundled Vega renderer cannot use it with area marks.
+
+The chart uses the shared 360 px SVG layout and warm-paper
+palette, reactive queries, and the filter-context button. Hovering a filled area
+shows all series at the nearest observed X, including between sample positions.
+The `color` legend follows dimension selections in the same way as bar charts.
+Vega-Lite may impute absent X/color combinations to zero while stacking; prepare
+the intended X/color matrix in SQL when missing observations matter.
+
+`group`, `bar_width`, `line_style`, `marker`, `color_scheme`, and
+`color_direction` are not supported on `AreaChart`; unknown attributes fail
+validation. Reusable `Template` declarations support `component="AreaChart"`.
 
 ## `ScatterChart`
 
@@ -840,12 +907,12 @@ and period and a fraction from 0 to 1 when using percent formatting.
 
 ## Dynamic dimension legends
 
-For `LineChart` and `BarChart`, motor updates a legend title when all these
+For `LineChart`, `BarChart`, and `AreaChart`, motor updates a legend title when all these
 conditions hold:
 
 1. the query uses `{{ dimension(parameter) }} AS stable_alias`;
 2. a `LineChart` uses `stable_alias` in `group`, `color`, or `line_style`, or a
-   `BarChart` uses it in `color`;
+   `BarChart` or `AreaChart` uses it in `color`;
 3. the selected parameter value resolves to a declared choice or `none`.
 
 The title is `<parameter label>: <choice label>`, for example `Group by:

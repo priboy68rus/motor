@@ -106,6 +106,13 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
             "download",
         },
     ),
+    "AreaChart": (
+        {"query", "x", "y"},
+        {
+            "query", "x", "y", "title", "format", "currency", "color", "details",
+            "stack", "interpolate", "download",
+        },
+    ),
     "ScatterChart": (
         {"query", "x", "y"},
         {
@@ -652,17 +659,17 @@ def _extract_components(
             raise ReportValidationError(
                 f"{component_type} is missing required attributes: {', '.join(sorted(missing))}"
             )
-        if component_type == "BarChart":
+        if component_type in {"BarChart", "AreaChart"}:
             stack = attributes.setdefault("stack", "zero")
             normalized_stacks = {"normalize", "normalize_gross", "normalize_net"}
             if stack not in {"none", "zero", *normalized_stacks}:
                 raise ReportValidationError(
-                    "BarChart stack must be one of: none, zero, normalize, "
+                    f"{component_type} stack must be one of: none, zero, normalize, "
                     "normalize_gross, normalize_net"
                 )
             if stack in normalized_stacks and "color" not in attributes:
                 raise ReportValidationError(
-                    f"BarChart stack={stack!r} requires a color attribute"
+                    f"{component_type} stack={stack!r} requires a color attribute"
                 )
             if "bar_width" in attributes:
                 try:
@@ -673,6 +680,17 @@ def _extract_components(
                     raise ReportValidationError("BarChart bar_width must be greater than zero")
                 attributes["bar_width"] = (
                     int(bar_width) if bar_width.is_integer() else bar_width
+                )
+        if component_type == "AreaChart":
+            interpolate = attributes.setdefault("interpolate", "linear")
+            interpolation_methods = (
+                "linear", "linear-closed", "step", "step-before", "step-after",
+                "basis", "basis-open", "basis-closed", "cardinal", "cardinal-open",
+                "cardinal-closed", "monotone",
+            )
+            if interpolate not in interpolation_methods:
+                raise ReportValidationError(
+                    "AreaChart interpolate must be one of: " + ", ".join(interpolation_methods)
                 )
         if component_type in {"LineChart", "ScatterChart"}:
             if component_type == "LineChart":
@@ -840,6 +858,7 @@ def _extract_components(
             "Table",
             "LineChart",
             "BarChart",
+            "AreaChart",
             "ScatterChart",
             "Heatmap",
         }:

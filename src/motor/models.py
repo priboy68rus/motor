@@ -255,6 +255,7 @@ class ComponentSpec(StrictModel):
         "Table",
         "LineChart",
         "BarChart",
+        "AreaChart",
         "ScatterChart",
         "Heatmap",
     ]

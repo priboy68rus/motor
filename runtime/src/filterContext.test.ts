@@ -244,6 +244,7 @@ test("filter indicators apply to the four chart types only", () => {
   for (const type of [
     "LineChart",
     "BarChart",
+    "AreaChart",
     "ScatterChart",
     "Heatmap",
   ] as const) {
