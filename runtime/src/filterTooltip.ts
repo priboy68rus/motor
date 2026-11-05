@@ -99,7 +99,7 @@ export class ChartFilterTooltip {
     this.panel.id = `${root.id || "motor"}-chart-filter-tooltip`;
     // A non-modal dialog permits keyboard/touch disclosure of long values.
     this.panel.setAttribute("role", "dialog");
-    this.panel.setAttribute("aria-label", "Chart filters and breakdown");
+    this.panel.setAttribute("aria-label", "Filters and breakdown");
     this.panel.tabIndex = -1;
     this.panel.hidden = true;
   }
@@ -209,6 +209,7 @@ export class ChartFilterTooltip {
   refresh(): void {
     if (!this.active) return;
     const { component, button } = this.active;
+    const subject = component.type === "BigValue" ? "metric" : "chart";
     if (!button.isConnected || button.closest("[hidden]")) {
       this.close();
       return;
@@ -261,7 +262,7 @@ export class ChartFilterTooltip {
       this.panel.append(
         text(
           "div",
-          "Chart unavailable. Values below are the current selection.",
+          `${subject === "metric" ? "Metric" : "Chart"} unavailable. Values below are the current selection.`,
           "motor-filter-context-updating",
         ),
       );
@@ -270,7 +271,7 @@ export class ChartFilterTooltip {
       this.panel.append(
         text(
           "div",
-          "Filters and breakdown do not apply to this chart.",
+          `Filters and breakdown do not apply to this ${subject}.`,
           "motor-filter-context-empty",
         ),
       );

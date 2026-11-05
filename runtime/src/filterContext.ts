@@ -25,8 +25,8 @@ export type FilterContextGroup = {
   rows: FilterContextRow[];
 };
 
-export function isChart(component: ComponentSpec): boolean {
-  return ["LineChart", "BarChart", "ScatterChart", "Heatmap"].includes(
+export function supportsFilterContext(component: ComponentSpec): boolean {
+  return ["LineChart", "BarChart", "ScatterChart", "Heatmap", "BigValue"].includes(
     component.type,
   );
 }
