@@ -90,6 +90,12 @@ const spec = {
       query: "summary",
       props: { title: "Area revenue", x: "day", y: "y", color: "group" },
     },
+    {
+      id: "big_all",
+      type: "BigValue",
+      query: "unfiltered",
+      props: { value: "y", title: "Unfiltered metric" },
+    },
   ],
   layout: [
     { type: "component", component: "sidebar" },
@@ -105,7 +111,7 @@ const spec = {
             { type: "component", component: "local" },
             { type: "row", components: ["line", "bar"] },
             { type: "row", components: ["scatter", "heatmap"] },
-            { type: "row", components: ["table", "big"] },
+            { type: "row", components: ["table", "big", "big_all"] },
             { type: "component", component: "area" },
           ],
         },

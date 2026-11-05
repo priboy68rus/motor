@@ -1,7 +1,7 @@
 import { renderChart } from "./charts/vegaAdapter";
 import type { ChartHandle } from "./charts/vegaAdapter";
 import { downloadComponentCsv, downloadComponentXlsx } from "./csvDownload";
-import { isChart } from "./filterContext";
+import { supportsFilterContext } from "./filterContext";
 import { ChartFilterTooltip } from "./filterTooltip";
 import type { RuntimeMetrics, RuntimeMetricsSnapshot } from "./runtimeMetrics";
 import { trackSidebarViewportHeight } from "./sidebarViewport";
@@ -1283,7 +1283,7 @@ export class ReportRenderer {
       );
     } else if (component.query && errors[component.query]) {
       element.className = "motor-card motor-component-error";
-      if (isChart(component)) this.chartFilters.attach(componentHeader(element), component);
+      if (supportsFilterContext(component)) this.chartFilters.attach(componentHeader(element), component);
       element.append(
         text("strong", `Query failed: ${component.query}`),
         text("pre", errors[component.query] ?? ""),
@@ -1307,7 +1307,7 @@ export class ReportRenderer {
           downloadPending,
         );
       }
-      if (isChart(component)) this.chartFilters.attach(componentHeader(element), component);
+      if (supportsFilterContext(component)) this.chartFilters.attach(componentHeader(element), component);
       if (component.type === "Table") renderTable(element, rows, component);
       else if (component.type === "BigValue") renderBigValue(element, rows, component);
       else if (

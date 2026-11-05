@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   buildFilterContext,
   filterValueLabel,
-  isChart,
+  supportsFilterContext,
   paramValueIsDefault,
 } from "./filterContext";
 import type { ComponentSpec, ParamSpec, ReportSpec } from "./types";
@@ -240,17 +240,18 @@ test("value labels distinguish all, no rows, SQL null, and the dimension disable
   );
 });
 
-test("filter indicators apply to the four chart types only", () => {
+test("filter indicators apply to charts and BigValue", () => {
   for (const type of [
     "LineChart",
     "BarChart",
     "AreaChart",
     "ScatterChart",
     "Heatmap",
+    "BigValue",
   ] as const) {
-    assert.equal(isChart({ ...chart, type }), true);
+    assert.equal(supportsFilterContext({ ...chart, type }), true);
   }
-  for (const type of ["BigValue", "Table", "Filters", "Text"] as const) {
-    assert.equal(isChart({ ...chart, type }), false);
+  for (const type of ["Table", "Filters", "Text"] as const) {
+    assert.equal(supportsFilterContext({ ...chart, type }), false);
   }
 });

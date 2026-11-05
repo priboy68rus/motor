@@ -25,13 +25,14 @@ export type FilterContextGroup = {
   rows: FilterContextRow[];
 };
 
-export function isChart(component: ComponentSpec): boolean {
+export function supportsFilterContext(component: ComponentSpec): boolean {
   return [
     "LineChart",
     "BarChart",
     "AreaChart",
     "ScatterChart",
     "Heatmap",
+    "BigValue",
   ].includes(component.type);
 }
 
