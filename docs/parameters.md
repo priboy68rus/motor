@@ -68,11 +68,13 @@ Control modes:
 | Value | Behavior |
 | --- | --- |
 | `dropdown` | Searchable overlay containing radio buttons. It closes after selection. |
-| `radio` | All radio buttons are displayed inline. |
-| `auto` | Inline radio buttons for at most 8 source options; dropdown for 9 or more. |
+| `radio` | All radio buttons are displayed inline in report content and vertically in the sidebar. |
+| `auto` | Visible radio buttons for at most 8 source options (inline in content and vertical in the sidebar); dropdown for 9 or more. |
 
 Opening any select, multiselect, or dimension dropdown closes every other open
-filter dropdown in the report. Clicking outside the dropdown closes it.
+filter dropdown in the report. Clicking outside the dropdown closes it. Long
+option labels wrap within their own rows, and overflowing option lists scroll
+without shrinking or overlapping those rows.
 
 With the default `allow_all: true`, `All` is offered and sets the runtime value
 to `all`, disabling an `in_filter` predicate. Set `allow_all: false` to hide

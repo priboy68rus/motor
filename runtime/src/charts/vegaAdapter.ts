@@ -1,4 +1,4 @@
-import type { TopLevelSpec } from "vega-lite";
+import type { Config, TopLevelSpec } from "vega-lite";
 import type { ColorScheme, EventListenerHandler, View } from "vega";
 
 import type { ComponentSpec, QueryRow } from "../types";
@@ -15,7 +15,35 @@ import {
   ROW_METRIC_TOOLTIP_FIELD,
 } from "./heatmapRowMetric";
 
+const STANDARD_CHART_HEIGHT = 360;
+
 const HEATMAP_LABEL_FIELD = "__motor_heatmap_label";
+
+export const MOTOR_VEGA_CONFIG = {
+  background: "transparent",
+  font: "IBM Plex Sans",
+  axis: {
+    labelColor: "#8c857a",
+    titleColor: "#524a41",
+    gridColor: "#ece6dc",
+    domainColor: "#ece6dc",
+    tickColor: "#ece6dc",
+    labelFontSize: 11,
+    titleFontSize: 11,
+    titleFontWeight: 600,
+    titlePadding: 8,
+  },
+  legend: {
+    labelColor: "#524a41",
+    titleColor: "#8c857a",
+    labelFontSize: 11,
+    titleFontSize: 11,
+    symbolType: "circle",
+    symbolSize: 60,
+  },
+  view: { stroke: null },
+  range: { category: ["#3b5b8c", "#c9873b", "#5f8f7a", "#a5606f"] },
+} satisfies Config;
 
 declare const vegaEmbed: (
   element: HTMLElement,
@@ -595,6 +623,7 @@ export function heatmapSpec(
   const rowMetricWidth = 82;
   return {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
+    config: MOTOR_VEGA_CONFIG,
     width: "container",
     height,
     autosize: { type: "fit", contains: "padding", resize: true },
@@ -619,8 +648,8 @@ export function heatmapSpec(
               data: { values: rowMetricResult.rows },
               mark: {
                 type: "rect" as const,
-                color: "#f6f7f9",
-                stroke: "white",
+                color: "#faf8f5",
+                stroke: "#fffdf9",
                 strokeWidth: 1,
                 tooltip: false,
               },
@@ -635,7 +664,7 @@ export function heatmapSpec(
                 type: "text" as const,
                 align: "right" as const,
                 baseline: "middle" as const,
-                color: "#344054",
+                color: "#524a41",
                 fontSize: 12,
                 fontWeight: "bold" as const,
                 tooltip: false,
@@ -651,7 +680,7 @@ export function heatmapSpec(
                 type: "text" as const,
                 align: "right" as const,
                 baseline: "bottom" as const,
-                color: "#667085",
+                color: "#8c857a",
                 fontSize: 11,
                 fontWeight: "bold" as const,
               },
@@ -664,7 +693,7 @@ export function heatmapSpec(
           ]
         : []),
       {
-        mark: { type: "rect", tooltip: false, stroke: "white", strokeWidth: 1 },
+        mark: { type: "rect", tooltip: false, stroke: "#fffdf9", strokeWidth: 1 },
         encoding: {
           color: {
             field: value,
@@ -800,8 +829,9 @@ export function scatterSpec(
   const xAxis = scatterXType(rows, x);
   return {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
+    config: MOTOR_VEGA_CONFIG,
     width: "container",
-    height: 300,
+    height: STANDARD_CHART_HEIGHT,
     autosize: { type: "fit", contains: "padding", resize: true },
     data: { values: rows },
     mark: {
@@ -1063,8 +1093,9 @@ export function lineBarSpec(
   };
   const baseSpec = {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
+    config: MOTOR_VEGA_CONFIG,
     width: "container" as const,
-    height: 300,
+    height: STANDARD_CHART_HEIGHT,
     autosize: { type: "fit" as const, contains: "padding" as const, resize: true },
     data: { values: chartRows },
     encoding,

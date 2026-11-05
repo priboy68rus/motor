@@ -4,6 +4,10 @@ Layout is declared by component source order plus optional `Row`, `Tabs`, and
 `Tab` blocks. Compile-time `Template` declarations never create layout items.
 There is no separate layout YAML.
 
+On desktop, the report uses the available viewport width up to 1600 px, with
+24 px page gutters. Narrower viewports retain the same gutters while the report
+content contracts responsively.
+
 ## Default source-order layout
 
 A top-level component outside `Row` occupies its own full-width content line:
@@ -89,10 +93,15 @@ Contract:
 - All sidebar components are collected into one sidebar in source order even
   when content declarations appear between them.
 - On desktop the sidebar remains visible while content scrolls and has its own
-  vertical overflow area.
+  vertical overflow area. Its scroll area fits between its current viewport
+  position and the bottom page gutter, then expands as it reaches the sticky
+  position, so its final controls remain reachable without first scrolling the
+  report body.
 - Sidebar cards and controls are constrained to its available inner width;
   horizontal overflow is clipped, so a vertical scrollbar never creates a
   secondary horizontal scrollbar.
+- A single-select rendered as visible radio buttons stacks its options
+  vertically in the sidebar. The same control remains inline in report content.
 - Below 900 px it moves above content into an initially open, collapsible
   `Report controls` section.
 - Select, multiselect, and dimension dropdown panels overlay other content.
