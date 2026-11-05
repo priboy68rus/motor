@@ -43,6 +43,11 @@
     .motor-component-header { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 16px; }
     .motor-component-header.actions-only { min-height: 24px; margin-bottom: 4px; justify-content: flex-end; }
     .motor-component-header h2 { min-width: 0; margin: 0; }
+    .motor-component-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; }
+    .motor-chart-filter-button { appearance: none; display: inline-flex; flex: 0 0 auto; width: 26px; height: 26px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 6px; padding: 4px; color: #8c857a; background: transparent; cursor: pointer; opacity: .42; transition: opacity .12s ease, color .12s ease, background .12s ease, border-color .12s ease; }
+    .motor-chart-filter-button svg, .motor-filter-source svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
+    .motor-chart-filter-button:hover:not(:disabled), .motor-chart-filter-button:focus-visible, .motor-chart-filter-button[aria-expanded="true"] { border-color: var(--motor-accent-border); color: var(--motor-accent-strong); background: var(--motor-accent-subtle); opacity: 1; outline: none; }
+    .motor-chart-filter-button:focus-visible { outline: 2px solid var(--motor-accent); outline-offset: 1px; }
     .motor-download-control { position: relative; display: inline-flex; flex: 0 0 auto; }
     .motor-download-data { appearance: none; display: inline-flex; flex: 0 0 auto; width: 26px; height: 26px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 6px; padding: 4px; color: #8c857a; background: transparent; cursor: pointer; opacity: .42; transition: opacity .12s ease, color .12s ease, background .12s ease, border-color .12s ease; }
     .motor-download-data svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
@@ -138,6 +143,7 @@
     .motor-stale > * { opacity: .42; }
     .motor-loading::after { content: "Updating…"; position: absolute; inset: 12px 12px auto auto; padding: 5px 8px; border-radius: 6px; color: #524a41; background: #f1ece4; font-size: .75rem; font-weight: 650; opacity: 1; }
     .motor-has-download.motor-loading::after { right: 48px; }
+    .motor-component:has(.motor-chart-filter-button).motor-loading::after { right: 82px; }
     .motor-chart.vega-embed { display: block; width: 100%; min-width: 0; }
     .motor-chart-shared-tooltip { position: fixed; z-index: 1000; min-width: 180px; max-width: min(960px, calc(100vw - 16px)); box-sizing: border-box; padding: 10px 12px; border: 1px solid #3d372f; border-radius: 8px; color: white; background: #262220f2; box-shadow: 0 8px 24px #26222040; pointer-events: none; font-size: .82rem; }
     .motor-chart-shared-tooltip[hidden] { display: none; }
@@ -155,6 +161,26 @@
     .motor-chart-shared-tooltip-swatch { width: 9px; height: 9px; border-radius: 50%; background: #a8a196; }
     .motor-chart-shared-tooltip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .motor-chart-shared-tooltip-value { font-variant-numeric: tabular-nums; font-weight: 650; text-align: right; }
+    .motor-chart-filter-tooltip { position: fixed; z-index: 1100; box-sizing: border-box; width: 460px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; padding: 10px 12px; border: 1px solid #3d372f; border-radius: 8px; color: #f4f0e9; background: #262220f2; box-shadow: 0 8px 24px #26222040; font-size: .82rem; line-height: 1.4; }
+    .motor-chart-filter-tooltip[hidden] { display: none; }
+    .motor-filter-context-group + .motor-filter-context-group { margin-top: 10px; padding-top: 8px; border-top: 1px solid #ffffff26; }
+    .motor-filter-context-heading { margin-bottom: 5px; color: #cfc7ba; font-weight: 650; }
+    .motor-filter-context-row { display: grid; grid-template-columns: var(--motor-filter-source-width, 18px) minmax(70px, 1fr) minmax(80px, 1.4fr) 48px; align-items: baseline; gap: 8px; padding: 4px 0; }
+    .motor-filter-context-sources { display: flex; flex-wrap: wrap; max-width: 54px; align-items: center; gap: 2px; align-self: start; padding-top: 1px; }
+    .motor-filter-source { appearance: none; display: inline-flex; border: 0; border-radius: 2px; padding: 0; color: #a8a196; background: transparent; cursor: pointer; }
+    .motor-filter-source:hover, .motor-filter-source:focus-visible { color: #f4f0e9; outline: 1px solid #a8a196; outline-offset: 1px; }
+    .motor-filter-context-source-details { grid-column: 1 / -1; color: #cfc7ba; overflow-wrap: anywhere; }
+    .motor-filter-context-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .motor-filter-context-value { min-width: 0; text-align: right; font-variant-numeric: tabular-nums; }
+    .motor-filter-context-value summary { cursor: pointer; list-style: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .motor-filter-context-value summary::-webkit-details-marker { display: none; }
+    .motor-filter-context-value summary:hover { text-decoration: underline; }
+    .motor-filter-context-value summary:focus-visible { outline: 2px solid #a8a196; outline-offset: 1px; border-radius: 2px; }
+    .motor-filter-context-full-value { padding-top: 4px; color: #cfc7ba; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .motor-filter-context-default { align-self: start; margin-top: 1px; color: #c5bcaf; font-size: .7rem; text-align: right; }
+    .motor-filter-context-group.is-not-applied .motor-filter-context-row { color: #c5bcaf; }
+    .motor-filter-context-updating { margin-bottom: 8px; color: #fecd89; }
+    .motor-filter-context-empty { color: #cfc7ba; }
     .motor-row { display: grid; grid-template-columns: repeat(var(--motor-columns), minmax(0, 1fr)); gap: 16px; align-items: start; margin: 16px 0; }
     .motor-row > * { min-width: 0; }
     .motor-row > .motor-card { margin: 0; }
@@ -199,6 +225,7 @@
     }
     @media (hover: none) {
       .motor-download-data:not(:disabled) { opacity: .7; }
+      .motor-chart-filter-button:not([aria-expanded="true"]) { opacity: .7; }
     }
   </style>
 </head>

@@ -347,8 +347,21 @@ When changing the browser runtime:
 cd runtime
 npm install
 npm run check
+npm test
 npm run build
 ```
+
+For chart filter interaction checks in Chromium, install the development-only
+browser once and run the browser suite:
+
+```bash
+npx playwright-core install chromium
+npm run test:browser
+```
+
+`MOTOR_BROWSER_EXECUTABLE` can select an existing Chromium executable instead.
+These checks cover click/keyboard interaction, hover staying closed, parameter
+locations and values, query updates and failures, tab changes, and narrow viewports.
 
 The runtime build writes packaged assets consumed by the Python distribution.
 Node.js is otherwise unnecessary for report authors.

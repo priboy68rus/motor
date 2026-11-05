@@ -345,6 +345,59 @@ use localized number formatting, null uses `—`, and other values become text.
 Missing configured columns render `—`. Table headers are exact column names;
 renaming and presentation formatting should currently be done in SQL.
 
+## Chart filter context
+
+`LineChart`, `BarChart`, `ScatterChart`, and `Heatmap` always show a funnel button
+with a flat bottom in the card header, including charts without a `title` or with
+`download="false"`. This is automatic; there is no configuration attribute.
+`Table` and `BigValue` do not show this icon.
+
+The button uses the same neutral color and opacity as the data-download button.
+Clicking, tapping, or activating it with Enter/Space opens a panel using the
+same dark palette and typography as chart tooltips. Hovering or focusing the
+button does not open it. Clicking again, clicking outside, or pressing Escape
+closes it; moving the pointer away leaves it open. With the panel open and
+keyboard focus on the button, Arrow Down enters the value disclosures; Escape
+returns focus to the button. The panel is a non-modal dialog
+so its disclosures can also be used with a keyboard or touch. It scrolls when
+necessary and stays within the viewport, outside the card's scroll container.
+
+The panel has up to three sections, in this order; empty sections are omitted:
+
+| Section | Contents |
+| --- | --- |
+| `Breakdown` | Dependent `dimension` parameters. `None` still belongs here when the query uses that parameter. |
+| `Filters` | Dependent `select`, `multiselect`, and `date_range` parameters, including filters currently set to `All`. |
+| `Not applied` | All other declared parameters, including dimensions and controls in other tabs. |
+
+Dependencies come from the query's compiled `depends_on.params`, including
+parameters inherited through named SQL views or queries. They describe SQL
+dependencies, not a guarantee that the parameter restricts every part of a
+calculation or changes the result for every selection. Hard-coded SQL predicates
+are not report parameters and are not listed. Layout placement does not define
+filter scope.
+
+If the query depends on no parameters, the panel shows only
+`Filters and breakdown do not apply to this chart.` It does not list every
+unused parameter. A query depending only on a dimension still shows the sections.
+
+Each parameter appears once, with the following information:
+
+| Item | Behavior |
+| --- | --- |
+| Source icons (left) | Sidebar, this tab, another tab, or report content outside tabs. Icon tooltips and accessible labels identify the location, including the tab title. Clicking/tapping an icon or activating it with the keyboard reveals the locations as text. A parameter with controls in multiple locations shows each distinct source. A parameter without a `Filters` control is identified as `Report parameter (no control)`. |
+| Name | Parameter `label`, falling back to its name with underscores replaced by spaces and the first letter capitalized. |
+| Current value | A scalar, selected dimension choice label (falling back to its field), or inclusive start/end dates. `all` displays as `All`; a disabled dimension as `None`; SQL null uses `options.null_label` or `(Null)`. An empty multiselect displays `All` with `empty_behavior: all`, otherwise `None`. |
+| Long values | Multiple selected values are listed when they fit, otherwise summarized as `Multiple · N`. Every value can be clicked/tapped or expanded with the keyboard to read its full text; hovering also exposes the full value. |
+| `Default` mark | Shown only when the current value equals the declared default. Multiselect comparison ignores selection order; date ranges compare both bounds. A default value can still restrict data. |
+
+Values update when any report parameter changes, including parameters in
+`Not applied`. During an affected query update, the panel displays `Updating…`
+and identifies values as the current selection, rather than claiming that the
+previous chart already reflects them. Failed charts retain the funnel icon
+and identify the chart as unavailable. Switching tabs closes a panel whose
+chart becomes hidden.
+
 ## Data downloads
 
 `Table`, `LineChart`, `BarChart`, `ScatterChart`, and `Heatmap` show a small data-download

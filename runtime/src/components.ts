@@ -1,6 +1,8 @@
 import { renderChart } from "./charts/vegaAdapter";
 import type { ChartHandle } from "./charts/vegaAdapter";
 import { downloadComponentCsv, downloadComponentXlsx } from "./csvDownload";
+import { isChart } from "./filterContext";
+import { ChartFilterTooltip } from "./filterTooltip";
 import type { RuntimeMetrics, RuntimeMetricsSnapshot } from "./runtimeMetrics";
 import { trackSidebarViewportHeight } from "./sidebarViewport";
 import {
@@ -346,13 +348,22 @@ function attachDownloadControl(
 ): void {
   if (component.props.download === false) return;
   element.classList.add("motor-has-download");
+  componentHeader(element).append(downloadControl(reportSlug, component, rows, pending));
+}
+
+function componentHeader(element: HTMLElement): HTMLElement {
+  const existing = element.querySelector<HTMLElement>(".motor-component-actions");
+  if (existing) return existing;
   const header = document.createElement("div");
   header.className = "motor-component-header";
   const heading = Array.from(element.children).find((child) => child.tagName === "H2");
   if (heading) header.append(heading);
   else header.classList.add("actions-only");
-  header.append(downloadControl(reportSlug, component, rows, pending));
+  const actions = document.createElement("div");
+  actions.className = "motor-component-actions";
+  header.append(actions);
   element.prepend(header);
+  return actions;
 }
 
 function renderTable(element: HTMLElement, rows: QueryRow[], component: ComponentSpec): void {
@@ -877,6 +888,7 @@ function renderFilters(
 }
 
 export class ReportRenderer {
+  private chartFilters: ChartFilterTooltip;
   private elements = new Map<string, HTMLElement>();
   private chartHandles = new Map<string, ChartHandle>();
   private componentTabs = new Map<string, { tabsetId: string; tabId: string }>();
@@ -897,7 +909,9 @@ export class ReportRenderer {
     private onParamReset: ParamResetHandler,
     private onTabChange?: (queryNames: ReadonlySet<string>) => void,
     private runtimeMetrics?: RuntimeMetrics,
-  ) {}
+  ) {
+    this.chartFilters = new ChartFilterTooltip(root, spec);
+  }
 
   async mount(
     results: QueryResults,
@@ -905,6 +919,7 @@ export class ReportRenderer {
     values: ParamValues,
     options: ParamOptions,
   ): Promise<void> {
+    this.chartFilters.reset(values);
     this.latestResults = results;
     this.latestErrors = errors;
     this.latestValues = values;
@@ -1091,6 +1106,7 @@ export class ReportRenderer {
       const panel = panels.get(candidateId);
       if (panel) panel.hidden = !selected;
     }
+    this.chartFilters.refresh();
     const queryNames = new Set<string>();
     for (const component of this.spec.components) {
       const tab = this.componentTabs.get(component.id);
@@ -1129,6 +1145,7 @@ export class ReportRenderer {
         closeDownloadMenus(download.ownerDocument);
       }
     }
+    this.chartFilters.refresh();
   }
 
   async updateFilters(
@@ -1139,6 +1156,7 @@ export class ReportRenderer {
     this.latestValues = values;
     this.latestOptions = options;
     this.updateSidebarResetButton(values);
+    this.chartFilters.update(values);
     for (const component of this.spec.components) {
       if (
         component.type !== "Filters" ||
@@ -1164,6 +1182,7 @@ export class ReportRenderer {
     this.latestValues = values;
     this.latestOptions = options;
     this.updateSidebarResetButton(values);
+    this.chartFilters.update(values);
     for (const component of this.spec.components) {
       if (
         component.query &&
@@ -1235,6 +1254,7 @@ export class ReportRenderer {
   ): Promise<void> {
     const element = this.elements.get(component.id);
     if (!element) return;
+    this.chartFilters.beforeRender(component);
     this.chartHandles.get(component.id)?.finalize();
     this.chartHandles.delete(component.id);
     element.replaceChildren();
@@ -1263,6 +1283,7 @@ export class ReportRenderer {
       );
     } else if (component.query && errors[component.query]) {
       element.className = "motor-card motor-component-error";
+      if (isChart(component)) this.chartFilters.attach(componentHeader(element), component);
       element.append(
         text("strong", `Query failed: ${component.query}`),
         text("pre", errors[component.query] ?? ""),
@@ -1285,6 +1306,7 @@ export class ReportRenderer {
           downloadPending,
         );
       }
+      if (isChart(component)) this.chartFilters.attach(componentHeader(element), component);
       if (component.type === "Table") renderTable(element, rows, component);
       else if (component.type === "BigValue") renderBigValue(element, rows, component);
       else if (
@@ -1304,10 +1326,12 @@ export class ReportRenderer {
           );
         } catch (error) {
           element.className = "motor-card motor-component-error";
-          element.replaceChildren(
+          element.querySelector(".motor-download-control")?.remove();
+          chart.replaceChildren(
             text("strong", "Chart render failed"),
             text("pre", error instanceof Error ? error.message : String(error)),
           );
+          this.chartFilters.refresh();
         }
       }
     }
