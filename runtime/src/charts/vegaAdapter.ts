@@ -1,5 +1,5 @@
 import type { Config, TopLevelSpec } from "vega-lite";
-import type { ColorScheme, EventListenerHandler, View } from "vega";
+import type { ColorScheme, EventListenerHandler, Interpolate, View } from "vega";
 
 import type { ComponentSpec, QueryRow } from "../types";
 import { formatValue, type ValueFormat, type ValueFormatOptions } from "../valueFormatting";
@@ -71,6 +71,7 @@ type SharedTooltipBucket = {
 
 type SharedTooltipConfig = {
   mode?: "shared-x" | "point";
+  nearestX?: boolean;
   x: string;
   y: string;
   seriesFields?: TooltipDetailConfig[];
@@ -192,6 +193,7 @@ export function lineBarTooltipConfig(
   return {
     x: String(component.props.x),
     y: String(component.props.y),
+    ...(component.type === "AreaChart" ? { nearestX: true } : {}),
     ...(seriesFields.length > 0 ? { seriesFields } : {}),
     ...(color ? { colorField: color } : {}),
     xType,
@@ -402,14 +404,46 @@ function mountSharedTooltip(
       positionTooltip(tooltip, event);
       return;
     }
-    const key = tooltipKey((datum as QueryRow)[config.x], config.xType);
-    const hoveredSeriesKey = tooltipSeriesKey(datum as QueryRow, config);
-    const renderKey = `${key}\u0000${hoveredSeriesKey}`;
+    let key = tooltipKey((datum as QueryRow)[config.x], config.xType);
+    if (config.nearestX) {
+      // An area path carries its first row as datum. Follow the pointer's X
+      // instead, so the entire fill can reveal the nearest observed X bucket.
+      const matrix = view
+        .container()
+        ?.querySelector<SVGGraphicsElement>("g.mark-area")
+        ?.getScreenCTM();
+      if (matrix) {
+        const pointerX = new DOMPoint(
+          event.clientX,
+          event.clientY,
+        ).matrixTransform(matrix.inverse()).x;
+        const scale = view.scale("x") as ((value: unknown) => number) & {
+          bandwidth?: () => number;
+        };
+        let distance = Infinity;
+        for (const [bucketKey, bucket] of buckets) {
+          const x =
+            config.xType === "temporal"
+              ? new Date(bucket.x as string | number).getTime()
+              : bucket.x;
+          const position = Number(scale(x)) + (scale.bandwidth?.() ?? 0) / 2;
+          const candidate = Math.abs(pointerX - position);
+          if (candidate < distance) {
+            key = bucketKey;
+            distance = candidate;
+          }
+        }
+      }
+    }
     const bucket = buckets.get(key);
     if (!bucket) {
       hide();
       return;
     }
+    const hoveredSeriesKey = config.nearestX && seriesFields.length === 0 && bucket.entries[0]
+      ? bucket.entries[0].seriesKey
+      : tooltipSeriesKey(datum as QueryRow, config);
+    const renderKey = `${key}\u0000${hoveredSeriesKey}`;
 
     if (activeKey !== renderKey) {
       const heading = document.createElement("div");
@@ -950,8 +984,8 @@ export function lineBarSpec(
   rows: QueryRow[],
   legendTitles: Record<string, string> = {},
 ): { spec: TopLevelSpec; tooltip: SharedTooltipConfig } {
-  if (component.type !== "LineChart" && component.type !== "BarChart") {
-    throw new Error(`unsupported line/bar component: ${component.type}`);
+  if (component.type !== "LineChart" && component.type !== "BarChart" && component.type !== "AreaChart") {
+    throw new Error(`unsupported line/bar/area component: ${component.type}`);
   }
   const x = String(component.props.x);
   const y = String(component.props.y);
@@ -961,7 +995,8 @@ export function lineBarSpec(
     component.type === "LineChart" && component.props.line_style
       ? String(component.props.line_style)
       : undefined;
-  const stack = component.type === "BarChart" ? String(component.props.stack ?? "zero") : "none";
+  const stackedChart = component.type === "BarChart" || component.type === "AreaChart";
+  const stack = stackedChart ? String(component.props.stack ?? "zero") : "none";
   const marker =
     component.type === "LineChart" ? String(component.props.marker ?? "none") : "none";
   const colorScheme = component.props.color_scheme
@@ -984,7 +1019,7 @@ export function lineBarSpec(
     !Number.isNaN(Date.parse(sampleX))
       ? "temporal"
       : "nominal";
-  if (stack === "normalize") validateStandardNormalize(rows, x, y);
+  if (stack === "normalize") validateStandardNormalize(rows, x, y, component.type);
   const partitionFields = group ? [group] : [];
   const signedNormalization =
     stack === "normalize_gross" || stack === "normalize_net"
@@ -995,6 +1030,7 @@ export function lineBarSpec(
           xType === "temporal",
           stack,
           partitionFields,
+          component.type,
         )
       : undefined;
   let chartRows = signedNormalization?.rows ?? rows;
@@ -1021,7 +1057,7 @@ export function lineBarSpec(
     type: "quantitative" as const,
     title: y,
     ...(percent || normalizedStack ? { format: ".1%", axis: { format: ".0%" } } : {}),
-    ...(component.type === "BarChart"
+    ...(stackedChart
       ? {
           stack:
             stack === "none"
@@ -1134,6 +1170,16 @@ export function lineBarSpec(
             },
           ],
         }
+      : component.type === "AreaChart"
+        ? {
+            ...baseSpec,
+            mark: {
+              type: "area",
+              interpolate: String(component.props.interpolate ?? "linear") as Interpolate,
+              tooltip: false,
+              ...(stack === "none" ? { opacity: 0.55 } : {}),
+            },
+          }
       : {
           ...baseSpec,
           mark: {
@@ -1162,7 +1208,7 @@ export async function renderChart(
       scatterTooltipConfig(component, rows, legendTitle),
     );
   }
-  if (component.type !== "LineChart" && component.type !== "BarChart") {
+  if (component.type !== "LineChart" && component.type !== "BarChart" && component.type !== "AreaChart") {
     throw new Error(`unsupported chart component: ${component.type}`);
   }
   const chart = lineBarSpec(component, rows, legendTitles);

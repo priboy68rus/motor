@@ -1220,7 +1220,7 @@ export class ReportRenderer {
     const resultFields =
       component.type === "LineChart"
         ? [component.props.group, component.props.color, component.props.line_style]
-        : component.type === "BarChart"
+        : component.type === "BarChart" || component.type === "AreaChart"
           ? [component.props.color]
           : [component.props.group ?? component.props.color];
     const titles: Record<string, string> = {};
@@ -1295,6 +1295,7 @@ export class ReportRenderer {
         component.type === "Table" ||
         component.type === "LineChart" ||
         component.type === "BarChart" ||
+        component.type === "AreaChart" ||
         component.type === "ScatterChart" ||
         component.type === "Heatmap"
       ) {
@@ -1312,6 +1313,7 @@ export class ReportRenderer {
       else if (
         component.type === "LineChart" ||
         component.type === "BarChart" ||
+        component.type === "AreaChart" ||
         component.type === "ScatterChart" ||
         component.type === "Heatmap"
       ) {

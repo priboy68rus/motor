@@ -81,6 +81,7 @@ export type ComponentSpec = {
     | "Table"
     | "LineChart"
     | "BarChart"
+    | "AreaChart"
     | "ScatterChart"
     | "Heatmap";
   query?: string;

@@ -85,6 +85,12 @@ const spec = {
     { id: "table", type: "Table", query: "summary", props: {} },
     { id: "big", type: "BigValue", query: "summary", props: { value: "y" } },
     {
+      id: "area",
+      type: "AreaChart",
+      query: "summary",
+      props: { title: "Area revenue", x: "day", y: "y", color: "group" },
+    },
+    {
       id: "big_all",
       type: "BigValue",
       query: "unfiltered",
@@ -106,6 +112,7 @@ const spec = {
             { type: "row", components: ["line", "bar"] },
             { type: "row", components: ["scatter", "heatmap"] },
             { type: "row", components: ["table", "big", "big_all"] },
+            { type: "component", component: "area" },
           ],
         },
         {
@@ -137,8 +144,8 @@ const values = Object.fromEntries(
   ]),
 );
 const rows = [
-  { x: "June", y: 12, z: 4, group: "A" },
-  { x: "July", y: 20, z: 8, group: "A" },
+  { x: "June", day: "2026-06-01", y: 12, z: 4, group: "A" },
+  { x: "July", day: "2026-07-01", y: 20, z: 8, group: "A" },
 ];
 const results = { summary: rows, unfiltered: rows, dimension: rows };
 const options = {

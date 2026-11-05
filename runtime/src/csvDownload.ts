@@ -63,12 +63,12 @@ function normalizedRows(
   x: string,
   y: string,
 ): { rows: QueryRow[]; sourceField: string } | undefined {
-  if (component.type !== "BarChart") return undefined;
+  if (component.type !== "BarChart" && component.type !== "AreaChart") return undefined;
   const stack = String(component.props.stack ?? "zero");
   const temporalX = temporalValues(rows, x);
   const partitionFields = component.props.group ? [String(component.props.group)] : [];
   if (stack === "normalize") {
-    const normalized = normalizeStandardRows(rows, x, y, temporalX, partitionFields);
+    const normalized = normalizeStandardRows(rows, x, y, temporalX, partitionFields, component.type);
     return { rows: normalized.rows, sourceField: normalized.field };
   }
   if (stack === "normalize_gross" || stack === "normalize_net") {
@@ -79,6 +79,7 @@ function normalizedRows(
       temporalX,
       stack as SignedNormalization,
       partitionFields,
+      component.type,
     );
     return { rows: normalized.rows, sourceField: normalized.field };
   }
@@ -120,6 +121,7 @@ export function componentCsvData(
   if (
     component.type === "LineChart" ||
     component.type === "BarChart" ||
+    component.type === "AreaChart" ||
     component.type === "ScatterChart"
   ) {
     const x = String(component.props.x);

@@ -26,9 +26,14 @@ export type FilterContextGroup = {
 };
 
 export function supportsFilterContext(component: ComponentSpec): boolean {
-  return ["LineChart", "BarChart", "ScatterChart", "Heatmap", "BigValue"].includes(
-    component.type,
-  );
+  return [
+    "LineChart",
+    "BarChart",
+    "AreaChart",
+    "ScatterChart",
+    "Heatmap",
+    "BigValue",
+  ].includes(component.type);
 }
 
 export function paramValueIsDefault(param: ParamSpec, value: unknown): boolean {

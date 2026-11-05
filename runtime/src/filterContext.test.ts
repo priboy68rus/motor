@@ -244,6 +244,7 @@ test("filter indicators apply to charts and BigValue", () => {
   for (const type of [
     "LineChart",
     "BarChart",
+    "AreaChart",
     "ScatterChart",
     "Heatmap",
     "BigValue",

@@ -3,7 +3,8 @@ export type SignedNormalization = "normalize_gross" | "normalize_net";
 export type StackRow = Record<string, unknown>;
 
 function numericValue(value: unknown): number | undefined {
-  if (value == null || (typeof value === "string" && value.trim() === "")) return undefined;
+  if (value == null || (typeof value === "string" && value.trim() === ""))
+    return undefined;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : undefined;
 }
@@ -11,7 +12,9 @@ function numericValue(value: unknown): number | undefined {
 function rowKey(value: unknown, temporal: boolean): string {
   if (temporal && value != null) {
     const timestamp =
-      value instanceof Date ? value.getTime() : new Date(value as string | number).getTime();
+      value instanceof Date
+        ? value.getTime()
+        : new Date(value as string | number).getTime();
     if (!Number.isNaN(timestamp)) return `date:${timestamp}`;
   }
   if (typeof value === "number") return `number:${value}`;
@@ -41,14 +44,19 @@ function internalFieldName(rows: StackRow[], base: string): string {
   return field;
 }
 
-export function validateStandardNormalize(rows: StackRow[], x: string, y: string): void {
+export function validateStandardNormalize(
+  rows: StackRow[],
+  x: string,
+  y: string,
+  chartType = "BarChart",
+): void {
   const negative = rows.find((row) => {
     const value = numericValue(row[y]);
     return value != null && value < 0;
   });
   if (!negative) return;
   throw new Error(
-    `BarChart stack='normalize' requires non-negative ${y} values; ` +
+    `${chartType} stack='normalize' requires non-negative ${y} values; ` +
       `found ${negative[y]} at ${x}=${displayValue(negative[x])}. ` +
       "Use normalize_gross or normalize_net for signed values.",
   );
@@ -60,8 +68,9 @@ export function normalizeStandardRows(
   y: string,
   temporalX: boolean,
   partitionFields: string[] = [],
+  chartType = "BarChart",
 ): { rows: StackRow[]; field: string; label: string } {
-  validateStandardNormalize(rows, x, y);
+  validateStandardNormalize(rows, x, y, chartType);
   const field = internalFieldName(rows, "__motor_normalized_value");
   const totals = new Map<string, number>();
   for (const row of rows) {
@@ -91,6 +100,7 @@ export function normalizeSignedRows(
   temporalX: boolean,
   mode: SignedNormalization,
   partitionFields: string[] = [],
+  chartType = "BarChart",
 ): { rows: StackRow[]; field: string; label: string } {
   const field = internalFieldName(rows, "__motor_normalized_value");
   const totals = new Map<string, { net: number; gross: number }>();
@@ -111,7 +121,7 @@ export function normalizeSignedRows(
       const total = totals.get(stackKey(row, x, temporalX, partitionFields));
       if (!total || total.net === 0) {
         throw new Error(
-          `BarChart stack='normalize_net' cannot normalize ${x}=${displayValue(row[x])}: ` +
+          `${chartType} stack='normalize_net' cannot normalize ${x}=${displayValue(row[x])}: ` +
             `sum(${y}) is zero. Use normalize_gross or stack='zero'.`,
         );
       }
@@ -124,8 +134,10 @@ export function normalizeSignedRows(
     rows: rows.map((row) => {
       const value = numericValue(row[y]);
       const total = totals.get(stackKey(row, x, temporalX, partitionFields));
-      const denominator = mode === "normalize_gross" ? total?.gross : Math.abs(total?.net ?? 0);
-      const normalized = value == null ? null : denominator ? value / denominator : 0;
+      const denominator =
+        mode === "normalize_gross" ? total?.gross : Math.abs(total?.net ?? 0);
+      const normalized =
+        value == null ? null : denominator ? value / denominator : 0;
       return { ...row, [field]: normalized };
     }),
   };
