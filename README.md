@@ -79,6 +79,9 @@ npm test
 npm run build
 ```
 
+For browser interaction checks, run `npx playwright-core install chromium`
+once, then `npm run test:browser` from `runtime/`.
+
 The generated runtime is copied into `src/motor/static/` and distributed with
 the Python package. See the
 [development commands](https://github.com/priboy68rus/motor/blob/master/docs/cli-and-runtime.md#development-commands) for the

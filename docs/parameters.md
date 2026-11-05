@@ -292,3 +292,6 @@ blocks.
   expressed in SQL, usually in a reusable `kind=view` block.
 
 See [SQL template helpers](sql.md#template-helpers) for exact rendered SQL.
+See [Chart filter context](components.md#chart-filter-context) for the funnel
+panel showing each chart's dependent and unused parameters, current values,
+control locations, and default-value marks.
