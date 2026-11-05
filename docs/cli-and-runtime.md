@@ -360,8 +360,8 @@ npm run test:browser
 ```
 
 `MOTOR_BROWSER_EXECUTABLE` can select an existing Chromium executable instead.
-These checks cover hover/click/keyboard interaction, parameter locations and
-values, query updates and failures, tab changes, and narrow viewports.
+These checks cover click/keyboard interaction, hover staying closed, parameter
+locations and values, query updates and failures, tab changes, and narrow viewports.
 
 The runtime build writes packaged assets consumed by the Python distribution.
 Node.js is otherwise unnecessary for report authors.

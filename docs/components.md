@@ -347,16 +347,18 @@ renaming and presentation formatting should currently be done in SQL.
 
 ## Chart filter context
 
-`LineChart`, `BarChart`, `ScatterChart`, and `Heatmap` always show a funnel icon
-in the card header, including charts without a `title` or with
+`LineChart`, `BarChart`, `ScatterChart`, and `Heatmap` always show a funnel button
+with a flat bottom in the card header, including charts without a `title` or with
 `download="false"`. This is automatic; there is no configuration attribute.
 `Table` and `BigValue` do not show this icon.
 
-Hovering or focusing the icon opens a panel using the same dark palette and
-typography as chart tooltips. Clicking or tapping pins it; clicking again,
-clicking outside, or pressing Escape closes it. The pointer can move into the panel without
-closing it. With keyboard focus on the icon, Arrow Down enters the value
-disclosures; Escape returns focus to the icon. The panel is a non-modal dialog
+The button uses the same neutral color and opacity as the data-download button.
+Clicking, tapping, or activating it with Enter/Space opens a panel using the
+same dark palette and typography as chart tooltips. Hovering or focusing the
+button does not open it. Clicking again, clicking outside, or pressing Escape
+closes it; moving the pointer away leaves it open. With the panel open and
+keyboard focus on the button, Arrow Down enters the value disclosures; Escape
+returns focus to the button. The panel is a non-modal dialog
 so its disclosures can also be used with a keyboard or touch. It scrolls when
 necessary and stays within the viewport, outside the card's scroll container.
 

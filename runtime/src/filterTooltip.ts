@@ -87,8 +87,6 @@ export class ChartFilterTooltip {
   private panel: HTMLElement;
   private active?: { button: HTMLButtonElement; component: ComponentSpec };
   private values: ParamValues = {};
-  private pinned = false;
-  private closeTimer?: ReturnType<typeof setTimeout>;
   private restoreFocus = false;
   private listeners?: AbortController;
 
@@ -104,10 +102,6 @@ export class ChartFilterTooltip {
     this.panel.setAttribute("aria-label", "Chart filters and breakdown");
     this.panel.tabIndex = -1;
     this.panel.hidden = true;
-    this.panel.addEventListener("pointerenter", () => this.cancelClose());
-    this.panel.addEventListener("pointerleave", () => this.scheduleClose());
-    this.panel.addEventListener("focusout", () => this.scheduleClose());
-    this.panel.addEventListener("focusin", () => this.cancelClose());
   }
 
   reset(values: ParamValues): void {
@@ -175,34 +169,22 @@ export class ChartFilterTooltip {
     button.setAttribute("aria-expanded", "false");
     button.setAttribute("aria-controls", this.panel.id);
     button.innerHTML =
-      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14l-5.5 6.5V16l-3-1.5v-4z"/></svg>';
+      '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14l-5.5 6.5V16h-3v-5.5z"/></svg>';
     header.append(button);
     const show = (): void => {
-      this.cancelClose();
       if (this.active?.button === button) return;
       this.close();
       this.active = { button, component };
       button.setAttribute("aria-expanded", "true");
       this.refresh();
     };
-    button.addEventListener("pointerenter", (event) => {
-      if (event.pointerType === "mouse" && !this.pinned) show();
-    });
-    button.addEventListener("pointerleave", () => this.scheduleClose());
-    button.addEventListener("focus", show);
-    button.addEventListener("blur", () => this.scheduleClose());
     button.addEventListener("click", () => {
-      if (this.active?.button === button && this.pinned) this.close();
-      else {
-        show();
-        this.pinned = true;
-      }
+      if (this.active?.button === button) this.close();
+      else show();
     });
     button.addEventListener("keydown", (event) => {
-      if (event.key !== "ArrowDown") return;
+      if (event.key !== "ArrowDown" || this.active?.button !== button) return;
       event.preventDefault();
-      show();
-      this.pinned = true;
       (
         this.panel.querySelector<HTMLElement>(
           ".motor-filter-context-value summary",
@@ -369,30 +351,9 @@ export class ChartFilterTooltip {
     this.panel.scrollTop = scrollTop;
   }
 
-  private cancelClose(): void {
-    if (this.closeTimer) clearTimeout(this.closeTimer);
-    this.closeTimer = undefined;
-  }
-
-  private scheduleClose(): void {
-    this.cancelClose();
-    this.closeTimer = setTimeout(() => {
-      if (
-        this.pinned ||
-        this.panel.matches(":hover") ||
-        this.panel.contains(this.root.ownerDocument.activeElement) ||
-        this.active?.button === this.root.ownerDocument.activeElement
-      )
-        return;
-      this.close();
-    }, 180);
-  }
-
   close(): void {
-    this.cancelClose();
     this.active?.button.setAttribute("aria-expanded", "false");
     this.active = undefined;
-    this.pinned = false;
     this.restoreFocus = false;
     this.panel.hidden = true;
   }

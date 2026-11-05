@@ -44,9 +44,9 @@
     .motor-component-header.actions-only { min-height: 24px; margin-bottom: 4px; justify-content: flex-end; }
     .motor-component-header h2 { min-width: 0; margin: 0; }
     .motor-component-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; }
-    .motor-chart-filter-button { appearance: none; display: inline-flex; flex: 0 0 auto; width: 26px; height: 26px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 6px; padding: 4px; color: #8c857a; background: transparent; cursor: pointer; }
+    .motor-chart-filter-button { appearance: none; display: inline-flex; flex: 0 0 auto; width: 26px; height: 26px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 6px; padding: 4px; color: #8c857a; background: transparent; cursor: pointer; opacity: .42; transition: opacity .12s ease, color .12s ease, background .12s ease, border-color .12s ease; }
     .motor-chart-filter-button svg, .motor-filter-source svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
-    .motor-chart-filter-button:hover, .motor-chart-filter-button:focus-visible, .motor-chart-filter-button[aria-expanded="true"] { border-color: var(--motor-accent-border); color: var(--motor-accent-strong); background: var(--motor-accent-subtle); }
+    .motor-chart-filter-button:hover:not(:disabled), .motor-chart-filter-button:focus-visible, .motor-chart-filter-button[aria-expanded="true"] { border-color: var(--motor-accent-border); color: var(--motor-accent-strong); background: var(--motor-accent-subtle); opacity: 1; outline: none; }
     .motor-chart-filter-button:focus-visible { outline: 2px solid var(--motor-accent); outline-offset: 1px; }
     .motor-download-control { position: relative; display: inline-flex; flex: 0 0 auto; }
     .motor-download-data { appearance: none; display: inline-flex; flex: 0 0 auto; width: 26px; height: 26px; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 6px; padding: 4px; color: #8c857a; background: transparent; cursor: pointer; opacity: .42; transition: opacity .12s ease, color .12s ease, background .12s ease, border-color .12s ease; }
@@ -225,6 +225,7 @@
     }
     @media (hover: none) {
       .motor-download-data:not(:disabled) { opacity: .7; }
+      .motor-chart-filter-button:not([aria-expanded="true"]) { opacity: .7; }
     }
   </style>
 </head>

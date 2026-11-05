@@ -40,7 +40,7 @@ try {
     content: bundled.outputFiles[0].text,
     type: "module",
   });
-  await page.waitForFunction(() => !!window.fixture);
+  await page.waitForFunction(() => !!window.fixture, undefined, { timeout: 30000 });
   assert.deepEqual(errors, []);
   assert.equal(await page.locator(".motor-chart-filter-button").count(), 4);
   assert.equal(
@@ -58,14 +58,42 @@ try {
   const panel = page.locator(".motor-chart-filter-tooltip");
   const tooltipStyle = (element) => {
     const style = getComputedStyle(element);
-    return [style.backgroundColor, style.borderColor, style.boxShadow, style.fontFamily];
+    return [
+      style.backgroundColor,
+      style.borderColor,
+      style.boxShadow,
+      style.fontFamily,
+    ];
   };
   assert.deepEqual(
     await panel.evaluate(tooltipStyle),
-    await page.locator(".motor-chart-shared-tooltip").first().evaluate(tooltipStyle),
+    await page
+      .locator(".motor-chart-shared-tooltip")
+      .first()
+      .evaluate(tooltipStyle),
   );
   const trigger = page.locator("#line .motor-chart-filter-button");
+  const download = page.locator("#line .motor-download-data");
+  const buttonStyle = (element) => {
+    const style = getComputedStyle(element);
+    return [style.color, style.opacity];
+  };
+  assert.deepEqual(
+    await trigger.evaluate(buttonStyle),
+    await download.evaluate(buttonStyle),
+  );
   await trigger.hover();
+  await page.waitForTimeout(250);
+  assert.equal(await panel.isVisible(), false);
+  const hoveredStyle = await trigger.evaluate(buttonStyle);
+  await download.hover();
+  await page.waitForTimeout(150);
+  assert.deepEqual(hoveredStyle, await download.evaluate(buttonStyle));
+  await trigger.focus();
+  assert.equal(await panel.isVisible(), false);
+  await page.keyboard.press("ArrowDown");
+  assert.equal(await panel.isVisible(), false);
+  await page.keyboard.press("Enter");
   await panel.waitFor({ state: "visible" });
   assert.deepEqual(
     await panel.locator(".motor-filter-context-heading").allTextContents(),
@@ -114,11 +142,17 @@ try {
   await page.keyboard.press("Escape");
   await page.locator("h1").click();
   await trigger.hover();
+  await page.waitForTimeout(250);
+  assert.equal(await panel.isVisible(), false);
+  await trigger.click();
   await panel.hover();
   await page.waitForTimeout(250);
   assert.equal(await panel.isVisible(), true);
   await page.mouse.move(5, 5);
-  await panel.waitFor({ state: "hidden" });
+  await page.waitForTimeout(250);
+  assert.equal(await panel.isVisible(), true);
+  await trigger.click();
+  assert.equal(await panel.isVisible(), false);
   await trigger.click();
   await page.mouse.move(5, 5);
   await page.waitForTimeout(250);
@@ -168,6 +202,8 @@ try {
   await panel.waitFor({ state: "hidden" });
   await page.locator("h1").click();
   await trigger.focus();
+  assert.equal(await panel.isVisible(), false);
+  await page.keyboard.press("Space");
   await panel.waitFor({ state: "visible" });
   await page.keyboard.press("ArrowDown");
   assert.equal(
@@ -269,7 +305,7 @@ try {
   assert.equal(await panel.isVisible(), false);
   assert.deepEqual(errors, []);
   console.log(
-    "Browser checks passed: all chart types, grouping, sources, defaults, overflow, hover/pin/keyboard, updates/errors/tabs, mobile, remount.",
+    "Browser checks passed: all chart types, grouping, sources, defaults, overflow, click/keyboard, hover stays closed, updates/errors/tabs, mobile, remount.",
   );
 } finally {
   await browser.close();
