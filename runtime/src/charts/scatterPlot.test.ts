@@ -27,6 +27,7 @@ test("Vega renders a quantitative scatter plot with point tooltip fields", async
   const tooltipConfig = scatterTooltipConfig(component, rows, "Segment");
 
   const unitSpec = spec as unknown as {
+    height?: number;
     mark?: { type?: string; tooltip?: boolean } | string;
     encoding?: {
       x?: { type?: string };
@@ -34,6 +35,7 @@ test("Vega renders a quantitative scatter plot with point tooltip fields", async
       color?: { field?: string };
     };
   };
+  assert.equal(unitSpec.height, 360);
   assert.equal(
     unitSpec.mark && typeof unitSpec.mark === "object" ? unitSpec.mark.type : undefined,
     "point",

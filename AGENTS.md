@@ -23,8 +23,8 @@ Avoid pasting or reading huge logs unless the concise output is insufficient.
 - Never implement a feature directly on `master`.
 - Before changing files, inspect `git status` and preserve all pre-existing user
   changes. Do not include unrelated changes in a commit or pull request.
-- Start each independent change from an up-to-date `origin/master` in its own
-  branch. Use `feature/<short-name>`, `fix/<short-name>`, or
+- Start every new task from an up-to-date `origin/master` in its own branch. Use
+  `feature/<short-name>`, `fix/<short-name>`, or
   `chore/<short-name>`.
 - Keep one logical feature or fix per branch and add or update tests with it.
 - After every meaningful code change, run Python tests and packaging:
@@ -43,8 +43,10 @@ Avoid pasting or reading huge logs unless the concise output is insufficient.
   npm run build
   ```
 
-- Commit the intended changes with a short descriptive message, push the topic
-  branch, and open a pull request targeting `master`.
+- After each user prompt, commit the resulting changes with a short descriptive
+  message and push the current branch to GitHub.
+- Open a pull request targeting `master` only when the user explicitly requests
+  one.
 - Never merge the pull request. The repository owner performs the final manual
   merge after CI passes. An approving review is not required for this solo-owner
   workflow; the manual merge itself is the approval gate.

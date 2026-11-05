@@ -352,9 +352,9 @@ in the card header, including charts without a `title` or with
 `download="false"`. This is automatic; there is no configuration attribute.
 `Table` and `BigValue` do not show this icon.
 
-Hovering or focusing the icon opens a panel using the same dark styling as
-chart tooltips. Clicking or tapping pins it; clicking again, clicking outside,
-or pressing Escape closes it. The pointer can move into the panel without
+Hovering or focusing the icon opens a panel using the same dark palette and
+typography as chart tooltips. Clicking or tapping pins it; clicking again,
+clicking outside, or pressing Escape closes it. The pointer can move into the panel without
 closing it. With keyboard focus on the icon, Arrow Down enters the value
 disclosures; Escape returns focus to the icon. The panel is a non-modal dialog
 so its disclosures can also be used with a keyboard or touch. It scrolls when
@@ -478,7 +478,8 @@ boundary. Every asset mode still embeds complete source files; see
   offset, palette, pattern, legend, and tooltip order.
 - `details` is a comma-separated list of additional result columns shown only
   in the tooltip.
-- Charts are responsive, container-width, 300 px high, and use SVG.
+- Charts are responsive, container-width, 360 px high, and use SVG. Heatmaps
+  keep their independent content-driven height with a 300 px minimum.
 - Tooltips show data under the pointer.
 - `format="percent"` treats Y values as fractions and formats the Y axis as
   percentages.

@@ -253,6 +253,8 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert b64decode(favicon) == favicon_bytes
     assert "Starting query engine" in html
     assert "<script src=" not in html
+    assert "background: #faf8f5;" in html
+    assert "main { box-sizing: border-box; width: 100%; max-width: 1600px;" in html
     assert ".motor-filters { overflow: visible; }" in html
     assert ".motor-filter-header { display: flex;" in html
     assert ".motor-filter-reset" in html
@@ -269,8 +271,14 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert "width: 240px; max-width: 100%;" in html
     assert ".motor-multiselect-panel { box-sizing: border-box; position: absolute;" in html
     assert ".motor-multiselect-dropdown.drop-up .motor-multiselect-panel" in html
-    assert "max-height: calc(100vh - 32px); overflow-x: hidden; overflow-y: auto;" in html
+    assert ".motor-multiselect-options .motor-filter-option { box-sizing: border-box; flex: 0 0 auto;" in html
+    assert "min-height: 24px; align-items: flex-start; line-height: 1.35; overflow-wrap: anywhere;" in html
+    assert ".motor-multiselect-options .motor-filter-option input { flex: 0 0 auto; margin-top: .2em; }" in html
+    assert "max-height: var(--motor-sidebar-max-height, calc(100vh - 32px));" in html
+    assert "--motor-sidebar-max-height" in html
+    assert ".motor-sidebar .motor-radio-controls { flex-direction: column; align-items: flex-start; }" in html
     assert ".motor-sidebar .motor-multiselect-dropdown { width: 100%; max-width: 100%; }" in html
+    assert "motor-radio-controls" in html
     assert ".motor-chart-shared-tooltip { position: fixed;" in html
     assert "max-width: min(960px, calc(100vw - 16px));" in html
     assert ".motor-chart-shared-tooltip-table .motor-chart-shared-tooltip-label { max-width: 640px; }" in html
@@ -392,6 +400,9 @@ data:
     assert 'body data-motor-accent="samokat"' in html
     assert 'body[data-motor-accent="samokat"] { --motor-accent: #ff3b65;' in html
     assert 'body[data-motor-accent="kuper"] { --motor-accent: #61f67a;' in html
+    assert 'body[data-motor-accent="terracotta"] { --motor-accent: #c15f36;' in html
+    assert 'body[data-motor-accent="eucalyptus"] { --motor-accent: #2c7f6b;' in html
+    assert 'family=IBM+Plex+Sans' in html
 
 
 def test_theme_defaults_to_blue(tmp_path: Path) -> None:

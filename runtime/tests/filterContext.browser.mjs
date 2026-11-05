@@ -56,6 +56,14 @@ try {
     0,
   );
   const panel = page.locator(".motor-chart-filter-tooltip");
+  const tooltipStyle = (element) => {
+    const style = getComputedStyle(element);
+    return [style.backgroundColor, style.borderColor, style.boxShadow, style.fontFamily];
+  };
+  assert.deepEqual(
+    await panel.evaluate(tooltipStyle),
+    await page.locator(".motor-chart-shared-tooltip").first().evaluate(tooltipStyle),
+  );
   const trigger = page.locator("#line .motor-chart-filter-button");
   await trigger.hover();
   await panel.waitFor({ state: "visible" });

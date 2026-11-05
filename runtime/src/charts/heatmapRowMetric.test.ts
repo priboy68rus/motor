@@ -124,6 +124,20 @@ test("Vega renders a heatmap with the row metric layers", async () => {
   assert.equal(markProperties.fontWeight, "normal");
 });
 
+test("heatmap keeps its independent minimum height", () => {
+  const spec = heatmapSpec(
+    {
+      id: "retention",
+      type: "Heatmap",
+      query: "retention",
+      props: { x: "period", y: "cohort", value: "retention" },
+    },
+    [{ cohort: "2026-01", period: 0, retention: 1 }],
+  );
+
+  assert.equal((spec as { height?: number }).height, 300);
+});
+
 test("heatmap shared tooltip groups every Y row by X and includes details", () => {
   const component = {
     id: "retention",

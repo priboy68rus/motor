@@ -4,6 +4,7 @@ import { downloadComponentCsv, downloadComponentXlsx } from "./csvDownload";
 import { isChart } from "./filterContext";
 import { ChartFilterTooltip } from "./filterTooltip";
 import type { RuntimeMetrics, RuntimeMetricsSnapshot } from "./runtimeMetrics";
+import { trackSidebarViewportHeight } from "./sidebarViewport";
 import {
   formatSignedPercent,
   formatSignedValue,
@@ -683,6 +684,8 @@ function renderSelect(
     details = dropdown.details;
     summary = dropdown.summary;
     optionList = dropdown.optionList;
+  } else {
+    controls.classList.add("motor-radio-controls");
   }
   const groupName = `motor-select-${name}-${radioGroupSequence++}`;
   const all = param.allow_all === false ? undefined : radio("All", groupName);
@@ -896,6 +899,7 @@ export class ReportRenderer {
   private latestOptions: ParamOptions = {};
   private sidebarResetButton?: HTMLButtonElement;
   private sidebarResetParamNames: string[] = [];
+  private stopSidebarViewportTracking?: () => void;
 
   constructor(
     private root: HTMLElement,
@@ -920,6 +924,8 @@ export class ReportRenderer {
     this.latestErrors = errors;
     this.latestValues = values;
     this.latestOptions = options;
+    this.stopSidebarViewportTracking?.();
+    this.stopSidebarViewportTracking = undefined;
     this.elements.clear();
     this.componentTabs.clear();
     this.activeTabs.clear();
@@ -965,6 +971,7 @@ export class ReportRenderer {
       contentRoot.className = "motor-report-content";
       shell.append(sidebarContainer, contentRoot);
       this.root.append(shell);
+      this.stopSidebarViewportTracking = trackSidebarViewportHeight(sidebarContainer);
     }
     const createComponent = (
       parent: HTMLElement,
