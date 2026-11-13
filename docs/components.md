@@ -114,6 +114,7 @@ declared for another component type also fails compilation.
 | [`Spacer`](#spacer) | — | `id` |
 | [`Filters`](#filters) | `params` | `id`, `title`, `placement` |
 | [`Text`](#text) | `text` | `id`, `title`, `placement` |
+| [`Link`](#link) | `title`, `href` | `id`, `description` |
 | [`DataStatus`](#datastatus) | — | `id` |
 | [`VersionBadge`](#versionbadge) | — | `id` |
 | [`LoadingMetrics`](#loadingmetrics) | — | `id`, `title`, `placement` |
@@ -193,6 +194,26 @@ Renders plain text in a card.
 The value is inserted using `textContent`: Markdown and HTML are not
 interpreted. Whitespace is preserved by the report stylesheet. Use separate
 `Text` components for multiple paragraphs or sidebar sections.
+
+## `Link`
+
+Renders a clickable card with a title, optional description, and a small
+gray chevron on the right. It opens the destination in the same tab and works
+as a content component at the top level, inside a `Row`, or inside a `Tab`.
+
+```md
+<Link
+  title="Sales"
+  description="Revenue, orders, and weekly trends"
+  href="./sales/index.html"
+/>
+```
+
+| Attribute | Type | Required | Default | Contract |
+| --- | --- | --- | --- | --- |
+| `title` | non-empty string | yes | — | Card heading, displayed as plain text. |
+| `href` | string | yes | — | [Navigation URL](report-file.md#navigation-urls) resolved from the generated page. Invalid URLs fail validation. |
+| `description` | string | no | — | Plain text below the heading. An empty value hides the description. |
 
 ## `DataStatus`
 

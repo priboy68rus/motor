@@ -22,7 +22,8 @@ Unknown fields are rejected.
 | --- | --- | --- | --- | --- |
 | `title` | string | yes | — | Non-empty title shown at the top of the report. |
 | `slug` | string | yes | — | Stable artifact prefix matching `^[a-z0-9]+(?:-[a-z0-9]+)*$`. |
-| `data` | mapping | yes | — | One or more named CSV or Parquet sources. |
+| `back_href` | string or null | no | `null` | A [navigation URL](#navigation-urls) for the back arrow to the left of the report title. The arrow is available while the report loads. |
+| `data` | mapping | no | `{}` | Named CSV or Parquet sources. Omit the field or use an empty mapping for pages without sources, such as a catalog. Each SQL block must depend on a configured source, and source-backed filter options must reference a configured source. |
 | `spec_version` | string | no | `0.1.0` | Authoring specification version recorded as metadata. It does not currently select compiler behavior. |
 | `timezone` | string | no | `UTC` | Valid IANA timezone such as `UTC` or `Europe/Moscow`. Omission emits a warning. |
 | `theme` | mapping | no | `{accent: blue}` | Report interface theme. It changes motor's UI chrome but does not change chart palettes. See [Theme](#theme). |
@@ -44,6 +45,14 @@ data:
 
 YAML follows normal YAML rules. Two-space indentation is recommended, not
 mandatory. Values such as dates that must remain strings should be quoted.
+
+### Navigation URLs
+
+`back_href` and the [`Link` component](components.md#link) accept relative URLs
+such as `../`, `./sales/index.html`, `/reports/`, and `#details`, as well as
+absolute `http://` and `https://` URLs. Relative URLs resolve against the
+generated HTML page. Empty URLs, other schemes, scheme-relative URLs starting
+with `//`, backslashes, and ASCII control characters fail validation.
 
 ### Naming rules
 

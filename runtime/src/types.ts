@@ -74,6 +74,7 @@ export type ComponentSpec = {
     | "Spacer"
     | "Filters"
     | "Text"
+    | "Link"
     | "DataStatus"
     | "VersionBadge"
     | "LoadingMetrics"

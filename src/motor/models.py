@@ -12,6 +12,19 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+def navigation_href(value: str) -> str:
+    message = "must be a relative URL or an absolute http(s) URL"
+    if any(ord(char) < 32 or ord(char) == 127 or char == "\\" for char in value):
+        raise ValueError(message)
+    value = value.strip()
+    if not value or value.startswith("//"):
+        raise ValueError(message)
+    parsed = urlparse(value)
+    if parsed.scheme and (parsed.scheme not in {"http", "https"} or not parsed.hostname):
+        raise ValueError(message)
+    return value
+
+
 class FreshnessConfig(StrictModel):
     data_time_column: str | None = None
     processed_time_column: str | None = None
@@ -166,12 +179,18 @@ class ParamConfig(StrictModel):
 class ReportConfig(StrictModel):
     title: str = Field(min_length=1)
     slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    back_href: str | None = None
     spec_version: str = "0.1.0"
     timezone: str | None = None
     theme: ThemeConfig = Field(default_factory=ThemeConfig)
     update_check: UpdateCheckConfig | None = None
-    data: dict[str, DataSourceConfig] = Field(min_length=1)
+    data: dict[str, DataSourceConfig] = Field(default_factory=dict)
     params: dict[str, ParamConfig] = Field(default_factory=dict)
+
+    @field_validator("back_href")
+    @classmethod
+    def validate_back_href(cls, value: str | None) -> str | None:
+        return navigation_href(value) if value is not None else None
 
     @field_validator("data", "params")
     @classmethod
@@ -248,6 +267,7 @@ class ComponentSpec(StrictModel):
         "Spacer",
         "Filters",
         "Text",
+        "Link",
         "DataStatus",
         "VersionBadge",
         "LoadingMetrics",

@@ -236,6 +236,21 @@ function renderText(element: HTMLElement, component: ComponentSpec): void {
   element.append(text("p", String(component.props.text), "motor-text-body"));
 }
 
+function renderLink(element: HTMLElement, component: ComponentSpec): void {
+  element.className = "motor-card motor-link";
+  element.setAttribute("href", String(component.props.href));
+  const copy = document.createElement("div");
+  copy.append(text("h2", String(component.props.title)));
+  if (component.props.description) {
+    copy.append(text("p", String(component.props.description), "motor-text-body"));
+  }
+  const icon = document.createElement("span");
+  icon.innerHTML =
+    '<svg class="motor-navigation-icon" viewBox="0 0 16 16" aria-hidden="true">' +
+    '<path d="m6 4 4 4-4 4" /></svg>';
+  element.append(copy, icon);
+}
+
 const downloadMenuOutsideClickDocuments = new WeakSet<Document>();
 
 function closeDownloadMenus(document: Document, except?: HTMLElement): void {
@@ -931,7 +946,14 @@ export class ReportRenderer {
     this.activeTabs.clear();
     this.sidebarResetButton = undefined;
     this.sidebarResetParamNames = [];
-    this.root.replaceChildren(text("h1", this.manifest.report.title));
+    const header = this.root.querySelector(":scope > .motor-report-header");
+    if (header) {
+      for (const child of Array.from(this.root.children)) {
+        if (child !== header) child.remove();
+      }
+    } else {
+      this.root.replaceChildren(text("h1", this.manifest.report.title));
+    }
     const components = new Map(this.spec.components.map((component) => [component.id, component]));
     const sidebarComponents = this.spec.components.filter(
       (component) => component.props.placement === "sidebar",
@@ -978,7 +1000,7 @@ export class ReportRenderer {
       component: ComponentSpec,
       tabContext?: { tabsetId: string; tabId: string },
     ): void => {
-      const element = document.createElement("section");
+      const element = document.createElement(component.type === "Link" ? "a" : "section");
       element.id = component.id;
       parent.append(element);
       this.elements.set(component.id, element);
@@ -1260,7 +1282,7 @@ export class ReportRenderer {
     element.replaceChildren();
     element.removeAttribute("aria-busy");
     element.removeAttribute("aria-hidden");
-    if (component.props.title && component.type !== "Filters") {
+    if (component.props.title && component.type !== "Filters" && component.type !== "Link") {
       element.append(text("h2", String(component.props.title)));
     }
     if (component.type === "Spacer") {
@@ -1271,6 +1293,7 @@ export class ReportRenderer {
     else if (component.type === "LoadingMetrics") {
       renderLoadingMetrics(element, this.runtimeMetrics?.snapshot());
     } else if (component.type === "Text") renderText(element, component);
+    else if (component.type === "Link") renderLink(element, component);
     else if (component.type === "Filters") {
       renderFilters(
         element,

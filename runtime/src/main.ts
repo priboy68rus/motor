@@ -46,9 +46,11 @@ async function start(): Promise<void> {
   metrics.setCurrent("Loading embedded data…");
   try {
     const { manifest, spec, sources } = await loadEmbeddedReport({ metrics });
-    metrics.setCurrent("Starting query engine…");
-    const runner = new DuckDBRunner();
-    await runner.initialize(sources, manifest.artifact.content_sha256, metrics);
+    const runner = manifest.sources.length > 0 ? new DuckDBRunner() : undefined;
+    if (runner) {
+      metrics.setCurrent("Starting query engine…");
+      await runner.initialize(sources, manifest.artifact.content_sha256, metrics);
+    }
     let controller: ReportController | undefined;
     const renderer = new ReportRenderer(
       root,
@@ -65,6 +67,7 @@ async function start(): Promise<void> {
     }, metrics);
     await controller.initialize();
     startUpdateCheck(manifest, spec);
+    if (!runner) return;
     const initializedController = controller;
     window.motorDebug = createMotorDebugApi(
       runner,
