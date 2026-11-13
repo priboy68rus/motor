@@ -67,6 +67,7 @@ def compile_report(
             "slug": parsed.config.slug,
             "spec_version": parsed.config.spec_version,
             "timezone": report_timezone,
+            **({"back_href": parsed.config.back_href} if parsed.config.back_href else {}),
         },
         "theme": parsed.config.theme.model_dump(mode="json"),
         "update_check": (

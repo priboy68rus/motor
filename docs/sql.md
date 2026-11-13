@@ -257,9 +257,9 @@ types, casts, aggregation, or dialect issues.
 
 ## Browser SQL debugging
 
-After the report finishes loading, it exposes `window.motorDebug` in the
-browser developer console. The API uses a separate DuckDB connection to the
-same in-memory database as the report.
+After a report with data sources finishes loading, it exposes
+`window.motorDebug` in the browser developer console. The API uses a separate
+DuckDB connection to the same in-memory database as the report.
 
 | Method | Argument | Return value | Behavior |
 | --- | --- | --- | --- |

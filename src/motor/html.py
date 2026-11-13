@@ -41,6 +41,7 @@ def render_report_html(
         autoescape=select_autoescape(enabled_extensions=("html", "j2"), default=True),
     )
     template = environment.get_template("report.html.j2")
+    embed_duckdb = bool(sources) and asset_mode == "embedded"
     runtime_assets = {
         "mode": asset_mode,
         **(
@@ -53,7 +54,7 @@ def render_report_html(
                     ),
                 }
             }
-            if asset_mode == "cdn"
+            if sources and asset_mode == "cdn"
             else {}
         ),
     }
@@ -64,30 +65,32 @@ def render_report_html(
             "ascii"
         ),
         theme_accent=report_spec["theme"]["accent"],
+        back_href=report_spec["report"].get("back_href"),
         report_spec_json=_script_json(report_spec),
         runtime_assets_json=_script_json(runtime_assets),
         sources=sources,
-        asset_mode=asset_mode,
+        embed_duckdb=embed_duckdb,
         duckdb_wasm=(
             b64encode(static_dir.joinpath("duckdb-mvp.wasm.gz").read_bytes()).decode(
                 "ascii"
             )
-            if asset_mode == "embedded"
+            if embed_duckdb
             else None
         ),
         duckdb_worker=(
             b64encode(
                 static_dir.joinpath("duckdb-browser-mvp.worker.js").read_bytes()
             ).decode("ascii")
-            if asset_mode == "embedded"
+            if embed_duckdb
             else None
         ),
-        vega_js=_script_text(static_dir.joinpath("vega.min.js").read_text(encoding="utf-8")),
-        vega_lite_js=_script_text(
-            static_dir.joinpath("vega-lite.min.js").read_text(encoding="utf-8")
-        ),
-        vega_embed_js=_script_text(
-            static_dir.joinpath("vega-embed.min.js").read_text(encoding="utf-8")
+        vega_scripts=(
+            [
+                _script_text(static_dir.joinpath(name).read_text(encoding="utf-8"))
+                for name in ("vega.min.js", "vega-lite.min.js", "vega-embed.min.js")
+            ]
+            if sources
+            else []
         ),
         runtime_js=_script_text(static_dir.joinpath("runtime.js").read_text(encoding="utf-8")),
     )

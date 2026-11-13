@@ -56,7 +56,7 @@ export class ReportController {
 
   constructor(
     private spec: ReportSpec,
-    private runner: DuckDBRunner,
+    private runner: DuckDBRunner | undefined,
     private renderer: ReportRenderer,
     private onProgress?: (message: string) => void,
     private metrics?: RuntimeMetrics,
@@ -67,19 +67,21 @@ export class ReportController {
   }
 
   async initialize(): Promise<void> {
-    this.onProgress?.("Loading filter options…");
-    this.options = await this.runner.loadParamOptions(this.spec, this.metrics);
-    this.onProgress?.("Running report queries…");
-    const queryNames = initialQueryNames(this.spec);
-    const executionNames = queryClosure(this.spec, queryNames);
-    const outcome = await this.runner.run(
-      this.spec,
-      this.values,
-      (queryName) => this.onProgress?.(`Running query ${queryName}…`),
-      executionNames,
-      this.metrics,
-    );
-    this.mergeOutcome(executionNames, outcome.results, outcome.errors);
+    if (this.runner) {
+      this.onProgress?.("Loading filter options…");
+      this.options = await this.runner.loadParamOptions(this.spec, this.metrics);
+      this.onProgress?.("Running report queries…");
+      const queryNames = initialQueryNames(this.spec);
+      const executionNames = queryClosure(this.spec, queryNames);
+      const outcome = await this.runner.run(
+        this.spec,
+        this.values,
+        (queryName) => this.onProgress?.(`Running query ${queryName}…`),
+        executionNames,
+        this.metrics,
+      );
+      this.mergeOutcome(executionNames, outcome.results, outcome.errors);
+    }
     const renderReport = () =>
       this.renderer.mount(this.results, this.errors, this.values, this.options);
     if (this.metrics) await this.metrics.measure("Render report", undefined, renderReport);
@@ -140,7 +142,7 @@ export class ReportController {
   }
 
   private async drain(): Promise<void> {
-    if (this.draining) return;
+    if (!this.runner || this.draining) return;
     this.draining = true;
     try {
       while (this.pendingQueries.size > 0) {

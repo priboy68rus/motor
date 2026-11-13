@@ -21,6 +21,7 @@ from motor.models import (
     QuerySpec,
     ReportConfig,
     TabLayout,
+    navigation_href,
 )
 
 
@@ -51,6 +52,7 @@ _COMPONENT_RULES: dict[str, tuple[set[str], set[str]]] = {
     "Spacer": (set(), set()),
     "Filters": ({"params"}, {"params", "title", "placement"}),
     "Text": ({"text"}, {"text", "title", "placement"}),
+    "Link": ({"title", "href"}, {"title", "href", "description"}),
     "DataStatus": (set(), set()),
     "VersionBadge": (set(), set()),
     "LoadingMetrics": (set(), {"title", "placement"}),
@@ -386,7 +388,7 @@ def _parse_attributes(raw: str, component_type: str) -> dict[str, Any]:
         tokens = shlex.split(raw)
     except ValueError as exc:
         raise ReportValidationError(f"invalid {component_type} attributes: {exc}") from exc
-    attributes: dict[str, Any] = {}
+    attributes: dict[str, str] = {}
     for token in tokens:
         if "=" not in token:
             raise ReportValidationError(
@@ -397,11 +399,17 @@ def _parse_attributes(raw: str, component_type: str) -> dict[str, Any]:
             raise ReportValidationError(
                 f"invalid or duplicate {component_type} attribute {key!r}"
             )
-        if value.lower() in {"true", "false"}:
-            attributes[key] = value.lower() == "true"
-        else:
-            attributes[key] = value
-    return attributes
+        attributes[key] = value
+    link_attributes = component_type == "Link" or (
+        component_type == "Template" and attributes.get("component") == "Link"
+    )
+    return {
+        key: value.lower() == "true"
+        if value.lower() in {"true", "false"}
+        and not (link_attributes and key in {"title", "href", "description"})
+        else value
+        for key, value in attributes.items()
+    }
 
 
 def _extract_component_templates(
@@ -878,6 +886,13 @@ def _extract_components(
             attributes["params"] = params
         if component_type == "Text" and not str(attributes["text"]).strip():
             raise ReportValidationError("Text text must not be empty")
+        if component_type == "Link":
+            if not attributes["title"].strip():
+                raise ReportValidationError("Link title must not be empty")
+            try:
+                attributes["href"] = navigation_href(attributes["href"])
+            except ValueError as exc:
+                raise ReportValidationError(f"Link href {exc}") from exc
         if component_type in {"Filters", "Text", "LoadingMetrics"}:
             placement = attributes.setdefault("placement", "content")
             if placement not in {"content", "sidebar"}:

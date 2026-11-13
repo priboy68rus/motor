@@ -238,6 +238,7 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
 
     assert result.artifact_id == manifest["artifact"]["id"]
     assert manifest["report"]["title"] == "Revenue Overview"
+    assert 'class="motor-back-link"' not in html
     assert manifest["sources"][0]["rows"] == 3
     assert 'data-encoding="base64+gzip+csv"' in html
     assert '"mode": "embedded"' in html
@@ -297,6 +298,73 @@ def test_build_embeds_manifest_and_csv(tmp_path: Path) -> None:
     assert "Open latest" in html
     encoded = html.split('data-encoding="base64+gzip+csv">', 1)[1].split("</script>", 1)[0]
     assert gzip.decompress(b64decode(encoded.strip())).startswith(b"order_id,country")
+
+
+@pytest.mark.parametrize("asset_mode", ["embedded", "cdn"])
+def test_build_report_catalog_without_sources(tmp_path: Path, asset_mode: str) -> None:
+    report = tmp_path / "index.md"
+    report.write_text(
+        """---
+title: Reports
+slug: reports
+timezone: UTC
+back_href: ../
+---
+<Template name="sales" component="Link" href="./sales/index.html" description="false" />
+<Link template="sales" title="Sales" />
+<Link title="Support" href="https://example.com/support" />
+""",
+        encoding="utf-8",
+    )
+    manifest, spec, sources = compile_report(report)
+    assert sources == manifest["sources"] == []
+    assert spec["data"] == spec["queries"] == {}
+    assert spec["report"]["back_href"] == "../"
+    assert [component["type"] for component in spec["components"]] == ["Link", "Link"]
+    assert spec["components"][0]["props"] == {
+        "title": "Sales",
+        "description": "false",
+        "href": "./sales/index.html",
+    }
+    assert "description" not in spec["components"][1]["props"]
+
+    output = tmp_path / "public" / "reports" / "index.html"
+    build_report(report, output, asset_mode=asset_mode)
+    html = output.read_text(encoding="utf-8")
+    assert '<a class="motor-back-link" href="../" aria-label="Back">' in html
+    assert 'id="motor-duckdb-wasm"' not in html
+    assert 'id="motor-duckdb-worker"' not in html
+    assert "https://cdn.jsdelivr.net/npm/@duckdb/" not in html
+
+
+@pytest.mark.parametrize(
+    "href", ["", "javascript:alert(1)", "data:text/html,hello", "//example.com/", r"\example.com"]
+)
+def test_reject_invalid_navigation_urls(tmp_path: Path, href: str) -> None:
+    report = tmp_path / "report.md"
+    frontmatter = "---\ntitle: Reports\nslug: reports\ndata: {}\n"
+    report.write_text(
+        f"{frontmatter}back_href: {json.dumps(href)}\n---\n", encoding="utf-8"
+    )
+    with pytest.raises(ReportValidationError, match="back_href"):
+        compile_report(report)
+
+    report.write_text(
+        f"{frontmatter}---\n<Link title='Sales' href='{href}' />\n", encoding="utf-8"
+    )
+    with pytest.raises(ReportValidationError, match="Link href"):
+        compile_report(report)
+
+
+def test_report_without_sources_still_validates_sql_dependencies(tmp_path: Path) -> None:
+    report = tmp_path / "report.md"
+    report.write_text(
+        "---\ntitle: Reports\nslug: reports\n---\n\n"
+        "```sql name=summary kind=query\nselect 1\n```\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ReportValidationError, match="does not depend on a configured data source"):
+        compile_report(report)
 
 
 def test_cdn_asset_mode_builds_small_connected_artifact(tmp_path: Path) -> None:

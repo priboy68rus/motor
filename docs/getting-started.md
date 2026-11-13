@@ -77,3 +77,29 @@ Use the reference pages while extending the report:
 The repository's
 [`examples/revenue/report.md`](../examples/revenue/report.md) demonstrates all
 major features together.
+
+## Publish a report catalog on GitLab Pages
+
+Create a catalog such as `index.md`:
+
+```md
+---
+title: Reports
+slug: reports
+timezone: UTC
+---
+
+<Link title="Sales" description="Revenue and order trends" href="./sales/index.html" />
+```
+
+In `sales.md`, add `back_href: ../` to the YAML frontmatter. Then build both
+files into the directory your GitLab Pages job publishes:
+
+```bash
+motor build index.md --out public/index.html
+motor build sales.md --out public/sales/index.html
+```
+
+From `sales/index.html`, the back arrow opens the parent directory, where
+GitLab Pages serves the catalog. Repeat the pattern with a subdirectory for
+each additional report.

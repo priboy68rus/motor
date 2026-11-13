@@ -40,7 +40,7 @@ partial target.
 
 | Option / environment variable | Type | Required | Default | Allowed values / behavior |
 | --- | --- | --- | --- | --- |
-| `--asset-mode` | enum | no | `MOTOR_ASSET_MODE`, then `embedded` | `embedded` packages DuckDB into every HTML; `cdn` downloads pinned DuckDB files from jsDelivr and requires internet on a cache miss. |
+| `--asset-mode` | enum | no | `MOTOR_ASSET_MODE`, then `embedded` | With data sources, `embedded` packages DuckDB into the HTML and `cdn` downloads pinned DuckDB files from jsDelivr on a cache miss. Pages without sources skip DuckDB in both modes. |
 | `MOTOR_ASSET_MODE` | enum | no | — | Batch-build fallback for `--asset-mode`; `embedded` or `cdn`. An explicit CLI option takes precedence. Any other environment value stops the build. |
 | `--update-registry` | path | no | `MOTOR_UPDATE_REGISTRY` | Directory where latest-version metadata is written. |
 | `MOTOR_UPDATE_REGISTRY` | path | no | — | Fallback registry directory for `motor build` and `motor server`. |
@@ -163,6 +163,8 @@ The default `asset_mode=embedded` file embeds:
 No CDN or application server is required. The report can be opened with a
 `file://` URL and queried interactively offline.
 
+Pages without data sources omit the DuckDB and Vega assets in both modes.
+
 ### CDN asset mode
 
 `motor build --asset-mode cdn` produces a smaller connected artifact. It still
@@ -237,6 +239,9 @@ When the page opens, motor:
 
 Closing or navigating away terminates the DuckDB connection and worker and
 revokes temporary object URLs.
+
+Pages without data sources start at layout rendering and do not expose the
+DuckDB browser debug API.
 
 ## Update notification server
 
